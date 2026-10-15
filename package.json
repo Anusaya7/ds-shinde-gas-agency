@@ -1,0 +1,14 @@
+{
+  "name": "ds-shinde-gas-agency",
+  "version": "1.0.0",
+  "private": true,
+  "description": "D.S SHINDE GAS AGENCY — LPG Cylinder Order Management System",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build",
+    "seed": "npm --prefix backend run prisma:seed",
+    "open": "powershell -Command Start-Process 'http://localhost:3000'"
+  }
+}

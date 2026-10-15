@@ -1,0 +1,36 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { PaymentController } from '../controllers/payment.controller.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { validate } from '../middleware/validate.js';
+
+const router = Router();
+
+const createOrderSchema = z.object({
+  orderId: z.string().uuid('Valid order ID is required'),
+});
+
+const verifyPaymentSchema = z.object({
+  orderId: z.string().uuid('Valid order ID is required'),
+  razorpayOrderId: z.string().min(1, 'razorpayOrderId is required'),
+  razorpayPaymentId: z.string().min(1, 'razorpayPaymentId is required'),
+  razorpaySignature: z.string().min(1, 'razorpaySignature is required'),
+});
+
+router.post(
+  '/create-razorpay-order',
+  authenticateToken,
+  validate(createOrderSchema),
+  PaymentController.createRazorpayOrder
+);
+
+router.post(
+  '/verify',
+  authenticateToken,
+  validate(verifyPaymentSchema),
+  PaymentController.verifyPayment
+);
+
+router.post('/webhook', PaymentController.webhook);
+
+export default router;

@@ -1,0 +1,1169 @@
+import { Request, Response, NextFunction } from 'express';
+import bcrypt from 'bcryptjs';
+import { Prisma } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Role, NotificationType } from '../constants/enums.js';
+import prisma from '../config/database.js';
+import { ApiResponse } from '../utils/apiResponse.js';
+import { BadRequestError, NotFoundError, ConflictError } from '../utils/errors.js';
+import { NotificationService } from '../services/notification.service.js';
+
+export class AdminController {
+  /**
+   * Real Dashboard Counts and Statistics
+   */
+  static async getDashboardStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const [
+        totalOrders,
+        newOrders,
+        awaitingReview,
+        accepted,
+        outForDelivery,
+        delivered,
+        cancelled,
+        pendingPayments,
+        paidPaymentsAggregate,
+        totalCustomers,
+        totalRiders,
+        availableRiders,
+      ] = await Promise.all([
+        prisma.order.count(),
+        prisma.order.count({ where: { status: OrderStatus.ORDER_PLACED } }),
+        prisma.order.count({ where: { status: OrderStatus.AWAITING_REVIEW } }),
+        prisma.order.count({ where: { status: OrderStatus.ACCEPTED } }),
+        prisma.order.count({ where: { status: OrderStatus.OUT_FOR_DELIVERY } }),
+        prisma.order.count({ where: { status: OrderStatus.DELIVERED } }),
+        prisma.order.count({ where: { status: OrderStatus.CANCELLED } }),
+        prisma.order.count({ where: { paymentStatus: PaymentStatus.PENDING } }),
+        prisma.payment.aggregate({
+          where: { status: PaymentStatus.PAID },
+          _sum: { amount: true },
+        }),
+        prisma.user.count({ where: { role: Role.CUSTOMER } }),
+        prisma.rider.count(),
+        prisma.rider.count({ where: { isAvailable: true } }),
+      ]);
+
+      const totalCollected = Number(paidPaymentsAggregate._sum.amount || 0);
+
+      // Recent 5 orders for dashboard feed
+      const recentOrders = await prisma.order.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: { select: { name: true, phone: true } },
+          items: true,
+        },
+      });
+
+      ApiResponse.success(
+        res,
+        {
+          totalOrders,
+          newOrders,
+          awaitingReview,
+          accepted,
+          outForDelivery,
+          delivered,
+          cancelled,
+          pendingPayments,
+          totalCollected,
+          totalCustomers,
+          totalRiders,
+          availableRiders,
+          recentOrders,
+        },
+        'Dashboard statistics retrieved successfully'
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get all orders with filtering, search, and pagination
+   */
+  static async getAllOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 20;
+      const status = req.query.status as OrderStatus | undefined;
+      const paymentStatus = req.query.paymentStatus as PaymentStatus | undefined;
+      const search = req.query.search as string | undefined;
+      const startDate = req.query.startDate as string | undefined;
+      const endDate = req.query.endDate as string | undefined;
+
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.OrderWhereInput = {};
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (paymentStatus) {
+        where.paymentStatus = paymentStatus;
+      }
+
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate);
+        if (endDate) where.createdAt.lte = new Date(endDate);
+      }
+
+      if (search) {
+        where.OR = [
+          { orderNumber: { contains: search } },
+          { deliveryName: { contains: search } },
+          { deliveryPhone: { contains: search } },
+          { deliveryAddress: { contains: search } },
+          { deliveryArea: { contains: search } },
+        ];
+      }
+
+      const [orders, total] = await Promise.all([
+        prisma.order.findMany({
+          where,
+          include: {
+            customer: { select: { id: true, name: true, phone: true, email: true } },
+            rider: { include: { user: { select: { name: true, phone: true } } } },
+            items: true,
+            payments: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.order.count({ where }),
+      ]);
+
+      ApiResponse.paginated(res, orders, total, page, limit, 'Orders retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get single order by ID for admin
+   */
+  static async getOrderById(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const order = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          customer: {
+            select: { id: true, name: true, phone: true, email: true },
+          },
+          rider: {
+            include: {
+              user: { select: { id: true, name: true, phone: true } },
+            },
+          },
+          items: {
+            include: { product: true },
+          },
+          payments: {
+            include: {
+              collectedBy: { select: { id: true, name: true } },
+            },
+          },
+          statusHistory: {
+            orderBy: { createdAt: 'asc' },
+            include: {
+              changedBy: { select: { id: true, name: true, role: true } },
+            },
+          },
+          deliveryOtp: true,
+        },
+      });
+
+      if (!order) {
+        throw new NotFoundError('Order not found');
+      }
+
+      ApiResponse.success(res, order, 'Order details retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Accept an order
+   */
+  static async acceptOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.id;
+
+      const existing = await prisma.order.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundError('Order not found');
+      }
+
+      if (existing.status === OrderStatus.CANCELLED || existing.status === OrderStatus.REJECTED) {
+        throw new BadRequestError(`Cannot accept order with status: ${existing.status}`);
+      }
+
+      const order = await prisma.$transaction(async (tx) => {
+        const ord = await tx.order.update({
+          where: { id },
+          data: { status: OrderStatus.ACCEPTED },
+        });
+
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            status: OrderStatus.ACCEPTED,
+            note: 'Order reviewed and accepted by administration',
+            changedById: adminId,
+          },
+        });
+
+        return ord;
+      });
+
+      await NotificationService.createNotification({
+        userId: existing.customerId,
+        title: 'Order Accepted',
+        message: `Your LPG cylinder order ${existing.orderNumber} has been verified and accepted. Delivery preparation started.`,
+        type: NotificationType.ORDER_UPDATE,
+        orderId: existing.id,
+      });
+
+      ApiResponse.success(res, order, 'Order accepted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reject an order with reason
+   */
+  static async rejectOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.id;
+      const { reason } = req.body;
+
+      if (!reason) {
+        throw new BadRequestError('Rejection reason is required');
+      }
+
+      const existing = await prisma.order.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundError('Order not found');
+      }
+
+      const order = await prisma.$transaction(async (tx) => {
+        const ord = await tx.order.update({
+          where: { id },
+          data: {
+            status: OrderStatus.REJECTED,
+            rejectionReason: reason,
+          },
+        });
+
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            status: OrderStatus.REJECTED,
+            note: `Order rejected by admin. Reason: ${reason}`,
+            changedById: adminId,
+          },
+        });
+
+        return ord;
+      });
+
+      await NotificationService.createNotification({
+        userId: existing.customerId,
+        title: 'Order Rejected',
+        message: `Your cylinder order ${existing.orderNumber} could not be processed. Reason: ${reason}`,
+        type: NotificationType.ORDER_UPDATE,
+        orderId: existing.id,
+      });
+
+      ApiResponse.success(res, order, 'Order rejected');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Assign rider to an order
+   */
+  static async assignRider(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.id;
+      const { riderId } = req.body;
+
+      if (!riderId) {
+        throw new BadRequestError('riderId is required');
+      }
+
+      const [order, rider] = await Promise.all([
+        prisma.order.findUnique({ where: { id } }),
+        prisma.rider.findUnique({
+          where: { id: riderId },
+          include: { user: true },
+        }),
+      ]);
+
+      if (!order) {
+        throw new NotFoundError('Order not found');
+      }
+
+      if (!rider) {
+        throw new NotFoundError('Rider not found');
+      }
+
+      if (!rider.user.isActive) {
+        throw new BadRequestError('Cannot assign inactive rider');
+      }
+
+      const previousRiderId = order.riderId;
+      const isReassignment = Boolean(previousRiderId && previousRiderId !== riderId);
+      let previousRiderUserId: string | null = null;
+
+      if (isReassignment && previousRiderId) {
+        const prevRider = await prisma.rider.findUnique({
+          where: { id: previousRiderId },
+          select: { userId: true },
+        });
+        if (prevRider) previousRiderUserId = prevRider.userId;
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        if (isReassignment && previousRiderId) {
+          await tx.rider.update({
+            where: { id: previousRiderId },
+            data: { isAvailable: true },
+          });
+        }
+
+        const ord = await tx.order.update({
+          where: { id },
+          data: {
+            riderId,
+            status: OrderStatus.RIDER_ASSIGNED,
+          },
+          include: {
+            rider: { include: { user: true } },
+          },
+        });
+
+        await tx.rider.update({
+          where: { id: riderId },
+          data: { isAvailable: false },
+        });
+
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            status: OrderStatus.RIDER_ASSIGNED,
+            note: isReassignment
+              ? `Order reassigned to delivery partner ${rider.user.name} (${rider.vehicleNumber || 'No vehicle'})`
+              : `Assigned to delivery partner ${rider.user.name} (${rider.vehicleNumber || 'No vehicle'})`,
+            changedById: adminId,
+          },
+        });
+
+        return ord;
+      });
+
+      // Notify new rider
+      await NotificationService.createNotification({
+        userId: rider.userId,
+        title: 'New Delivery Assignment',
+        message: `You have been assigned to deliver order ${order.orderNumber} to ${order.deliveryArea}.`,
+        type: NotificationType.DELIVERY,
+        orderId: order.id,
+      });
+
+      // Notify previous rider if reassigned
+      if (previousRiderUserId) {
+        await NotificationService.createNotification({
+          userId: previousRiderUserId,
+          title: 'Order Reassigned',
+          message: `Order ${order.orderNumber} was reassigned by administration to another partner.`,
+          type: NotificationType.DELIVERY,
+          orderId: order.id,
+        });
+      }
+
+      // Notify customer
+      await NotificationService.createNotification({
+        userId: order.customerId,
+        title: 'Delivery Partner Assigned',
+        message: `Rider ${rider.user.name} has been assigned for your order ${order.orderNumber}.`,
+        type: NotificationType.DELIVERY,
+        orderId: order.id,
+      });
+
+      ApiResponse.success(res, updated, 'Rider assigned successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Cancel order as admin
+   */
+  static async cancelOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const adminId = req.user!.id;
+      const { reason } = req.body;
+
+      if (!reason) {
+        throw new BadRequestError('Cancellation reason is required');
+      }
+
+      const existing = await prisma.order.findUnique({ where: { id } });
+      if (!existing) {
+        throw new NotFoundError('Order not found');
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        const ord = await tx.order.update({
+          where: { id },
+          data: {
+            status: OrderStatus.CANCELLED,
+            cancellationReason: reason,
+          },
+        });
+
+        if (existing.riderId) {
+          await tx.rider.update({
+            where: { id: existing.riderId },
+            data: { isAvailable: true },
+          });
+        }
+
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            status: OrderStatus.CANCELLED,
+            note: `Order cancelled by admin. Reason: ${reason}`,
+            changedById: adminId,
+          },
+        });
+
+        return ord;
+      });
+
+      await NotificationService.createNotification({
+        userId: existing.customerId,
+        title: 'Order Cancelled',
+        message: `Your order ${existing.orderNumber} has been cancelled by administration. Reason: ${reason}`,
+        type: NotificationType.ORDER_UPDATE,
+        orderId: existing.id,
+      });
+
+      ApiResponse.success(res, updated, 'Order cancelled');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List all riders
+   */
+  static async listRiders(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const riders = await prisma.rider.findMany({
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              isActive: true,
+            },
+          },
+          orders: {
+            where: {
+              status: {
+                in: [
+                  OrderStatus.RIDER_ASSIGNED,
+                  OrderStatus.OUT_FOR_DELIVERY,
+                  OrderStatus.ARRIVED,
+                  OrderStatus.OTP_PENDING,
+                ],
+              },
+            },
+            select: { id: true, orderNumber: true, status: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const formatted = riders.map((r) => ({
+        id: r.id,
+        userId: r.userId,
+        name: r.user.name,
+        email: r.user.email,
+        phone: r.user.phone,
+        vehicleNumber: r.vehicleNumber,
+        isAvailable: r.isAvailable,
+        isActive: r.user.isActive,
+        activeOrdersCount: r.orders.length,
+        createdAt: r.createdAt,
+      }));
+
+      ApiResponse.success(res, formatted, 'Riders retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Create new rider (Creates User + Rider)
+   */
+  static async createRider(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { name, email, phone, password, vehicleNumber } = req.body;
+
+      if (!name || !phone || !password) {
+        throw new BadRequestError('Name, phone number, and password are required');
+      }
+
+      // Check existing phone/email
+      if (email) {
+        const existingEmail = await prisma.user.findUnique({ where: { email } });
+        if (existingEmail) throw new ConflictError('A user with this email already exists');
+      }
+
+      const existingPhone = await prisma.user.findUnique({ where: { phone } });
+      if (existingPhone) throw new ConflictError('A user with this phone already exists');
+
+      const passwordHash = await bcrypt.hash(password, 10);
+
+      const rider = await prisma.user.create({
+        data: {
+          name,
+          email: email || null,
+          phone,
+          passwordHash,
+          role: Role.RIDER,
+          isActive: true,
+          isVerified: true,
+          riderProfile: {
+            create: {
+              vehicleNumber: vehicleNumber || null,
+              isAvailable: true,
+            },
+          },
+        },
+        include: {
+          riderProfile: true,
+        },
+      });
+
+      ApiResponse.created(
+        res,
+        {
+          id: rider.riderProfile?.id,
+          userId: rider.id,
+          name: rider.name,
+          phone: rider.phone,
+          email: rider.email,
+          vehicleNumber: rider.riderProfile?.vehicleNumber,
+          isAvailable: rider.riderProfile?.isAvailable,
+        },
+        'Rider created successfully'
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update rider profile
+   */
+  static async updateRider(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params; // Rider ID
+      const { name, phone, vehicleNumber, isAvailable } = req.body;
+
+      const rider = await prisma.rider.findUnique({
+        where: { id },
+        include: { user: true },
+      });
+
+      if (!rider) {
+        throw new NotFoundError('Rider not found');
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        if (name || phone) {
+          await tx.user.update({
+            where: { id: rider.userId },
+            data: {
+              ...(name && { name }),
+              ...(phone && { phone }),
+            },
+          });
+        }
+
+        return tx.rider.update({
+          where: { id },
+          data: {
+            ...(vehicleNumber !== undefined && { vehicleNumber }),
+            ...(isAvailable !== undefined && { isAvailable }),
+          },
+          include: { user: true },
+        });
+      });
+
+      ApiResponse.success(res, updated, 'Rider updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Toggle rider active status
+   */
+  static async toggleRiderStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const rider = await prisma.rider.findUnique({
+        where: { id },
+        include: { user: true },
+      });
+
+      if (!rider) {
+        throw new NotFoundError('Rider not found');
+      }
+
+      const newStatus = !rider.user.isActive;
+
+      await prisma.user.update({
+        where: { id: rider.userId },
+        data: { isActive: newStatus },
+      });
+
+      ApiResponse.success(
+        res,
+        { riderId: id, isActive: newStatus },
+        `Rider ${newStatus ? 'activated' : 'deactivated'} successfully`
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List customers with pagination and search
+   */
+  static async listCustomers(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 20;
+      const search = req.query.search as string | undefined;
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.UserWhereInput = {
+        role: Role.CUSTOMER,
+      };
+
+      if (search) {
+        where.OR = [
+          { name: { contains: search } },
+          { email: { contains: search } },
+          { phone: { contains: search } },
+        ];
+      }
+
+      const [customers, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            isActive: true,
+            isVerified: true,
+            createdAt: true,
+            _count: {
+              select: { orders: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      ApiResponse.paginated(res, customers, total, page, limit, 'Customers retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get single customer detail with order history
+   */
+  static async getCustomerDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      const customer = await prisma.user.findFirst({
+        where: { id, role: Role.CUSTOMER },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          isActive: true,
+          isVerified: true,
+          createdAt: true,
+          customerProfile: {
+            include: {
+              addresses: true,
+            },
+          },
+          orders: {
+            orderBy: { createdAt: 'desc' },
+            include: {
+              items: true,
+              payments: true,
+            },
+          },
+        },
+      });
+
+      if (!customer) {
+        throw new NotFoundError('Customer not found');
+      }
+
+      ApiResponse.success(res, customer, 'Customer detail retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * List all products (including inactive)
+   */
+  static async listProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const products = await prisma.product.findMany({
+        orderBy: { sizeKg: 'asc' },
+      });
+
+      ApiResponse.success(res, products, 'Products retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Create new cylinder product
+   */
+  static async createProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const {
+        name,
+        sizeKg,
+        description,
+        price,
+        deliveryCharge,
+        isActive,
+        minQuantity,
+        maxQuantity,
+        isCommercial,
+        requiresQuotation,
+        imageUrl,
+      } = req.body;
+
+      const product = await prisma.product.create({
+        data: {
+          name,
+          sizeKg: parseFloat(sizeKg),
+          description,
+          price: new Prisma.Decimal(price),
+          deliveryCharge: deliveryCharge !== undefined ? new Prisma.Decimal(deliveryCharge) : new Prisma.Decimal(0),
+          isActive: isActive !== undefined ? isActive : true,
+          minQuantity: minQuantity || 1,
+          maxQuantity: maxQuantity || 10,
+          isCommercial: !!isCommercial,
+          requiresQuotation: !!requiresQuotation,
+          imageUrl,
+        },
+      });
+
+      ApiResponse.created(res, product, 'Product created successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update product (including price and delivery charge)
+   */
+  static async updateProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        sizeKg,
+        description,
+        price,
+        deliveryCharge,
+        isActive,
+        minQuantity,
+        maxQuantity,
+        isCommercial,
+        requiresQuotation,
+        imageUrl,
+      } = req.body;
+
+      const product = await prisma.product.update({
+        where: { id },
+        data: {
+          ...(name && { name }),
+          ...(sizeKg !== undefined && { sizeKg: parseFloat(sizeKg) }),
+          ...(description !== undefined && { description }),
+          ...(price !== undefined && { price: new Prisma.Decimal(price) }),
+          ...(deliveryCharge !== undefined && { deliveryCharge: new Prisma.Decimal(deliveryCharge) }),
+          ...(isActive !== undefined && { isActive }),
+          ...(minQuantity !== undefined && { minQuantity }),
+          ...(maxQuantity !== undefined && { maxQuantity }),
+          ...(isCommercial !== undefined && { isCommercial }),
+          ...(requiresQuotation !== undefined && { requiresQuotation }),
+          ...(imageUrl !== undefined && { imageUrl }),
+        },
+      });
+
+      ApiResponse.success(res, product, 'Product updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reports: Orders report with date filter
+   */
+  static async getOrdersReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { startDate, endDate, status } = req.query;
+
+      const where: Prisma.OrderWhereInput = {};
+      if (status) where.status = status as OrderStatus;
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate as string);
+        if (endDate) where.createdAt.lte = new Date(endDate as string);
+      }
+
+      const orders = await prisma.order.findMany({
+        where,
+        include: {
+          items: true,
+          customer: { select: { name: true, phone: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const totalRevenue = orders.reduce((acc, o) => acc + Number(o.totalAmount), 0);
+      const totalCylinders = orders.reduce(
+        (acc, o) => acc + o.items.reduce((sum, item) => sum + item.quantity, 0),
+        0
+      );
+
+      ApiResponse.success(
+        res,
+        {
+          totalOrders: orders.length,
+          totalRevenue,
+          totalCylinders,
+          orders,
+        },
+        'Orders report generated'
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reports: Payments report
+   */
+  static async getPaymentsReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { startDate, endDate, method, status } = req.query;
+
+      const where: Prisma.PaymentWhereInput = {};
+      if (method) where.method = method as any;
+      if (status) where.status = status as any;
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate as string);
+        if (endDate) where.createdAt.lte = new Date(endDate as string);
+      }
+
+      const payments = await prisma.payment.findMany({
+        where,
+        include: {
+          order: {
+            select: { orderNumber: true, deliveryName: true, deliveryPhone: true },
+          },
+          collectedBy: {
+            select: { name: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const totalAmount = payments.reduce((acc, p) => acc + Number(p.amount), 0);
+      const onlineTotal = payments
+        .filter((p) => p.method === 'ONLINE' && p.status === 'PAID')
+        .reduce((acc, p) => acc + Number(p.amount), 0);
+      const codTotal = payments
+        .filter((p) => p.method === 'COD' && p.status === 'PAID')
+        .reduce((acc, p) => acc + Number(p.amount), 0);
+
+      ApiResponse.success(
+        res,
+        {
+          totalTransactions: payments.length,
+          totalAmount,
+          onlineTotal,
+          codTotal,
+          payments,
+        },
+        'Payments report generated'
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reports: Rider performance
+   */
+  static async getRidersReport(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const riders = await prisma.rider.findMany({
+        include: {
+          user: { select: { name: true, phone: true } },
+          orders: {
+            select: {
+              id: true,
+              status: true,
+              totalAmount: true,
+              deliveredAt: true,
+              createdAt: true,
+            },
+          },
+        },
+      });
+
+      const report = riders.map((r) => {
+        const completed = r.orders.filter((o) => o.status === OrderStatus.DELIVERED);
+        const inProgress = r.orders.filter((o) =>
+          ([OrderStatus.RIDER_ASSIGNED, OrderStatus.OUT_FOR_DELIVERY, OrderStatus.ARRIVED] as string[]).includes(
+            o.status
+          )
+        );
+
+        return {
+          riderId: r.id,
+          name: r.user.name,
+          phone: r.user.phone,
+          vehicleNumber: r.vehicleNumber,
+          isAvailable: r.isAvailable,
+          totalAssigned: r.orders.length,
+          totalDelivered: completed.length,
+          inProgress: inProgress.length,
+        };
+      });
+
+      ApiResponse.success(res, report, 'Rider performance report');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Reports: Export orders as CSV format
+   */
+  static async exportOrdersCsv(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const orders = await prisma.order.findMany({
+        include: {
+          customer: { select: { name: true, phone: true } },
+          items: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const headers = [
+        'Order Number',
+        'Customer Name',
+        'Phone',
+        'Status',
+        'Address',
+        'PinCode',
+        'Payment Method',
+        'Payment Status',
+        'Subtotal',
+        'Delivery Charge',
+        'Taxes',
+        'Total Amount',
+        'Items',
+        'Date',
+      ];
+
+      const rows = orders.map((o) => {
+        const itemsSummary = o.items.map((i) => `${i.productName} (x${i.quantity})`).join('; ');
+        return [
+          `"${o.orderNumber}"`,
+          `"${o.deliveryName}"`,
+          `"${o.deliveryPhone}"`,
+          `"${o.status}"`,
+          `"${o.deliveryAddress.replace(/"/g, '""')}"`,
+          `"${o.deliveryPinCode}"`,
+          `"${o.paymentMethod}"`,
+          `"${o.paymentStatus}"`,
+          Number(o.subtotal).toFixed(2),
+          Number(o.deliveryCharges).toFixed(2),
+          Number(o.taxes).toFixed(2),
+          Number(o.totalAmount).toFixed(2),
+          `"${itemsSummary}"`,
+          `"${o.createdAt.toISOString()}"`,
+        ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="orders-report-${Date.now()}.csv"`
+      );
+      res.status(200).send(csvContent);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get all agency settings
+   */
+  static async getSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const settingsList = await prisma.agencySetting.findMany({
+        orderBy: { key: 'asc' },
+      });
+
+      const map = new Map(settingsList.map((s) => [s.key, s.value]));
+
+      const structured = {
+        agencyName: map.get('agency_name') || 'D.S SHINDE GAS AGENCY',
+        primaryPhone: map.get('contact_phone_1') || '9511760208',
+        secondaryPhone: map.get('contact_phone_2') || '9975300929',
+        email: map.get('agency_email') || 'contact@dsshinde.com',
+        address: map.get('agency_address') || 'Main Road, Opp. Market Yard, Karad, Maharashtra 415110',
+        deliveryAreas: (map.get('service_areas') || 'Karad, Malkapur, Ogalewadi, Saidapur, Vidyanagar, Wathar')
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+        deliveryCharges: Number(map.get('delivery_charge_default') || 50),
+        taxPercentage: Number(map.get('tax_percentage') || 5),
+        onlinePaymentFee: Number(map.get('online_payment_fee_percent') || 0),
+        cardPaymentFee: 15,
+        codPaymentFee: 0,
+        isOrderingEnabled: true,
+        businessHours: map.get('support_hours') || '8:00 AM - 8:00 PM (Monday to Saturday)',
+        rawSettings: settingsList,
+      };
+
+      ApiResponse.success(res, structured, 'Agency settings retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update or upsert an agency setting (supports single key/value or full AgencySettings object)
+   */
+  static async updateSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (req.body.key && req.body.value !== undefined) {
+        const { key, value, description } = req.body;
+        const setting = await prisma.agencySetting.upsert({
+          where: { key },
+          update: {
+            value: String(value),
+            ...(description !== undefined && { description }),
+          },
+          create: {
+            key,
+            value: String(value),
+            description,
+          },
+        });
+        ApiResponse.success(res, setting, 'Setting updated successfully');
+        return;
+      }
+
+      // Bulk AgencySettings update
+      const b = req.body;
+      const updates: Array<{ key: string; value: string; description?: string }> = [];
+
+      if (b.agencyName !== undefined) updates.push({ key: 'agency_name', value: String(b.agencyName) });
+      if (b.primaryPhone !== undefined) updates.push({ key: 'contact_phone_1', value: String(b.primaryPhone) });
+      if (b.secondaryPhone !== undefined) updates.push({ key: 'contact_phone_2', value: String(b.secondaryPhone) });
+      if (b.email !== undefined) updates.push({ key: 'agency_email', value: String(b.email) });
+      if (b.address !== undefined) updates.push({ key: 'agency_address', value: String(b.address) });
+      if (b.deliveryAreas !== undefined) {
+        const areasStr = Array.isArray(b.deliveryAreas) ? b.deliveryAreas.join(', ') : String(b.deliveryAreas);
+        updates.push({ key: 'service_areas', value: areasStr });
+      }
+      if (b.deliveryCharges !== undefined) updates.push({ key: 'delivery_charge_default', value: String(b.deliveryCharges) });
+      if (b.taxPercentage !== undefined) updates.push({ key: 'tax_percentage', value: String(b.taxPercentage) });
+      if (b.onlinePaymentFee !== undefined) updates.push({ key: 'online_payment_fee_percent', value: String(b.onlinePaymentFee) });
+      if (b.businessHours !== undefined) updates.push({ key: 'support_hours', value: String(b.businessHours) });
+
+      for (const item of updates) {
+        await prisma.agencySetting.upsert({
+          where: { key: item.key },
+          update: { value: item.value },
+          create: { key: item.key, value: item.value },
+        });
+      }
+
+      ApiResponse.success(res, b, 'Settings updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get admin notifications
+   */
+  static async getNotifications(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const adminId = req.user!.id;
+      const notifications = await prisma.notification.findMany({
+        where: { userId: adminId },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+
+      ApiResponse.success(res, notifications, 'Admin notifications retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+}

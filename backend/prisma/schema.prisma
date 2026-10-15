@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String
+  role         String   @default("CUSTOMER")
+  isActive     Boolean  @default(true)
+  isVerified   Boolean  @default(false)
+  name         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customerProfile     CustomerProfile?
+  riderProfile        Rider?
+  orders              Order[]              @relation("CustomerOrders")
+  orderStatusChanges  OrderStatusHistory[] @relation("StatusChanges")
+  collectedPayments   Payment[]            @relation("CollectedPayments")
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+model CustomerProfile {
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alternatePhone String?
+  addresses      SavedAddress[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model SavedAddress {
+  id                String          @id @default(uuid())
+  customerProfileId String
+  customerProfile   CustomerProfile @relation(fields: [customerProfileId], references: [id], onDelete: Cascade)
+  fullName          String
+  phone             String
+  addressLine1      String
+  addressLine2      String?
+  area              String
+  city              String
+  state             String
+  pinCode           String
+  landmark          String?
+  mapLink           String?
+  isDefault         Boolean         @default(false)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([customerProfileId])
+}
+
+model Rider {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleNumber String?
+  isAvailable   Boolean  @default(true)
+  orders        Order[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Product {
+  id                String      @id @default(uuid())
+  name              String
+  sizeKg            Float
+  description       String?
+  price             Decimal
+  deliveryCharge    Decimal     @default(0)
+  isActive          Boolean     @default(true)
+  minQuantity       Int         @default(1)
+  maxQuantity       Int         @default(10)
+  isCommercial      Boolean     @default(false)
+  requiresQuotation Boolean     @default(false)
+  imageUrl          String?
+  orderItems        OrderItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([sizeKg])
+  @@index([isActive])
+}
+
+model Order {
+  id                 String               @id @default(uuid())
+  orderNumber        String               @unique
+  customerId         String
+  customer           User                 @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
+  status             String               @default("ORDER_PLACED")
+  rejectionReason    String?
+  cancellationReason String?
+  deliveryName       String
+  deliveryPhone      String
+  deliveryAltPhone   String?
+  deliveryAddress    String
+  deliveryArea       String
+  deliveryCity       String
+  deliveryState      String
+  deliveryPinCode    String
+  deliveryLandmark   String?
+  deliveryMapLink    String?
+  subtotal           Decimal
+  deliveryCharges    Decimal
+  taxes              Decimal              @default(0)
+  paymentFee         Decimal              @default(0)
+  totalAmount        Decimal
+  paymentMethod      String
+  paymentStatus      String               @default("PENDING")
+  riderId            String?
+  rider              Rider?               @relation(fields: [riderId], references: [id], onDelete: SetNull)
+  deliveredAt        DateTime?
+  estimatedDelivery  DateTime?
+  notes              String?
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+  payments           Payment[]
+  deliveryOtp        DeliveryOtp?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([orderNumber])
+  @@index([customerId, status])
+  @@index([riderId, status])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName String
+  sizeKg      Float
+  quantity    Int
+  unitPrice   Decimal
+  totalPrice  Decimal
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id          String   @id @default(uuid())
+  orderId     String
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status      String
+  note        String?
+  changedById String
+  changedBy   User     @relation("StatusChanges", fields: [changedById], references: [id], onDelete: Restrict)
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([changedById])
+}
+
+model Payment {
+  id                String    @id @default(uuid())
+  orderId           String
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method            String
+  amount            Decimal
+  status            String    @default("PENDING")
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
+  transactionId     String?
+  collectedById     String?
+  collectedBy       User?     @relation("CollectedPayments", fields: [collectedById], references: [id], onDelete: SetNull)
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([orderId])
+  @@index([razorpayOrderId])
+  @@index([status])
+}
+
+model DeliveryOtp {
+  id          String   @id @default(uuid())
+  orderId     String   @unique
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  otpHash     String
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model AuthOtp {
+  id          String   @id @default(uuid())
+  identifier  String
+  otpHash     String
+  purpose     String
+  expiresAt   DateTime
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  isUsed      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([identifier, purpose])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String
+  isRead    Boolean  @default(false)
+  orderId   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+}
+
+model AgencySetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}

@@ -1,0 +1,44 @@
+export enum Role {
+  CUSTOMER = 'CUSTOMER',
+  ADMIN = 'ADMIN',
+  RIDER = 'RIDER',
+}
+
+export enum OrderStatus {
+  ORDER_PLACED = 'ORDER_PLACED',
+  AWAITING_REVIEW = 'AWAITING_REVIEW',
+  ACCEPTED = 'ACCEPTED',
+  REJECTED = 'REJECTED',
+  RIDER_ASSIGNED = 'RIDER_ASSIGNED',
+  OUT_FOR_DELIVERY = 'OUT_FOR_DELIVERY',
+  ARRIVED = 'ARRIVED',
+  OTP_PENDING = 'OTP_PENDING',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum PaymentMethod {
+  ONLINE = 'ONLINE',
+  COD = 'COD',
+  CARD = 'CARD',
+}
+
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PAID = 'PAID',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+}
+
+export enum AuthOtpPurpose {
+  LOGIN = 'LOGIN',
+  REGISTER = 'REGISTER',
+  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
+}
+
+export enum NotificationType {
+  ORDER_UPDATE = 'ORDER_UPDATE',
+  DELIVERY = 'DELIVERY',
+  PAYMENT = 'PAYMENT',
+  SYSTEM = 'SYSTEM',
+}

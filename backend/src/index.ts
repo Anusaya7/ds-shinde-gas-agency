@@ -51,6 +51,7 @@ app.use('/api', apiLimiter);
 
 // 5. Mount API Routes
 app.use('/api', apiRouter);
+app.use('/', apiRouter);
 
 // Root route
 app.get('/', (req: Request, res: Response) => {
@@ -71,8 +72,8 @@ app.use((req: Request, res: Response, next) => {
 // 7. Global Error Handler
 app.use(errorHandler);
 
-// 8. Start Server (Only when not in Vercel serverless)
-if (!process.env.VERCEL) {
+// 8. Start Server (Only when not in Vercel or Lambda serverless)
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.LAMBDA_TASK_ROOT) {
   const server = app.listen(config.port, () => {
     console.log(`====================================================`);
     console.log(`  D.S SHINDE GAS AGENCY BACKEND API`);

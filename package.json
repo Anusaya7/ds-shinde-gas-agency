@@ -8,6 +8,7 @@
     "dev:frontend": "npm --prefix frontend run dev",
     "build:backend": "npm --prefix backend run build",
     "build:frontend": "npm --prefix frontend run build",
+    "build": "npm run build:backend && npm run build:frontend",
     "seed": "npm --prefix backend run prisma:seed",
     "open": "powershell -Command Start-Process 'http://localhost:3000'",
     "postinstall": "prisma generate --schema=./backend/prisma/schema.prisma"

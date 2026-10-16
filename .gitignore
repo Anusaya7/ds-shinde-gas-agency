@@ -5,6 +5,7 @@ node_modules/
 # Production build artifacts
 dist/
 **/dist/
+!backend/dist/index.cjs
 build/
 **/build/
 

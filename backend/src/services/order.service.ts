@@ -1,10 +1,27 @@
 import { Prisma } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 import { OrderStatus, PaymentMethod, PaymentStatus, Role, NotificationType } from '../constants/enums.js';
 import prisma from '../config/database.js';
 import { generateOrderNumber } from '../utils/orderNumber.js';
 import { createRazorpayOrder } from '../utils/payment.js';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors.js';
 import { NotificationService } from './notification.service.js';
+
+export interface QuickBookDTO {
+  customerName: string;
+  phone: string;
+  email?: string;
+  sizeKg?: number;
+  productId?: string;
+  quantity?: number;
+  deliveryAddress: string;
+  deliveryArea: string;
+  deliveryCity: string;
+  deliveryPinCode: string;
+  deliveryLandmark?: string;
+  paymentMethod?: 'COD' | 'ONLINE' | 'CARD';
+  notes?: string;
+}
 
 export interface CreateOrderItemInput {
   productId: string;
@@ -428,5 +445,137 @@ export class OrderService {
     }
 
     return cancelledOrder;
+  }
+
+  /**
+   * Quick Booking directly from website (Phone & Email supported, no login required)
+   */
+  static async quickBookOrder(dto: QuickBookDTO) {
+    if (!dto.customerName || !dto.phone || !dto.deliveryAddress) {
+      throw new BadRequestError('Customer name, phone number, and delivery address are required');
+    }
+
+    const cleanPhone = dto.phone.replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length < 10) {
+      throw new BadRequestError('A valid 10-digit mobile number is required');
+    }
+
+    // 1. Resolve product
+    let product: any = null;
+    if (dto.productId) {
+      product = await prisma.product.findUnique({ where: { id: dto.productId } });
+    }
+    if (!product && dto.sizeKg) {
+      product = await prisma.product.findFirst({
+        where: { sizeKg: Number(dto.sizeKg), isActive: true },
+      });
+    }
+    if (!product) {
+      product = await prisma.product.findFirst({
+        where: { isActive: true },
+        orderBy: { sizeKg: 'asc' },
+      });
+    }
+    if (!product) {
+      product = await prisma.product.create({
+        data: {
+          name: `${dto.sizeKg || 15} KG LPG Cylinder`,
+          sizeKg: Number(dto.sizeKg || 15),
+          price: new Prisma.Decimal(1080),
+          deliveryCharge: new Prisma.Decimal(50),
+          isActive: true,
+        },
+      });
+    }
+
+    // 2. Find or create user
+    const safeEmail = dto.email?.trim() || `customer_${cleanPhone}@dsshindegas.com`;
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          ...(dto.email ? [{ email: dto.email.trim() }] : []),
+        ],
+      },
+    });
+
+    if (!user) {
+      const passwordHash = await bcrypt.hash('Customer@123', 10);
+      user = await prisma.user.create({
+        data: {
+          name: dto.customerName.trim(),
+          phone: cleanPhone,
+          email: safeEmail,
+          passwordHash,
+          role: Role.CUSTOMER,
+          isActive: true,
+          isVerified: true,
+          customerProfile: {
+            create: {
+              addresses: {
+                create: {
+                  fullName: dto.customerName.trim(),
+                  phone: cleanPhone,
+                  addressLine1: dto.deliveryAddress.trim(),
+                  area: dto.deliveryArea || 'City',
+                  city: dto.deliveryCity || 'Karad',
+                  state: 'Maharashtra',
+                  pinCode: dto.deliveryPinCode || '415110',
+                  landmark: dto.deliveryLandmark || null,
+                  isDefault: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    }
+
+    // 3. Create the order using OrderService.createOrder
+    const orderData: CreateOrderDTO = {
+      items: [
+        {
+          productId: product.id,
+          quantity: Number(dto.quantity) || 1,
+        },
+      ],
+      deliveryName: dto.customerName.trim(),
+      deliveryPhone: cleanPhone,
+      deliveryAddress: dto.deliveryAddress.trim(),
+      deliveryArea: dto.deliveryArea || 'Main Road',
+      deliveryCity: dto.deliveryCity || 'Karad',
+      deliveryState: 'Maharashtra',
+      deliveryPinCode: dto.deliveryPinCode || '415110',
+      deliveryLandmark: dto.deliveryLandmark || undefined,
+      paymentMethod: (dto.paymentMethod as PaymentMethod) || PaymentMethod.COD,
+      notes: dto.notes || 'Direct booking from website',
+    };
+
+    const createdResult = await this.createOrder(user.id, orderData);
+    const createdOrder = createdResult.order;
+
+    // Notify admins of new public website booking
+    try {
+      await NotificationService.notifyAdmins({
+        title: 'New Cylinder Order Placed',
+        message: `New booking ${createdOrder.orderNumber} placed by ${dto.customerName} (${cleanPhone}) for ${product.name}`,
+        type: NotificationType.ORDER_UPDATE,
+        orderId: createdOrder.id,
+      });
+    } catch (err) {
+      console.warn('Failed to dispatch admin notification:', err);
+    }
+
+    return {
+      order: createdOrder,
+      orderNumber: createdOrder.orderNumber,
+      orderId: createdOrder.id,
+      productName: product.name,
+      sizeKg: product.sizeKg,
+      totalAmount: Number(createdOrder.totalAmount),
+      trackingUrl: `/dashboard/orders/${createdOrder.id}/track`,
+      customerPhone: cleanPhone,
+      customerEmail: safeEmail,
+    };
   }
 }

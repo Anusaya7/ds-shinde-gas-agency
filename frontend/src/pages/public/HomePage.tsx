@@ -70,7 +70,7 @@ export const HomePage: React.FC = () => {
               {/* CTAs */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
                 <Link
-                  to={isAuthenticated ? heroPrimaryCtaLink : '/login'}
+                  to={isAuthenticated ? heroPrimaryCtaLink : '/quick-book'}
                   className="w-full sm:w-auto"
                 >
                   <Button

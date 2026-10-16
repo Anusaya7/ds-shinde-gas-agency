@@ -33,6 +33,9 @@ const cancelOrderSchema = z.object({
   reason: z.string().min(3, 'Cancellation reason is required'),
 });
 
+// Quick cylinder booking directly from website (Phone & Email supported, no login required)
+router.post('/quick-book', OrderController.quickBookOrder);
+
 // Create Order (Requires customer auth)
 router.post('/', authenticateToken, validate(createOrderSchema), OrderController.createOrder);
 

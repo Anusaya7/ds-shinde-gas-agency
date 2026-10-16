@@ -25,7 +25,12 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    const loginTarget = location.pathname.startsWith('/admin')
+      ? '/admin/login'
+      : location.pathname.startsWith('/rider')
+      ? '/rider/login'
+      : '/login';
+    return <Navigate to={loginTarget} state={{ from: location }} replace />;
   }
 
   if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {

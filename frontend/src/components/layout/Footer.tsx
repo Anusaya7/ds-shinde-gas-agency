@@ -76,29 +76,46 @@ export const Footer: React.FC = () => {
             </ul>
           </div>
 
-          {/* Col 3: Customer Care & Legal Policies */}
+          {/* Col 3: Agency Portals & Customer Care */}
           <div>
             <h4 className="text-sm font-black text-white mb-4 uppercase tracking-wider border-b border-blue-900/80 pb-2">
-              Support & Legal
+              Agency Portals & Access
             </h4>
             <ul className="space-y-2.5 text-sm text-blue-100/90">
               <li>
-                <Link to="/contact" className="hover:text-[#F59E0B] transition-colors">Customer Support Helpdesk</Link>
+                <Link to="/quick-book" className="hover:text-[#F59E0B] font-bold text-[#F59E0B] transition-colors flex items-center gap-1.5">
+                  ⚡ Instant Cylinder Booking (No Login)
+                </Link>
               </li>
               <li>
-                <Link to="/privacy" className="hover:text-[#F59E0B] transition-colors">Privacy Policy</Link>
+                <Link to="/admin/login" className="hover:text-white transition-colors flex items-center gap-1.5 text-blue-200">
+                  🛡️ Admin Management Portal
+                </Link>
               </li>
               <li>
-                <Link to="/terms" className="hover:text-[#F59E0B] transition-colors">Terms of Service</Link>
+                <Link to="/rider/login" className="hover:text-white transition-colors flex items-center gap-1.5 text-amber-200">
+                  🛵 Delivery Rider Console
+                </Link>
               </li>
               <li>
-                <Link to="/refund-policy" className="hover:text-[#F59E0B] transition-colors">Refund & Cancellation Policy</Link>
+                <Link to="/login" className="hover:text-white transition-colors flex items-center gap-1.5">
+                  👤 Customer Account Login
+                </Link>
               </li>
               <li>
-                <Link to="/login" className="hover:text-[#F59E0B] transition-colors">Customer Portal Login</Link>
+                <Link to="/register" className="hover:text-[#F59E0B] transition-colors">
+                  New Customer Registration
+                </Link>
               </li>
               <li>
-                <Link to="/register" className="hover:text-[#F59E0B] transition-colors">New Connection Registration</Link>
+                <Link to="/contact" className="hover:text-[#F59E0B] transition-colors">
+                  Customer Support Helpdesk
+                </Link>
+              </li>
+              <li>
+                <Link to="/refund-policy" className="hover:text-[#F59E0B] transition-colors">
+                  Refund & Cancellation Policy
+                </Link>
               </li>
             </ul>
           </div>

@@ -52,15 +52,32 @@ export const Header: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-slate-200">
-            <span className="flex items-center gap-1 text-emerald-400 text-[11px] font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5" /> 100% Certified Safety & Weight Guarantee
-            </span>
-            {user?.role === 'ADMIN' && (
-              <Link to="/admin" className="text-[11px] bg-[#2878C8] hover:bg-[#1e5a9e] text-white px-2.5 py-0.5 rounded font-bold transition-colors">
-                Admin Panel
-              </Link>
-            )}
+          <div className="flex items-center gap-2 text-slate-200">
+            <span className="hidden lg:inline text-slate-400 text-[11px]">Portals:</span>
+            <Link 
+              to="/quick-book" 
+              className="text-[11px] bg-[#F59E0B] hover:bg-[#d97706] text-white px-2.5 py-0.5 rounded-md font-extrabold transition-colors shadow-xs"
+            >
+              ⚡ Quick Book
+            </Link>
+            <Link 
+              to="/login" 
+              className="text-[11px] bg-white/15 hover:bg-white/25 text-white px-2 py-0.5 rounded-md font-bold transition-colors"
+            >
+              👤 Customer
+            </Link>
+            <Link 
+              to="/rider/login" 
+              className="text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-md font-bold transition-colors"
+            >
+              🛵 Rider
+            </Link>
+            <Link 
+              to="/admin/login" 
+              className="text-[11px] bg-[#2878C8] hover:bg-[#1e5a9e] text-white px-2.5 py-0.5 rounded-md font-bold transition-colors shadow-xs"
+            >
+              🛡️ Admin
+            </Link>
           </div>
         </div>
       </div>
@@ -166,22 +183,24 @@ export const Header: React.FC = () => {
                   )}
                 </div>
               ) : (
-                <Link to="/login">
-                  <Button variant="secondary" size="sm" className="font-semibold text-white">
-                    Login
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link to="/login">
+                    <Button variant="secondary" size="sm" className="font-semibold text-white">
+                      Login
+                    </Button>
+                  </Link>
+                </div>
               )}
 
-              {/* Prominent Order Cylinder CTA */}
-              <Link to={isAuthenticated ? '/dashboard/orders/new' : '/login'}>
+              {/* Prominent Quick Cylinder Booking CTA */}
+              <Link to="/quick-book">
                 <Button
                   variant="accent"
                   size="sm"
-                  leftIcon={<Flame className="w-4 h-4 text-white" />}
-                  className="font-bold shadow-sm"
+                  leftIcon={<Flame className="w-4 h-4 text-white fill-white" />}
+                  className="font-bold shadow-md bg-[#F59E0B] hover:bg-[#d97706]"
                 >
-                  {settings.headerCtaText || 'Order Cylinder'}
+                  ⚡ Quick Book Refill
                 </Button>
               </Link>
             </div>
@@ -258,31 +277,40 @@ export const Header: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="space-y-2 pt-1">
                   <Link
-                    to="/login"
+                    to="/quick-book"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 text-center rounded-xl border border-[#E2E8F0] text-[#17365D] font-bold text-sm hover:bg-[#F3F8FD]"
+                    className="block w-full py-3 text-center rounded-xl bg-[#F59E0B] text-white font-extrabold text-sm shadow-md hover:bg-[#d97706] flex items-center justify-center gap-2"
                   >
-                    Login
+                    <Flame className="w-4 h-4 fill-white" /> ⚡ Quick Book Cylinder (No Login)
                   </Link>
-                  <Link
-                    to="/register"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="py-2.5 text-center rounded-xl bg-[#F59E0B] text-white font-bold text-sm shadow-sm hover:bg-[#d97706]"
-                  >
-                    Register
-                  </Link>
+
+                  <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-[#E2E8F0]">
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="py-2 text-center rounded-lg border border-[#E2E8F0] text-[#17365D] font-bold text-xs hover:bg-[#F3F8FD]"
+                    >
+                      👤 Customer
+                    </Link>
+                    <Link
+                      to="/rider/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="py-2 text-center rounded-lg bg-amber-50 text-amber-800 border border-amber-200 font-bold text-xs hover:bg-amber-100"
+                    >
+                      🛵 Rider
+                    </Link>
+                    <Link
+                      to="/admin/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="py-2 text-center rounded-lg bg-[#17365D] text-white font-bold text-xs hover:bg-[#122b4a]"
+                    >
+                      🛡️ Admin
+                    </Link>
+                  </div>
                 </div>
               )}
-
-              <Link
-                to={isAuthenticated ? '/dashboard/orders/new' : '/login'}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block w-full mt-2 py-3 text-center rounded-xl bg-[#2878C8] text-white font-bold text-sm shadow-md hover:bg-[#1e5a9e]"
-              >
-                Order Cylinder Now
-              </Link>
             </div>
           </div>
         )}

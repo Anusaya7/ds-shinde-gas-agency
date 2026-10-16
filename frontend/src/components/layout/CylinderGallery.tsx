@@ -101,8 +101,9 @@ const CylinderCard: React.FC<CylinderCardProps> = ({
   const navigate = useNavigate();
 
   const handleOrder = () => {
+    const numericKg = parseFloat(config.kg.replace(/[^0-9.]/g, '')) || 15;
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate(`/quick-book?size=${numericKg}`, { state: { sizeKg: numericKg } });
       return;
     }
     // Find matching product
@@ -197,7 +198,7 @@ const CylinderCard: React.FC<CylinderCardProps> = ({
           disabled={!inStock || isLoading}
           rightIcon={<ArrowRight className="w-4 h-4" />}
         >
-          {inStock ? 'Select Cylinder' : 'Notify When Available'}
+          {inStock ? (isAuthenticated ? 'Select Cylinder' : '⚡ Quick Book Refill') : 'Notify When Available'}
         </Button>
       </div>
     </div>

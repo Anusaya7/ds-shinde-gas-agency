@@ -24,6 +24,9 @@ import { TermsPage } from './pages/public/TermsPage';
 import { RefundPolicyPage } from './pages/public/RefundPolicyPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { RegisterPage } from './pages/public/RegisterPage';
+import { QuickBookPage } from './pages/public/QuickBookPage';
+import { AdminLoginPage } from './pages/public/AdminLoginPage';
+import { RiderLoginPage } from './pages/public/RiderLoginPage';
 
 // Customer Pages
 import { CustomerDashboard } from './pages/customer/CustomerDashboard';
@@ -89,6 +92,10 @@ export const App: React.FC = () => {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/refund-policy" element={<RefundPolicyPage />} />
+        <Route path="/quick-book" element={<QuickBookPage />} />
+        <Route path="/book" element={<QuickBookPage />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/rider/login" element={<RiderLoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="*" element={<NotFoundPage />} />

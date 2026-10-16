@@ -21,7 +21,39 @@ export interface GetOrdersResponse {
   totalPages: number;
 }
 
+export interface QuickBookPayload {
+  customerName: string;
+  phone: string;
+  email?: string;
+  sizeKg?: number;
+  productId?: string;
+  quantity: number;
+  deliveryAddress: string;
+  deliveryArea: string;
+  deliveryCity: string;
+  deliveryPinCode: string;
+  deliveryLandmark?: string;
+  paymentMethod: PaymentMethod | 'COD' | 'ONLINE';
+  notes?: string;
+}
+
+export interface QuickBookResponse {
+  order: any;
+  orderNumber: string;
+  orderId: string;
+  productName: string;
+  sizeKg: number;
+  totalAmount: number;
+  trackingUrl: string;
+  customerPhone: string;
+  customerEmail: string;
+}
+
 export const orderService = {
+  async quickBook(data: QuickBookPayload): Promise<QuickBookResponse> {
+    const res = await api.post<{ success: boolean; data: QuickBookResponse }>('/orders/quick-book', data);
+    return res.data.data;
+  },
   async createOrder(data: CreateOrderPayload): Promise<Order> {
     const res = await api.post<{ success: boolean; data: Order }>('/orders', data);
     return res.data.data;

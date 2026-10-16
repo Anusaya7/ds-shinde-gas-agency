@@ -181,14 +181,14 @@ export const ProductsPage: React.FC = () => {
                         Out of Stock
                       </span>
                     ) : (
-                      <Link to={isAuthenticated ? '/dashboard/orders/new' : '/login'}>
+                      <Link to={isAuthenticated ? '/dashboard/orders/new' : `/quick-book?size=${parseFloat(prod.size.replace(/[^0-9.]/g, '')) || 15}`}>
                         <Button
                           variant="accent"
                           size="sm"
                           leftIcon={<ShoppingCart className="w-4 h-4" />}
                           className="font-bold shadow"
                         >
-                          Order Refill
+                          {isAuthenticated ? 'Order Refill' : '⚡ Quick Book Refill'}
                         </Button>
                       </Link>
                     )}

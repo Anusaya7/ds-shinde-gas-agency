@@ -23442,7 +23442,7 @@ var require_bcrypt = __commonJS({
         (global2["dcodeIO"] = global2["dcodeIO"] || {})["bcrypt"] = factory();
     })(exports2, function() {
       "use strict";
-      var bcrypt4 = {};
+      var bcrypt5 = {};
       var randomFallback = null;
       function random(len) {
         if (typeof module2 !== "undefined" && module2 && module2["exports"])
@@ -23467,10 +23467,10 @@ var require_bcrypt = __commonJS({
       } catch (e) {
       }
       randomFallback = null;
-      bcrypt4.setRandomFallback = function(random2) {
+      bcrypt5.setRandomFallback = function(random2) {
         randomFallback = random2;
       };
-      bcrypt4.genSaltSync = function(rounds, seed_length) {
+      bcrypt5.genSaltSync = function(rounds, seed_length) {
         rounds = rounds || GENSALT_DEFAULT_LOG2_ROUNDS;
         if (typeof rounds !== "number")
           throw Error("Illegal arguments: " + typeof rounds + ", " + typeof seed_length);
@@ -23487,7 +23487,7 @@ var require_bcrypt = __commonJS({
         salt.push(base64_encode(random(BCRYPT_SALT_LEN), BCRYPT_SALT_LEN));
         return salt.join("");
       };
-      bcrypt4.genSalt = function(rounds, seed_length, callback) {
+      bcrypt5.genSalt = function(rounds, seed_length, callback) {
         if (typeof seed_length === "function")
           callback = seed_length, seed_length = void 0;
         if (typeof rounds === "function")
@@ -23499,7 +23499,7 @@ var require_bcrypt = __commonJS({
         function _async(callback2) {
           nextTick(function() {
             try {
-              callback2(null, bcrypt4.genSaltSync(rounds));
+              callback2(null, bcrypt5.genSaltSync(rounds));
             } catch (err) {
               callback2(err);
             }
@@ -23520,19 +23520,19 @@ var require_bcrypt = __commonJS({
             });
           });
       };
-      bcrypt4.hashSync = function(s, salt) {
+      bcrypt5.hashSync = function(s, salt) {
         if (typeof salt === "undefined")
           salt = GENSALT_DEFAULT_LOG2_ROUNDS;
         if (typeof salt === "number")
-          salt = bcrypt4.genSaltSync(salt);
+          salt = bcrypt5.genSaltSync(salt);
         if (typeof s !== "string" || typeof salt !== "string")
           throw Error("Illegal arguments: " + typeof s + ", " + typeof salt);
         return _hash(s, salt);
       };
-      bcrypt4.hash = function(s, salt, callback, progressCallback) {
+      bcrypt5.hash = function(s, salt, callback, progressCallback) {
         function _async(callback2) {
           if (typeof s === "string" && typeof salt === "number")
-            bcrypt4.genSalt(salt, function(err, salt2) {
+            bcrypt5.genSalt(salt, function(err, salt2) {
               _hash(s, salt2, callback2, progressCallback);
             });
           else if (typeof s === "string" && typeof salt === "string")
@@ -23567,14 +23567,14 @@ var require_bcrypt = __commonJS({
           return false;
         return wrong === 0;
       }
-      bcrypt4.compareSync = function(s, hash) {
+      bcrypt5.compareSync = function(s, hash) {
         if (typeof s !== "string" || typeof hash !== "string")
           throw Error("Illegal arguments: " + typeof s + ", " + typeof hash);
         if (hash.length !== 60)
           return false;
-        return safeStringCompare(bcrypt4.hashSync(s, hash.substr(0, hash.length - 31)), hash);
+        return safeStringCompare(bcrypt5.hashSync(s, hash.substr(0, hash.length - 31)), hash);
       };
-      bcrypt4.compare = function(s, hash, callback, progressCallback) {
+      bcrypt5.compare = function(s, hash, callback, progressCallback) {
         function _async(callback2) {
           if (typeof s !== "string" || typeof hash !== "string") {
             nextTick(callback2.bind(this, Error("Illegal arguments: " + typeof s + ", " + typeof hash)));
@@ -23584,7 +23584,7 @@ var require_bcrypt = __commonJS({
             nextTick(callback2.bind(this, null, false));
             return;
           }
-          bcrypt4.hash(s, hash.substr(0, 29), function(err, comp) {
+          bcrypt5.hash(s, hash.substr(0, 29), function(err, comp) {
             if (err)
               callback2(err);
             else
@@ -23606,12 +23606,12 @@ var require_bcrypt = __commonJS({
             });
           });
       };
-      bcrypt4.getRounds = function(hash) {
+      bcrypt5.getRounds = function(hash) {
         if (typeof hash !== "string")
           throw Error("Illegal arguments: " + typeof hash);
         return parseInt(hash.split("$")[2], 10);
       };
-      bcrypt4.getSalt = function(hash) {
+      bcrypt5.getSalt = function(hash) {
         if (typeof hash !== "string")
           throw Error("Illegal arguments: " + typeof hash);
         if (hash.length !== 60)
@@ -25234,9 +25234,9 @@ var require_bcrypt = __commonJS({
           }, progressCallback);
         }
       }
-      bcrypt4.encodeBase64 = base64_encode;
-      bcrypt4.decodeBase64 = base64_decode;
-      return bcrypt4;
+      bcrypt5.encodeBase64 = base64_encode;
+      bcrypt5.decodeBase64 = base64_decode;
+      return bcrypt5;
     });
   }
 });
@@ -58413,6 +58413,7 @@ var import_express4 = __toESM(require_express2());
 
 // src/services/order.service.ts
 var import_client2 = require("@prisma/client");
+var import_bcryptjs3 = __toESM(require_bcryptjs());
 
 // src/utils/orderNumber.ts
 var import_crypto2 = __toESM(require("crypto"));
@@ -58885,6 +58886,125 @@ var OrderService = class {
     }
     return cancelledOrder;
   }
+  /**
+   * Quick Booking directly from website (Phone & Email supported, no login required)
+   */
+  static async quickBookOrder(dto) {
+    if (!dto.customerName || !dto.phone || !dto.deliveryAddress) {
+      throw new BadRequestError("Customer name, phone number, and delivery address are required");
+    }
+    const cleanPhone = dto.phone.replace(/\D/g, "").slice(-10);
+    if (cleanPhone.length < 10) {
+      throw new BadRequestError("A valid 10-digit mobile number is required");
+    }
+    let product = null;
+    if (dto.productId) {
+      product = await database_default.product.findUnique({ where: { id: dto.productId } });
+    }
+    if (!product && dto.sizeKg) {
+      product = await database_default.product.findFirst({
+        where: { sizeKg: Number(dto.sizeKg), isActive: true }
+      });
+    }
+    if (!product) {
+      product = await database_default.product.findFirst({
+        where: { isActive: true },
+        orderBy: { sizeKg: "asc" }
+      });
+    }
+    if (!product) {
+      product = await database_default.product.create({
+        data: {
+          name: `${dto.sizeKg || 15} KG LPG Cylinder`,
+          sizeKg: Number(dto.sizeKg || 15),
+          price: new import_client2.Prisma.Decimal(1080),
+          deliveryCharge: new import_client2.Prisma.Decimal(50),
+          isActive: true
+        }
+      });
+    }
+    const safeEmail = dto.email?.trim() || `customer_${cleanPhone}@dsshindegas.com`;
+    let user = await database_default.user.findFirst({
+      where: {
+        OR: [
+          { phone: cleanPhone },
+          ...dto.email ? [{ email: dto.email.trim() }] : []
+        ]
+      }
+    });
+    if (!user) {
+      const passwordHash = await import_bcryptjs3.default.hash("Customer@123", 10);
+      user = await database_default.user.create({
+        data: {
+          name: dto.customerName.trim(),
+          phone: cleanPhone,
+          email: safeEmail,
+          passwordHash,
+          role: "CUSTOMER" /* CUSTOMER */,
+          isActive: true,
+          isVerified: true,
+          customerProfile: {
+            create: {
+              addresses: {
+                create: {
+                  fullName: dto.customerName.trim(),
+                  phone: cleanPhone,
+                  addressLine1: dto.deliveryAddress.trim(),
+                  area: dto.deliveryArea || "City",
+                  city: dto.deliveryCity || "Karad",
+                  state: "Maharashtra",
+                  pinCode: dto.deliveryPinCode || "415110",
+                  landmark: dto.deliveryLandmark || null,
+                  isDefault: true
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+    const orderData = {
+      items: [
+        {
+          productId: product.id,
+          quantity: Number(dto.quantity) || 1
+        }
+      ],
+      deliveryName: dto.customerName.trim(),
+      deliveryPhone: cleanPhone,
+      deliveryAddress: dto.deliveryAddress.trim(),
+      deliveryArea: dto.deliveryArea || "Main Road",
+      deliveryCity: dto.deliveryCity || "Karad",
+      deliveryState: "Maharashtra",
+      deliveryPinCode: dto.deliveryPinCode || "415110",
+      deliveryLandmark: dto.deliveryLandmark || void 0,
+      paymentMethod: dto.paymentMethod || "COD" /* COD */,
+      notes: dto.notes || "Direct booking from website"
+    };
+    const createdResult = await this.createOrder(user.id, orderData);
+    const createdOrder = createdResult.order;
+    try {
+      await NotificationService.notifyAdmins({
+        title: "New Cylinder Order Placed",
+        message: `New booking ${createdOrder.orderNumber} placed by ${dto.customerName} (${cleanPhone}) for ${product.name}`,
+        type: "ORDER_UPDATE" /* ORDER_UPDATE */,
+        orderId: createdOrder.id
+      });
+    } catch (err) {
+      console.warn("Failed to dispatch admin notification:", err);
+    }
+    return {
+      order: createdOrder,
+      orderNumber: createdOrder.orderNumber,
+      orderId: createdOrder.id,
+      productName: product.name,
+      sizeKg: product.sizeKg,
+      totalAmount: Number(createdOrder.totalAmount),
+      trackingUrl: `/dashboard/orders/${createdOrder.id}/track`,
+      customerPhone: cleanPhone,
+      customerEmail: safeEmail
+    };
+  }
 };
 
 // src/controllers/order.controller.ts
@@ -58897,6 +59017,17 @@ var OrderController = class {
       const customerId = req.user.id;
       const result = await OrderService.createOrder(customerId, req.body);
       ApiResponse.created(res, result, "Order placed successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * Quick cylinder booking directly from website (Phone & Email supported, no login required)
+   */
+  static async quickBookOrder(req, res, next) {
+    try {
+      const result = await OrderService.quickBookOrder(req.body);
+      ApiResponse.created(res, result, "Cylinder booked successfully");
     } catch (error) {
       next(error);
     }
@@ -58990,6 +59121,7 @@ var createOrderSchema = external_exports.object({
 var cancelOrderSchema = external_exports.object({
   reason: external_exports.string().min(3, "Cancellation reason is required")
 });
+router4.post("/quick-book", OrderController.quickBookOrder);
 router4.post("/", authenticateToken, validate(createOrderSchema), OrderController.createOrder);
 router4.get("/", authenticateToken, OrderController.listCustomerOrders);
 router4.get("/:id/track", optionalAuth, OrderController.trackOrder);
@@ -59317,7 +59449,7 @@ var payment_routes_default = router5;
 var import_express6 = __toESM(require_express2());
 
 // src/controllers/admin.controller.ts
-var import_bcryptjs3 = __toESM(require_bcryptjs());
+var import_bcryptjs4 = __toESM(require_bcryptjs());
 var import_client3 = require("@prisma/client");
 var AdminController = class {
   /**
@@ -59780,7 +59912,7 @@ var AdminController = class {
       }
       const existingPhone = await database_default.user.findUnique({ where: { phone } });
       if (existingPhone) throw new ConflictError("A user with this phone already exists");
-      const passwordHash = await import_bcryptjs3.default.hash(password, 10);
+      const passwordHash = await import_bcryptjs4.default.hash(password, 10);
       const rider = await database_default.user.create({
         data: {
           name,

@@ -18,6 +18,18 @@ export class OrderController {
   }
 
   /**
+   * Quick cylinder booking directly from website (Phone & Email supported, no login required)
+   */
+  static async quickBookOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await OrderService.quickBookOrder(req.body);
+      ApiResponse.created(res, result, 'Cylinder booked successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * List orders for the authenticated customer
    */
   static async listCustomerOrders(req: Request, res: Response, next: NextFunction): Promise<void> {

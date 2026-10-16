@@ -70,9 +70,33 @@ apiRouter.get('/settings/public', async (req, res) => {
       message: 'Public settings loaded successfully',
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to load public settings',
+    const defaultStructured = {
+      agencyName: 'D.S SHINDE GAS AGENCY',
+      primaryPhone: '9511760208',
+      secondaryPhone: '9975300929',
+      email: 'support@dsshindegas.com',
+      address: 'Shop No. 4, Main Road, Near Market Yard, Maharashtra, India',
+      deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
+      businessHours: '8:00 AM - 8:00 PM (Monday to Saturday)',
+      heroHeadline: 'Your Trusted LPG Gas Partner',
+      heroSubheadline: 'Reliable LPG Cylinder Solutions for Home and Business',
+      heroDescription: 'Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.',
+      heroPrimaryCtaText: 'Order a Cylinder',
+      heroPrimaryCtaLink: '/dashboard/orders/new',
+      heroSecondaryCtaText: 'Explore Cylinder Sizes',
+      heroSecondaryCtaLink: '/#cylinder-gallery',
+      heroImageUrl: '/assets/cylinders/hero-cylinder.jpg',
+      cylinderSectionTitle: 'Explore Our LPG Cylinder Sizes',
+      cylinderSectionSubtitle: 'Choose a cylinder capacity that matches your requirements.',
+      announcementBanner: '',
+      headerCtaText: 'Order Cylinder',
+      headerCtaLink: '/dashboard/orders/new',
+    };
+
+    res.status(200).json({
+      success: true,
+      data: defaultStructured,
+      message: 'Default settings loaded successfully',
     });
   }
 });

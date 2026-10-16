@@ -11,7 +11,7 @@ export const config = {
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/ds_shinde_gas?schema=public',
+    url: process.env.DATABASE_URL || 'file:./dev.db',
   },
 
   jwt: {

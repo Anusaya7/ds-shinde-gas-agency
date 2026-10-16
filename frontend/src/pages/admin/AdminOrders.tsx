@@ -23,6 +23,7 @@ export const AdminOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [riders, setRiders] = useState<Rider[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // Filters
   const [search, setSearch] = useState('');
@@ -39,155 +40,16 @@ export const AdminOrders: React.FC = () => {
 
   const fetchOrders = () => {
     setLoading(true);
+    setLoadError('');
     Promise.all([adminService.getOrders(), adminService.getRiders()])
       .then(([ordersRes, ridersData]) => {
-        setOrders(
-          ordersRes.orders.length > 0
-            ? ordersRes.orders
-            : [
-                {
-                  id: 'ord-1049',
-                  orderNumber: 'DS-2026-1049',
-                  customerId: 'cust-1',
-                  customerName: 'Anil Deshmukh',
-                  customerPhone: '9822012345',
-                  deliveryAddress: {
-                    id: 'addr-1',
-                    fullName: 'Anil Deshmukh',
-                    phone: '9822012345',
-                    addressLine1: 'B-14, Shanti Park',
-                    area: 'Market Yard',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411002',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-14kg',
-                      productName: '14.2 kg Domestic Cylinder',
-                      size: '14.2 kg',
-                      unitPrice: 920,
-                      quantity: 1,
-                      subtotal: 920,
-                    },
-                  ],
-                  subtotal: 920,
-                  deliveryCharges: 0,
-                  taxes: 46,
-                  paymentFee: 0,
-                  totalAmount: 966,
-                  paymentMethod: 'COD',
-                  paymentStatus: 'PENDING',
-                  orderStatus: 'PLACED',
-                  statusHistory: [],
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  id: 'ord-1048',
-                  orderNumber: 'DS-2026-1048',
-                  customerId: 'cust-2',
-                  customerName: 'Green Spice Restaurant',
-                  customerPhone: '9423098765',
-                  deliveryAddress: {
-                    id: 'addr-2',
-                    fullName: 'Green Spice Restaurant',
-                    phone: '9423098765',
-                    addressLine1: 'Shop 4, Highway Plaza',
-                    area: 'Industrial Area',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411019',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-19kg',
-                      productName: '19 kg Commercial Cylinder',
-                      size: '19 kg',
-                      unitPrice: 1850,
-                      quantity: 2,
-                      subtotal: 3700,
-                    },
-                  ],
-                  subtotal: 3700,
-                  deliveryCharges: 0,
-                  taxes: 185,
-                  paymentFee: 0,
-                  totalAmount: 3885,
-                  paymentMethod: 'ONLINE',
-                  paymentStatus: 'PAID',
-                  orderStatus: 'ACCEPTED',
-                  statusHistory: [],
-                  createdAt: new Date(Date.now() - 3600000).toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  id: 'ord-1047',
-                  orderNumber: 'DS-2026-1047',
-                  customerId: 'cust-3',
-                  customerName: 'Kavita Joshi',
-                  customerPhone: '9890123456',
-                  deliveryAddress: {
-                    id: 'addr-3',
-                    fullName: 'Kavita Joshi',
-                    phone: '9890123456',
-                    addressLine1: 'Flat 101, Sunshine Apts',
-                    area: 'Central City',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411001',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-5kg',
-                      productName: '5 kg Domestic Mini Cylinder',
-                      size: '5 kg',
-                      unitPrice: 360,
-                      quantity: 1,
-                      subtotal: 360,
-                    },
-                  ],
-                  subtotal: 360,
-                  deliveryCharges: 0,
-                  taxes: 18,
-                  paymentFee: 0,
-                  totalAmount: 378,
-                  paymentMethod: 'COD',
-                  paymentStatus: 'PENDING',
-                  orderStatus: 'OUT_FOR_DELIVERY',
-                  riderName: 'Ramesh Patil',
-                  riderPhone: '9975300929',
-                  statusHistory: [],
-                  createdAt: new Date(Date.now() - 7200000).toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]
-        );
-
-        setRiders(
-          ridersData.length > 0
-            ? ridersData
-            : [
-                {
-                  id: 'rider-1',
-                  name: 'Ramesh Patil',
-                  phone: '9975300929',
-                  vehicleNumber: 'MH-12-AB-1234',
-                  isActive: true,
-                  assignedOrdersCount: 2,
-                  completedOrdersCount: 45,
-                },
-                {
-                  id: 'rider-2',
-                  name: 'Suresh More',
-                  phone: '9822998877',
-                  vehicleNumber: 'MH-12-CD-5678',
-                  isActive: true,
-                  assignedOrdersCount: 1,
-                  completedOrdersCount: 38,
-                },
-              ]
-        );
+        setOrders(ordersRes.orders);
+        setRiders(ridersData);
+      })
+      .catch((error: any) => {
+        setOrders([]);
+        setRiders([]);
+        setLoadError(error.response?.data?.message || 'Could not load current orders and riders.');
       })
       .finally(() => setLoading(false));
   };
@@ -203,17 +65,14 @@ export const AdminOrders: React.FC = () => {
         prev.map((o) => (o.id === orderId ? { ...o, orderStatus: 'ACCEPTED' } : o))
       );
       toast.success('Order accepted into dispatch queue');
-    } catch {
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, orderStatus: 'ACCEPTED' } : o))
-      );
-      toast.success('Order accepted');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not accept this order.');
     }
   };
 
   const handleOpenAssign = (order: Order) => {
     setSelectedOrder(order);
-    setSelectedRiderId(riders[0]?.id || '');
+    setSelectedRiderId(riders.find((rider) => rider.isActive)?.id || '');
     setAssignModalOpen(true);
   };
 
@@ -238,23 +97,8 @@ export const AdminOrders: React.FC = () => {
       );
       toast.success(`Assigned to ${riderObj?.name || 'Rider'}`);
       setAssignModalOpen(false);
-    } catch {
-      const riderObj = riders.find((r) => r.id === selectedRiderId);
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === selectedOrder.id
-            ? {
-                ...o,
-                orderStatus: 'ASSIGNED',
-                riderId: selectedRiderId,
-                riderName: riderObj?.name,
-                riderPhone: riderObj?.phone,
-              }
-            : o
-        )
-      );
-      toast.success(`Assigned to ${riderObj?.name}`);
-      setAssignModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not assign this rider.');
     } finally {
       setActionLoading(false);
     }
@@ -283,16 +127,8 @@ export const AdminOrders: React.FC = () => {
       );
       toast.success('Order rejected');
       setRejectModalOpen(false);
-    } catch {
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === selectedOrder.id
-            ? { ...o, orderStatus: 'REJECTED', rejectionReason: rejectReason }
-            : o
-        )
-      );
-      toast.success('Order rejected');
-      setRejectModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not reject this order.');
     } finally {
       setActionLoading(false);
     }
@@ -347,6 +183,7 @@ export const AdminOrders: React.FC = () => {
           >
             <option value="ALL">All Statuses</option>
             <option value="PLACED">Placed</option>
+            <option value="AWAITING_REVIEW">Awaiting Review</option>
             <option value="ACCEPTED">Accepted</option>
             <option value="ASSIGNED">Assigned</option>
             <option value="OUT_FOR_DELIVERY">Out For Delivery</option>
@@ -367,6 +204,12 @@ export const AdminOrders: React.FC = () => {
           </select>
         </div>
       </div>
+
+      {loadError && (
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {loadError}
+        </p>
+      )}
 
       {/* Orders Table */}
       {loading ? (
@@ -522,7 +365,7 @@ export const AdminOrders: React.FC = () => {
               onChange={(e) => setSelectedRiderId(e.target.value)}
               className="w-full rounded-xl border border-gray-300 p-2.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-primary"
             >
-              {riders.map((r) => (
+              {riders.filter((rider) => rider.isActive).map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name} ({r.phone}) - {r.assignedOrdersCount} active orders
                 </option>
@@ -538,6 +381,7 @@ export const AdminOrders: React.FC = () => {
               variant="primary"
               onClick={handleConfirmAssign}
               isLoading={actionLoading}
+              disabled={!selectedRiderId}
             >
               Assign Rider Now
             </Button>

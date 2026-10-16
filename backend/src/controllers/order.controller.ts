@@ -18,18 +18,6 @@ export class OrderController {
   }
 
   /**
-   * Quick cylinder booking directly from website (Phone & Email supported, no login required)
-   */
-  static async quickBookOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const result = await OrderService.quickBookOrder(req.body);
-      ApiResponse.created(res, result, 'Cylinder booked successfully');
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
    * List orders for the authenticated customer
    */
   static async listCustomerOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -96,6 +84,19 @@ export class OrderController {
       );
 
       ApiResponse.success(res, cancelledOrder, 'Order cancelled successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateReminderPreference(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const order = await OrderService.updateReminderPreference(
+        req.params.id,
+        req.user!.id,
+        req.body.enabled
+      );
+      ApiResponse.success(res, order, 'Reminder preference updated successfully.');
     } catch (error) {
       next(error);
     }

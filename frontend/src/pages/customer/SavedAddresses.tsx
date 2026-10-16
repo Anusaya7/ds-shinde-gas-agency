@@ -39,34 +39,9 @@ export const SavedAddresses: React.FC = () => {
     customerService
       .getAddresses()
       .then((data) => setAddresses(data))
-      .catch(() => {
-        // Fallback default demo addresses
-        setAddresses([
-          {
-            id: 'addr-1',
-            fullName: 'Rahul Sharma (Home)',
-            phone: '9876543210',
-            addressLine1: 'Flat 402, Sai Residency, 4th Floor',
-            area: 'Central City',
-            city: 'Pune',
-            state: 'Maharashtra',
-            pincode: '411001',
-            landmark: 'Near Old Bus Stand',
-            isDefault: true,
-          },
-          {
-            id: 'addr-2',
-            fullName: 'Sharma Cafe (Commercial Kitchen)',
-            phone: '9876543210',
-            addressLine1: 'Shop 12, Market Square Commercial Complex',
-            area: 'Market Yard',
-            city: 'Pune',
-            state: 'Maharashtra',
-            pincode: '411002',
-            landmark: 'Behind Bank of Baroda',
-            isDefault: false,
-          },
-        ]);
+      .catch((error: any) => {
+        setAddresses([]);
+        toast.error(error.response?.data?.message || 'Could not load saved addresses.');
       })
       .finally(() => setLoading(false));
   };
@@ -133,19 +108,8 @@ export const SavedAddresses: React.FC = () => {
         toast.success('Address added successfully');
       }
       setIsModalOpen(false);
-    } catch {
-      // Offline fallback handling
-      if (editingAddress) {
-        setAddresses((prev) =>
-          prev.map((a) => (a.id === editingAddress.id ? { ...a, ...form } : a))
-        );
-        toast.success('Address updated');
-      } else {
-        const newMock: Address = { id: `addr-${Date.now()}`, ...form };
-        setAddresses((prev) => [...prev, newMock]);
-        toast.success('Address added');
-      }
-      setIsModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not save this address.');
     } finally {
       setSaving(false);
     }
@@ -157,9 +121,8 @@ export const SavedAddresses: React.FC = () => {
       await customerService.deleteAddress(deleteTargetId);
       setAddresses((prev) => prev.filter((a) => a.id !== deleteTargetId));
       toast.success('Address removed');
-    } catch {
-      setAddresses((prev) => prev.filter((a) => a.id !== deleteTargetId));
-      toast.success('Address removed');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not remove this address.');
     } finally {
       setDeleteTargetId(null);
     }
@@ -175,14 +138,8 @@ export const SavedAddresses: React.FC = () => {
         }))
       );
       toast.success('Default delivery address updated');
-    } catch {
-      setAddresses((prev) =>
-        prev.map((a) => ({
-          ...a,
-          isDefault: a.id === id,
-        }))
-      );
-      toast.success('Default delivery address updated');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update the default address.');
     }
   };
 

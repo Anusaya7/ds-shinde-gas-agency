@@ -32,70 +32,9 @@ export const OrderTracking: React.FC = () => {
     orderService
       .getOrderTracking(id)
       .then((data) => setOrder(data))
-      .catch(() => {
-        // Fallback demo order for live preview
-        setOrder({
-          id: id,
-          orderNumber: id.startsWith('DS-') ? id : 'DS-2026-1049',
-          customerId: 'cust-1',
-          customerName: 'Rahul Sharma',
-          customerPhone: '9876543210',
-          deliveryAddress: {
-            id: 'addr-1',
-            fullName: 'Rahul Sharma',
-            phone: '9876543210',
-            addressLine1: 'Flat 402, Sai Residency',
-            area: 'Central City',
-            city: 'Pune',
-            state: 'Maharashtra',
-            pincode: '411001',
-          },
-          items: [
-            {
-              productId: 'prod-14kg',
-              productName: '14.2 kg Domestic LPG Cylinder',
-              size: '14.2 kg',
-              unitPrice: 920,
-              quantity: 1,
-              subtotal: 920,
-            },
-          ],
-          subtotal: 920,
-          deliveryCharges: 0,
-          taxes: 46,
-          paymentFee: 0,
-          totalAmount: 966,
-          paymentMethod: 'COD',
-          paymentStatus: 'PENDING',
-          orderStatus: 'OUT_FOR_DELIVERY',
-          statusHistory: [
-            {
-              status: 'PLACED',
-              timestamp: new Date(Date.now() - 5400000).toISOString(),
-              comment: 'Order placed by consumer online',
-            },
-            {
-              status: 'ACCEPTED',
-              timestamp: new Date(Date.now() - 3600000).toISOString(),
-              comment: 'Depot manager confirmed cylinder allocation',
-            },
-            {
-              status: 'ASSIGNED',
-              timestamp: new Date(Date.now() - 1800000).toISOString(),
-              comment: 'Assigned to delivery executive Ramesh Patil',
-            },
-            {
-              status: 'OUT_FOR_DELIVERY',
-              timestamp: new Date(Date.now() - 600000).toISOString(),
-              comment: 'Cylinder dispatched on delivery van',
-            },
-          ],
-          riderName: 'Ramesh Patil',
-          riderPhone: '9975300929',
-          deliveryOtp: '849201',
-          createdAt: new Date(Date.now() - 5400000).toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+      .catch((error: any) => {
+        setOrder(null);
+        toast.error(error.response?.data?.message || 'Could not load tracking for this booking.');
       })
       .finally(() => setLoading(false));
   };
@@ -107,7 +46,7 @@ export const OrderTracking: React.FC = () => {
   if (loading) {
     return (
       <div className="py-20 flex justify-center">
-        <Spinner size="lg" label="Connecting to GPS dispatch satellite..." />
+        <Spinner size="lg" label="Loading booking status..." />
       </div>
     );
   }
@@ -140,7 +79,7 @@ export const OrderTracking: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-black text-gray-900">
               Track Order #{order.orderNumber}
             </h1>
-            <p className="text-xs text-gray-500">Live delivery status updates</p>
+            <p className="text-xs text-gray-500">Booking and delivery status updates</p>
           </div>
         </div>
 
@@ -162,14 +101,16 @@ export const OrderTracking: React.FC = () => {
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-6 border-b border-blue-800">
           <div>
             <span className="text-xs font-semibold text-accentLight uppercase tracking-wider block">
-              Estimated Delivery
+            Delivery Progress
             </span>
             <h2 className="text-2xl sm:text-3xl font-extrabold mt-0.5">
               {order.orderStatus === 'DELIVERED'
                 ? 'Delivered Successfully'
                 : order.orderStatus === 'CANCELLED'
                 ? 'Order Cancelled'
-                : 'Arriving Today (25 - 40 Mins)'}
+              : order.estimatedDelivery
+                ? `Estimated ${new Date(order.estimatedDelivery).toLocaleString('en-IN')}`
+                : 'Your booking is being processed'}
             </h2>
             <div className="flex items-center gap-2 mt-2">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -235,7 +176,7 @@ export const OrderTracking: React.FC = () => {
         <ShieldCheck className="w-5 h-5 text-warm-dark shrink-0 mt-0.5" />
         <div>
           <span className="font-bold block mb-0.5">Safety & Weight Check Protocol:</span>
-          All delivery riders carry certified scales. You are entitled to demand weight verification and inspection of the tamper-proof white seal prior to providing your OTP.
+          Ask the delivery partner about a cylinder weight check and inspect the safety seal before sharing your delivery OTP.
         </div>
       </div>
     </div>

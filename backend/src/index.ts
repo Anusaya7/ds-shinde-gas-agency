@@ -56,7 +56,7 @@ app.use('/', apiRouter);
 // Root route
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
-    agency: 'D.S SHINDE GAS AGENCY',
+    agency: 'DS Shinde Gas',
     tagline: 'Reliable LPG Cylinder Delivery Platform',
     status: 'online',
     version: '1.0.0',
@@ -76,7 +76,7 @@ app.use(errorHandler);
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.LAMBDA_TASK_ROOT) {
   const server = app.listen(config.port, () => {
     console.log(`====================================================`);
-    console.log(`  D.S SHINDE GAS AGENCY BACKEND API`);
+    console.log(`  DS Shinde Gas Backend API`);
     console.log(`  Mode: ${config.nodeEnv}`);
     console.log(`  Port: ${config.port}`);
     console.log(`  URL: http://localhost:${config.port}`);

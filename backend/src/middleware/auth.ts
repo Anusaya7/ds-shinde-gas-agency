@@ -26,27 +26,6 @@ export async function authenticateToken(
       throw new UnauthorizedError('Authentication required. No token provided.');
     }
 
-    // Support dev demo tokens
-    if (token.startsWith('demo-token-')) {
-      const roleName = token.replace('demo-token-', '').toUpperCase();
-      const demoUser = await prisma.user.findFirst({
-        where: { role: roleName },
-        select: {
-          id: true,
-          email: true,
-          phone: true,
-          name: true,
-          role: true,
-          isActive: true,
-          isVerified: true,
-        },
-      });
-      if (demoUser) {
-        req.user = demoUser as AuthenticatedUser;
-        return next();
-      }
-    }
-
     // Verify token
     const decoded = verifyToken(token);
 

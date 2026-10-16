@@ -20,6 +20,7 @@ import { StatsCard } from '../../components/ui/StatsCard';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 export const AdminDashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -33,88 +34,10 @@ export const AdminDashboard: React.FC = () => {
     ])
       .then(([statsData, ordersData]) => {
         setStats(statsData);
-        setRecentOrders(
-          ordersData.orders.length > 0
-            ? ordersData.orders
-            : [
-                {
-                  id: 'ord-1049',
-                  orderNumber: 'DS-2026-1049',
-                  customerId: 'cust-1',
-                  customerName: 'Anil Deshmukh',
-                  customerPhone: '9822012345',
-                  deliveryAddress: {
-                    id: 'addr-1',
-                    fullName: 'Anil Deshmukh',
-                    phone: '9822012345',
-                    addressLine1: 'B-14, Shanti Park',
-                    area: 'Market Yard',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411002',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-14kg',
-                      productName: '14.2 kg Domestic Cylinder',
-                      size: '14.2 kg',
-                      unitPrice: 920,
-                      quantity: 1,
-                      subtotal: 920,
-                    },
-                  ],
-                  subtotal: 920,
-                  deliveryCharges: 0,
-                  taxes: 46,
-                  paymentFee: 0,
-                  totalAmount: 966,
-                  paymentMethod: 'COD',
-                  paymentStatus: 'PENDING',
-                  orderStatus: 'PLACED',
-                  statusHistory: [],
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  id: 'ord-1048',
-                  orderNumber: 'DS-2026-1048',
-                  customerId: 'cust-2',
-                  customerName: 'Green Spice Restaurant',
-                  customerPhone: '9423098765',
-                  deliveryAddress: {
-                    id: 'addr-2',
-                    fullName: 'Green Spice Restaurant',
-                    phone: '9423098765',
-                    addressLine1: 'Shop 4, Highway Plaza',
-                    area: 'Industrial Area',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411019',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-19kg',
-                      productName: '19 kg Commercial Cylinder',
-                      size: '19 kg',
-                      unitPrice: 1850,
-                      quantity: 2,
-                      subtotal: 3700,
-                    },
-                  ],
-                  subtotal: 3700,
-                  deliveryCharges: 0,
-                  taxes: 185,
-                  paymentFee: 0,
-                  totalAmount: 3885,
-                  paymentMethod: 'ONLINE',
-                  paymentStatus: 'PAID',
-                  orderStatus: 'ACCEPTED',
-                  statusHistory: [],
-                  createdAt: new Date(Date.now() - 3600000).toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]
-        );
+        setRecentOrders(ordersData.orders);
+      })
+      .catch((error: any) => {
+        toast.error(error.response?.data?.message || 'Could not load current dashboard data.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -150,7 +73,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatsCard
           label="Total Bookings"
-          value={stats?.totalOrders || 284}
+          value={stats?.totalOrders ?? 0}
           icon={<Package className="w-6 h-6" />}
           change="+12.4%"
           isPositive={true}
@@ -158,19 +81,19 @@ export const AdminDashboard: React.FC = () => {
         />
         <StatsCard
           label="New / Awaiting Review"
-          value={(stats?.newOrders || 0) + (stats?.awaitingReview || 0) || 23}
+          value={(stats?.newOrders ?? 0) + (stats?.awaitingReview ?? 0)}
           icon={<Clock className="w-6 h-6" />}
           color="red"
         />
         <StatsCard
           label="Out For Delivery"
-          value={stats?.outForDelivery || 12}
+          value={stats?.outForDelivery ?? 0}
           icon={<Truck className="w-6 h-6" />}
           color="amber"
         />
         <StatsCard
           label="Total Revenue Collected"
-          value={`₹${(stats?.totalCollected || 248650).toLocaleString('en-IN')}`}
+          value={`₹${(stats?.totalCollected ?? 0).toLocaleString('en-IN')}`}
           icon={<IndianRupee className="w-6 h-6" />}
           change="+8.2%"
           isPositive={true}
@@ -182,19 +105,19 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-[11px] font-bold text-gray-400 uppercase">Accepted Orders</span>
-          <p className="text-xl font-bold text-blue-600 mt-1">{stats?.accepted || 18}</p>
+          <p className="text-xl font-bold text-blue-600 mt-1">{stats?.accepted ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-[11px] font-bold text-gray-400 uppercase">Delivered Orders</span>
-          <p className="text-xl font-bold text-emerald-600 mt-1">{stats?.delivered || 235}</p>
+          <p className="text-xl font-bold text-emerald-600 mt-1">{stats?.delivered ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-[11px] font-bold text-gray-400 uppercase">Pending Payments</span>
-          <p className="text-xl font-bold text-amber-600 mt-1">{stats?.pendingPayments || 7}</p>
+          <p className="text-xl font-bold text-amber-600 mt-1">{stats?.pendingPayments ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
           <span className="text-[11px] font-bold text-gray-400 uppercase">Active Fleet Riders</span>
-          <p className="text-xl font-bold text-purple-600 mt-1">{stats?.activeRidersCount || 8}</p>
+          <p className="text-xl font-bold text-purple-600 mt-1">{stats?.activeRidersCount ?? 0}</p>
         </div>
       </div>
 

@@ -24,7 +24,6 @@ import { TermsPage } from './pages/public/TermsPage';
 import { RefundPolicyPage } from './pages/public/RefundPolicyPage';
 import { LoginPage } from './pages/public/LoginPage';
 import { RegisterPage } from './pages/public/RegisterPage';
-import { QuickBookPage } from './pages/public/QuickBookPage';
 import { AdminLoginPage } from './pages/public/AdminLoginPage';
 import { RiderLoginPage } from './pages/public/RiderLoginPage';
 
@@ -40,6 +39,7 @@ import { SavedAddresses } from './pages/customer/SavedAddresses';
 // Admin Pages
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminOrders } from './pages/admin/AdminOrders';
+import { AdminCustomerApplications } from './pages/admin/AdminCustomerApplications';
 import { AdminOrderDetail } from './pages/admin/AdminOrderDetail';
 import { RiderManagement } from './pages/admin/RiderManagement';
 import { CustomerManagement } from './pages/admin/CustomerManagement';
@@ -49,6 +49,7 @@ import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminNotifications } from './pages/admin/AdminNotifications';
 import { WebsiteCms } from './pages/admin/WebsiteCms';
 import { AdminEnquiries } from './pages/admin/AdminEnquiries';
+import { AdminApplications } from './pages/admin/AdminApplications';
 
 // Rider Pages
 import { RiderDashboard } from './pages/rider/RiderDashboard';
@@ -56,6 +57,7 @@ import { RiderOrders } from './pages/rider/RiderOrders';
 import { RiderOrderDetail } from './pages/rider/RiderOrderDetail';
 import { CompletedDeliveries } from './pages/rider/CompletedDeliveries';
 import { RiderProfile } from './pages/rider/RiderProfile';
+import { RiderApplicationPage } from './pages/rider/RiderApplicationPage';
 
 // Not Found Page
 const NotFoundPage = () => (
@@ -92,14 +94,22 @@ export const App: React.FC = () => {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/refund-policy" element={<RefundPolicyPage />} />
-        <Route path="/quick-book" element={<QuickBookPage />} />
-        <Route path="/book" element={<QuickBookPage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/quick-book" element={<Navigate to="/login" replace />} />
+        <Route path="/book" element={<Navigate to="/login" replace />} />
         <Route path="/rider/login" element={<RiderLoginPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
+      <Route path="/admin/login" element={<AdminLoginPage />} />
+      <Route
+        path="/rider/application"
+        element={
+          <ProtectedRoute allowedRoles={['RIDER']}>
+            <RiderApplicationPage />
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected Customer Routes */}
       <Route
@@ -130,6 +140,8 @@ export const App: React.FC = () => {
       >
         <Route index element={<AdminDashboard />} />
         <Route path="orders" element={<AdminOrders />} />
+        <Route path="customer-applications" element={<AdminCustomerApplications />} />
+        <Route path="rider-applications" element={<AdminApplications />} />
         <Route path="orders/:id" element={<AdminOrderDetail />} />
         <Route path="riders" element={<RiderManagement />} />
         <Route path="customers" element={<CustomerManagement />} />

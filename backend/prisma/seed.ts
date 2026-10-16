@@ -5,27 +5,31 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Seeding D.S SHINDE GAS AGENCY database...');
+  console.log('Seeding DS Shinde Gas database...');
 
-  const passwordHashAdmin = await bcrypt.hash('Admin@123', 10);
-  const passwordHashRider = await bcrypt.hash('Rider@123', 10);
-  const passwordHashCustomer = await bcrypt.hash('Customer@123', 10);
 
-  // 1. Admin User
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@dsshinde.com' },
-    update: {},
-    create: {
-      email: 'admin@dsshinde.com',
-      phone: '9511760208',
-      name: 'Agency Admin',
-      passwordHash: passwordHashAdmin,
-      role: Role.ADMIN,
-      isActive: true,
-      isVerified: true,
-    },
-  });
-  console.log(`Admin user created/verified: ${adminUser.email}`);
+  // Create an administrator only when explicit deployment credentials are provided.
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (adminEmail && adminPassword) {
+    const passwordHashAdmin = await bcrypt.hash(adminPassword, 12);
+    const adminUser = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: { passwordHash: passwordHashAdmin },
+      create: {
+        email: adminEmail,
+        phone: process.env.SEED_ADMIN_PHONE || null,
+        name: process.env.SEED_ADMIN_NAME || 'Agency Admin',
+        passwordHash: passwordHashAdmin,
+        role: Role.ADMIN,
+        isActive: true,
+        isVerified: true,
+      },
+    });
+    console.log(`Configured administrator account: ${adminUser.email}`);
+  } else {
+    console.log('Skipping administrator seed; set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD to create one.');
+  }
 
   // 2. Sample Rider User & Rider record
   const riderUser = await prisma.user.upsert({
@@ -35,7 +39,7 @@ async function main() {
       email: 'rider@dsshinde.com',
       phone: '9876543210',
       name: 'Ramesh Pawar (Rider)',
-      passwordHash: passwordHashRider,
+      passwordHash: null,
       role: Role.RIDER,
       isActive: true,
       isVerified: true,
@@ -57,7 +61,7 @@ async function main() {
       email: 'customer@dsshinde.com',
       phone: '9822001122',
       name: 'Rahul Deshmukh',
-      passwordHash: passwordHashCustomer,
+      passwordHash: null,
       role: Role.CUSTOMER,
       isActive: true,
       isVerified: true,
@@ -202,7 +206,7 @@ async function main() {
   const settings = [
     {
       key: 'agency_name',
-      value: 'D.S SHINDE GAS AGENCY',
+      value: 'DS Shinde Gas',
       description: 'Official registered name of the LPG agency',
     },
     {
@@ -232,7 +236,7 @@ async function main() {
     },
     {
       key: 'tax_percentage',
-      value: '5.0',
+      value: '0',
       description: 'Applicable GST / VAT rate on commercial cylinders',
     },
     {

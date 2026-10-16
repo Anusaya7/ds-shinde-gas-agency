@@ -40,8 +40,6 @@ export const RiderOrderDetail: React.FC = () => {
 
   // COD Payment collection state
   const [amountCollected, setAmountCollected] = useState<number>(0);
-  const [collectedPaymentMethod, setCollectedPaymentMethod] = useState<'CASH' | 'UPI_QR'>('CASH');
-  const [deliveryNotes, setDeliveryNotes] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -53,55 +51,9 @@ export const RiderOrderDetail: React.FC = () => {
         setAmountCollected(data.totalAmount);
         if (data.isOtpVerified) setOtpVerified(true);
       })
-      .catch(() => {
-        // Fallback demo order
-        const mock: Order = {
-          id: id,
-          orderNumber: id.startsWith('DS-') ? id : 'DS-2026-1049',
-          customerId: 'cust-1',
-          customerName: 'Rahul Sharma',
-          customerPhone: '9876543210',
-          deliveryAddress: {
-            id: 'addr-1',
-            fullName: 'Rahul Sharma',
-            phone: '9876543210',
-            addressLine1: 'Flat 402, Sai Residency',
-            area: 'Central City',
-            city: 'Pune',
-            state: 'Maharashtra',
-            pincode: '411001',
-            landmark: 'Near Old Bus Stand',
-            mapLink: 'https://maps.google.com/?q=Pune+Market+Yard',
-          },
-          items: [
-            {
-              productId: 'prod-14kg',
-              productName: '14.2 kg Domestic LPG Cylinder',
-              size: '14.2 kg',
-              unitPrice: 920,
-              quantity: 1,
-              subtotal: 920,
-            },
-          ],
-          subtotal: 920,
-          deliveryCharges: 0,
-          taxes: 46,
-          paymentFee: 0,
-          totalAmount: 966,
-          paymentMethod: 'COD',
-          paymentStatus: 'PENDING',
-          orderStatus: 'ASSIGNED',
-          deliveryOtp: '849201',
-          statusHistory: [
-            { status: 'PLACED', timestamp: new Date(Date.now() - 3600000).toISOString() },
-            { status: 'ACCEPTED', timestamp: new Date(Date.now() - 2400000).toISOString() },
-            { status: 'ASSIGNED', timestamp: new Date(Date.now() - 1200000).toISOString() },
-          ],
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setOrder(mock);
-        setAmountCollected(mock.totalAmount);
+      .catch((error: any) => {
+        setOrder(null);
+        toast.error(error.response?.data?.message || 'Could not load this assigned delivery.');
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -114,9 +66,8 @@ export const RiderOrderDetail: React.FC = () => {
       const updated = await riderService.acceptAssignment(order.id);
       setOrder(updated);
       toast.success('Assignment accepted! Ready to begin trip.');
-    } catch {
-      setOrder({ ...order, orderStatus: 'ACCEPTED' });
-      toast.success('Assignment accepted!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not accept this delivery assignment.');
     } finally {
       setActionLoading(false);
     }
@@ -130,9 +81,8 @@ export const RiderOrderDetail: React.FC = () => {
       const updated = await riderService.startDelivery(order.id);
       setOrder(updated);
       toast.success('Marked as Out for Delivery!');
-    } catch {
-      setOrder({ ...order, orderStatus: 'OUT_FOR_DELIVERY' });
-      toast.success('Dispatched on delivery route!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update delivery status.');
     } finally {
       setActionLoading(false);
     }
@@ -146,9 +96,8 @@ export const RiderOrderDetail: React.FC = () => {
       const updated = await riderService.markArrived(order.id);
       setOrder(updated);
       toast.success('Marked Arrived at Customer Doorstep!');
-    } catch {
-      setOrder({ ...order, orderStatus: 'ARRIVED' });
-      toast.success('Arrived at customer address!');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update delivery status.');
     } finally {
       setActionLoading(false);
     }
@@ -161,11 +110,8 @@ export const RiderOrderDetail: React.FC = () => {
     try {
       const res = await riderService.sendDeliveryOtp(order.id);
       toast.success(res.message || 'OTP dispatched to customer mobile SMS');
-      if (res.otp) {
-        toast(`Customer OTP: ${res.otp}`, { icon: '🔑', duration: 7000 });
-      }
-    } catch {
-      toast.success(`Demo OTP dispatched: ${order.deliveryOtp || '849201'}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not send delivery OTP.');
     } finally {
       setOtpSending(false);
     }
@@ -186,14 +132,8 @@ export const RiderOrderDetail: React.FC = () => {
       } else {
         toast.error('Invalid OTP code. Please verify with customer.');
       }
-    } catch {
-      // In demo test mode, verify if matching order OTP or 123456
-      if (otpInput.trim() === (order.deliveryOtp || '849201') || otpInput.trim() === '123456') {
-        setOtpVerified(true);
-        toast.success('Customer OTP Verified Successfully!');
-      } else {
-        toast.error('Invalid OTP code. Please enter ' + (order.deliveryOtp || '849201'));
-      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not verify delivery OTP.');
     } finally {
       setOtpVerifying(false);
     }
@@ -206,30 +146,22 @@ export const RiderOrderDetail: React.FC = () => {
       toast.error('Cannot complete delivery without verifying OTP first');
       return;
     }
-    if (order.paymentMethod === 'COD' && amountCollected <= 0) {
-      toast.error('Please confirm the physical cash collected');
+    if (order.paymentStatus !== 'PAID' && amountCollected !== order.totalAmount) {
+      toast.error(`Confirm collection of the exact payable amount: ₹${order.totalAmount}.`);
       return;
     }
 
     setActionLoading(true);
     try {
-      const updated = await riderService.completeDelivery(order.id, {
-        amountCollected: order.paymentMethod === 'COD' ? amountCollected : undefined,
-        paymentMethod: collectedPaymentMethod,
-        notes: deliveryNotes.trim() || undefined,
-      });
+      if (order.paymentStatus !== 'PAID') {
+        await riderService.collectCash(order.id, amountCollected);
+      }
+      const updated = await riderService.completeDelivery(order.id);
       setOrder(updated);
       toast.success('Order Marked as DELIVERED! Great job.');
       navigate('/rider/completed');
-    } catch {
-      setOrder({
-        ...order,
-        orderStatus: 'DELIVERED',
-        paymentStatus: 'PAID',
-        deliveredAt: new Date().toISOString(),
-      });
-      toast.success('Order Marked as DELIVERED!');
-      navigate('/rider/completed');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not complete this delivery.');
     } finally {
       setActionLoading(false);
     }
@@ -495,10 +427,10 @@ export const RiderOrderDetail: React.FC = () => {
           </div>
 
           {/* COD Payment Section */}
-          {order.paymentMethod === 'COD' ? (
+          {order.paymentStatus !== 'PAID' ? (
             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
               <span className="text-xs font-bold text-warm-dark uppercase tracking-wider block">
-                Cash Collection Required
+                Cash payment collection required
               </span>
 
               <div className="flex items-center justify-between">
@@ -516,54 +448,15 @@ export const RiderOrderDetail: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Collection Mode
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setCollectedPaymentMethod('CASH')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${
-                      collectedPaymentMethod === 'CASH'
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-gray-700 border-gray-300'
-                    }`}
-                  >
-                    Physical Cash
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCollectedPaymentMethod('UPI_QR')}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg border ${
-                      collectedPaymentMethod === 'UPI_QR'
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-white text-gray-700 border-gray-300'
-                    }`}
-                  >
-                    Rider UPI QR Scan
-                  </button>
-                </div>
-              </div>
+              <p className="text-xs text-amber-900">
+                Record the exact amount received in cash. UPI payments must be confirmed by the secure payment gateway.
+              </p>
             </div>
           ) : (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-semibold">
               ✓ Order already paid online (₹{order.totalAmount}). No cash collection required.
             </div>
           )}
-
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Delivery Notes / Weight Remarks (Optional)
-            </label>
-            <input
-              type="text"
-              value={deliveryNotes}
-              onChange={(e) => setDeliveryNotes(e.target.value)}
-              placeholder="e.g. Empty cylinder collected, weight verified 29.8 kg gross"
-              className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
 
           <Button
             variant="accent"

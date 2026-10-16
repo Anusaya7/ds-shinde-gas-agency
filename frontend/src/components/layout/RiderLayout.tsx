@@ -1,16 +1,65 @@
 import React from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Flame, Bike, PackageCheck, User, LogOut, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import {
+  applicationService,
+  RiderApplication,
+} from '../../services/application.service';
+import { RiderApplicationPage } from '../../pages/rider/RiderApplicationPage';
+import { Spinner } from '../ui/Spinner';
 
 export const RiderLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [application, setApplication] = useState<RiderApplication | null>(null);
+  const [loadingApplication, setLoadingApplication] = useState(true);
+  const [applicationError, setApplicationError] = useState('');
+
+  useEffect(() => {
+    applicationService
+      .getMine()
+      .then(setApplication)
+      .catch((error: any) => {
+        setApplicationError(
+          error.response?.data?.message || 'We could not load your rider application. Please retry.'
+        );
+      })
+      .finally(() => setLoadingApplication(false));
+  }, []);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
   };
+
+  if (loadingApplication) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Spinner size="lg" label="Checking your rider application…" />
+      </div>
+    );
+  }
+
+  if (applicationError) {
+    return (
+      <main className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p role="alert" className="text-sm text-red-700">{applicationError}</p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="mt-4 rounded-xl bg-[#10284A] px-4 py-2 text-sm font-bold text-white"
+        >
+          Retry
+        </button>
+      </main>
+    );
+  }
+
+  if (!application || application.status !== 'APPROVED') {
+    return <RiderApplicationPage />;
+  }
 
   const navItems = [
     { name: 'Dashboard', path: '/rider', icon: Bike, exact: true },
@@ -29,7 +78,7 @@ export const RiderLayout: React.FC = () => {
               <Bike className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="font-bold text-base tracking-tight block">D.S SHINDE GAS</span>
+              <span className="font-bold text-base tracking-tight block">DS Shinde Gas</span>
               <span className="text-xs text-accentLight font-semibold uppercase tracking-wider block">
                 Rider Portal
               </span>

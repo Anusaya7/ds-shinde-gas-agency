@@ -19,6 +19,7 @@ import { Order } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 export const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -31,56 +32,9 @@ export const CustomerDashboard: React.FC = () => {
       .then((res) => {
         setRecentOrders(res.orders);
       })
-      .catch(() => {
-        // Fallback demo mock orders if backend empty
-        setRecentOrders([
-          {
-            id: 'ord-101',
-            orderNumber: 'DS-2026-1049',
-            customerId: user?.id || 'demo-cust',
-            customerName: user?.name || 'Rahul Sharma',
-            customerPhone: user?.phone || '9876543210',
-            deliveryAddress: {
-              id: 'addr-1',
-              fullName: user?.name || 'Rahul Sharma',
-              phone: user?.phone || '9876543210',
-              addressLine1: 'Flat 402, Sai Residency',
-              area: 'Central City',
-              city: 'Pune',
-              state: 'Maharashtra',
-              pincode: '411001',
-            },
-            items: [
-              {
-                productId: 'prod-14kg',
-                productName: '14.2 kg Domestic LPG Cylinder',
-                size: '14.2 kg',
-                unitPrice: 920,
-                quantity: 1,
-                subtotal: 920,
-              },
-            ],
-            subtotal: 920,
-            deliveryCharges: 0,
-            taxes: 46,
-            paymentFee: 0,
-            totalAmount: 966,
-            paymentMethod: 'COD',
-            paymentStatus: 'PENDING',
-            orderStatus: 'OUT_FOR_DELIVERY',
-            statusHistory: [
-              { status: 'PLACED', timestamp: new Date(Date.now() - 7200000).toISOString() },
-              { status: 'ACCEPTED', timestamp: new Date(Date.now() - 5400000).toISOString() },
-              { status: 'ASSIGNED', timestamp: new Date(Date.now() - 3600000).toISOString() },
-              { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 1800000).toISOString() },
-            ],
-            riderName: 'Ramesh Patil',
-            riderPhone: '9975300929',
-            deliveryOtp: '849201',
-            createdAt: new Date(Date.now() - 7200000).toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
+      .catch((error: any) => {
+        setRecentOrders([]);
+        toast.error(error.response?.data?.message || 'Could not load your bookings.');
       })
       .finally(() => setLoading(false));
   }, [user]);
@@ -127,7 +81,9 @@ export const CustomerDashboard: React.FC = () => {
               </div>
               <div>
                 <span className="text-xs font-bold text-warm-dark uppercase tracking-wider block">
-                  Active Delivery in Progress
+                  {activeOrder.orderStatus === 'PLACED' || activeOrder.orderStatus === 'AWAITING_REVIEW'
+                    ? 'Booking Status'
+                    : 'Active Delivery'}
                 </span>
                 <h3 className="text-lg font-bold text-gray-900">
                   Order #{activeOrder.orderNumber}
@@ -138,7 +94,7 @@ export const CustomerDashboard: React.FC = () => {
               <Badge status={activeOrder.orderStatus} />
               <Link to={`/dashboard/orders/${activeOrder.id}/track`}>
                 <Button variant="primary" size="sm">
-                  Track Live
+                  View Status
                 </Button>
               </Link>
             </div>
@@ -152,15 +108,19 @@ export const CustomerDashboard: React.FC = () => {
               </span>
             </div>
             <div>
-              <span className="text-gray-400 block font-medium">Delivery OTP</span>
-              <span className="font-mono font-black text-primary text-base">
-                {activeOrder.deliveryOtp || '849201'}
+              <span className="text-gray-400 block font-medium">Booking duration</span>
+              <span className="font-bold text-gray-900">
+                {activeOrder.bookingDurationDays ? `${activeOrder.bookingDurationDays} days` : 'As confirmed by the agency'}
               </span>
             </div>
             <div>
               <span className="text-gray-400 block font-medium">Delivery Executive</span>
               <span className="font-bold text-gray-900">
-                {activeOrder.riderName ? `${activeOrder.riderName} (${activeOrder.riderPhone})` : 'Assigning rider...'}
+                {activeOrder.riderName
+                  ? `${activeOrder.riderName} (${activeOrder.riderPhone})`
+                  : activeOrder.orderStatus === 'PLACED' || activeOrder.orderStatus === 'AWAITING_REVIEW'
+                    ? 'Assigned after agency approval'
+                    : 'Rider assignment pending'}
               </span>
             </div>
           </div>

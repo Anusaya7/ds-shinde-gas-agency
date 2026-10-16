@@ -11,7 +11,7 @@ export const TermsPage: React.FC = () => {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">1. Booking Eligibility & Authentication</h2>
             <p>
-              By booking an LPG cylinder with D.S SHINDE GAS AGENCY, you confirm that the mobile phone number and delivery location provided belong to you and correspond to an authorized connection or approved Free Trade LPG (FTL) cylinder purchase.
+              By booking an LPG cylinder with DS Shinde Gas, you confirm that the mobile phone number and delivery location provided belong to you and correspond to an authorized connection or approved Free Trade LPG (FTL) cylinder purchase.
             </p>
           </section>
 
@@ -25,7 +25,7 @@ export const TermsPage: React.FC = () => {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">3. Weight Inspection & Seal Integrity</h2>
             <p>
-              Customers are urged to check the tare weight and inspect the safety seal in the presence of the delivery rider before sharing the 6-digit delivery OTP. Once the OTP is validated and the rider departs, deliveries are deemed complete and certified.
+              Customers should inspect the cylinder and safety seal before sharing the 6-digit delivery OTP. The order may be marked complete after the OTP is validated.
             </p>
           </section>
 
@@ -39,7 +39,7 @@ export const TermsPage: React.FC = () => {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">5. Safety Compliance</h2>
             <p>
-              Customers must adhere to statutory LPG safety standards, including vertical storage, approved rubber tubing, and avoiding unauthorized repairs. D.S SHINDE GAS AGENCY reserves the right to report illegal decanting or black-market reselling.
+              Customers must adhere to statutory LPG safety standards, including vertical storage, approved rubber tubing, and avoiding unauthorized repairs. DS Shinde Gas may report illegal decanting or black-market reselling.
             </p>
           </section>
         </div>

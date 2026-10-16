@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { Role } from '../constants/enums.js';
 import { AdminController } from '../controllers/admin.controller.js';
+import { ApplicationController } from '../controllers/application.controller.js';
 import { authenticateToken, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
@@ -20,14 +21,6 @@ const assignRiderSchema = z.object({
 
 const cancelOrderSchema = z.object({
   reason: z.string().min(3, 'Cancellation reason is required'),
-});
-
-const createRiderSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
-  phone: z.string().regex(/^[0-9]{10}$/, '10-digit phone number is required'),
-  email: z.string().email().optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  vehicleNumber: z.string().optional(),
 });
 
 const updateRiderSchema = z.object({
@@ -73,13 +66,27 @@ router.put('/orders/:id/cancel', validate(cancelOrderSchema), AdminController.ca
 
 // Riders
 router.get('/riders', AdminController.listRiders);
-router.post('/riders', validate(createRiderSchema), AdminController.createRider);
+router.get('/rider-applications', ApplicationController.listRiderApplications);
+router.get('/rider-applications/:id/documents/:document', ApplicationController.getRiderDocument);
+router.delete('/rider-applications/:id/documents', ApplicationController.deleteRiderDocuments);
+router.patch(
+  '/rider-applications/:id/review',
+  validate(
+    z.discriminatedUnion('status', [
+      z.object({ status: z.literal('APPROVED') }),
+      z.object({ status: z.literal('REJECTED'), reason: z.string().trim().min(3).max(500) }),
+    ])
+  ),
+  ApplicationController.reviewRiderApplication
+);
 router.put('/riders/:id', validate(updateRiderSchema), AdminController.updateRider);
 router.put('/riders/:id/toggle-status', AdminController.toggleRiderStatus);
 
 // Customers
 router.get('/customers', AdminController.listCustomers);
 router.get('/customers/:id', AdminController.getCustomerDetail);
+router.get('/customers/:customerId/udyam-certificate', ApplicationController.getCustomerUdyamDocument);
+router.delete('/customers/:customerId/documents', ApplicationController.deleteCustomerDocuments);
 
 // Products
 router.get('/products', AdminController.listProducts);

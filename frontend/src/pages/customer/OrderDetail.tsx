@@ -14,6 +14,7 @@ import {
   User,
 } from 'lucide-react';
 import { orderService } from '../../services/order.service';
+import { paymentService } from '../../services/payment.service';
 import { Order } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -32,62 +33,22 @@ export const OrderDetail: React.FC = () => {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
+  const [paying, setPaying] = useState(false);
+  const [updatingReminders, setUpdatingReminders] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
+    setLoadError('');
     orderService
       .getOrderById(id)
       .then((data) => setOrder(data))
-      .catch(() => {
-        // Fallback demo order
-        setOrder({
-          id: id,
-          orderNumber: id.startsWith('DS-') ? id : `DS-2026-1049`,
-          customerId: 'cust-1',
-          customerName: 'Rahul Sharma',
-          customerPhone: '9876543210',
-          deliveryAddress: {
-            id: 'addr-1',
-            fullName: 'Rahul Sharma',
-            phone: '9876543210',
-            addressLine1: 'Flat 402, Sai Residency',
-            area: 'Central City',
-            city: 'Pune',
-            state: 'Maharashtra',
-            pincode: '411001',
-            landmark: 'Near Old Bus Stand',
-          },
-          items: [
-            {
-              productId: 'prod-14kg',
-              productName: '14.2 kg Domestic LPG Cylinder',
-              size: '14.2 kg',
-              unitPrice: 920,
-              quantity: 1,
-              subtotal: 920,
-            },
-          ],
-          subtotal: 920,
-          deliveryCharges: 0,
-          taxes: 46,
-          paymentFee: 0,
-          totalAmount: 966,
-          paymentMethod: 'COD',
-          paymentStatus: 'PENDING',
-          orderStatus: 'OUT_FOR_DELIVERY',
-          statusHistory: [
-            { status: 'PLACED', timestamp: new Date(Date.now() - 7200000).toISOString() },
-            { status: 'ACCEPTED', timestamp: new Date(Date.now() - 5400000).toISOString() },
-            { status: 'ASSIGNED', timestamp: new Date(Date.now() - 3600000).toISOString() },
-            { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 1800000).toISOString() },
-          ],
-          riderName: 'Ramesh Patil',
-          riderPhone: '9975300929',
-          deliveryOtp: '849201',
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+      .catch((error: any) => {
+        setOrder(null);
+        const message = error.response?.data?.message || 'Could not load this booking.';
+        setLoadError(message);
+        toast.error(message);
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -100,15 +61,90 @@ export const OrderDetail: React.FC = () => {
     setCancelling(true);
     try {
       await orderService.cancelOrder(order.id, cancelReason);
-      setOrder({ ...order, orderStatus: 'CANCELLED', cancellationReason: cancelReason });
+      setOrder(await orderService.getOrderById(order.id));
       setCancelModalOpen(false);
       toast.success('Order cancelled successfully');
-    } catch {
-      setOrder({ ...order, orderStatus: 'CANCELLED', cancellationReason: cancelReason });
-      setCancelModalOpen(false);
-      toast.success('Order marked cancelled');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not cancel this booking.');
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (!order || paying) return;
+    setPaying(true);
+    try {
+      const scriptLoaded = await paymentService.loadRazorpayScript();
+      if (!scriptLoaded || !window.Razorpay) {
+        throw new Error('Secure checkout could not be loaded. Please try again later.');
+      }
+      const gatewayOrder = await paymentService.createRazorpayOrder(order.id);
+      const checkout = new window.Razorpay({
+        key: gatewayOrder.keyId,
+        amount: gatewayOrder.amount,
+        currency: gatewayOrder.currency,
+        name: 'DS Shinde Gas',
+        description: `Cylinder booking ${order.orderNumber}`,
+        order_id: gatewayOrder.razorpayOrderId,
+        prefill: { name: order.customerName, contact: order.customerPhone },
+        theme: { color: '#10284A' },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            await paymentService.verifyPayment({
+              orderId: order.id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            setOrder((current) => current ? { ...current, paymentStatus: 'PAID' } : current);
+            toast.success('Payment verified. Your receipt is available to print.');
+          } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Payment confirmation is pending. Check the booking status before retrying.');
+          } finally {
+            setPaying(false);
+          }
+        },
+        modal: {
+          ondismiss: () => setPaying(false),
+        },
+      });
+      checkout.on('payment.failed', async (response: any) => {
+        try {
+          await paymentService.markPaymentFailed(
+            order.id,
+            response.error?.metadata?.order_id || gatewayOrder.razorpayOrderId
+          );
+          setOrder((current) => current ? { ...current, paymentStatus: 'FAILED' } : current);
+          toast.error('Payment failed. You can retry from this booking after checking its status.');
+        } catch (error: any) {
+          toast.error(error.response?.data?.message || 'Could not confirm the payment result. Check the booking status.');
+        } finally {
+          setPaying(false);
+        }
+      });
+      checkout.open();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Could not start secure payment.');
+      setPaying(false);
+    }
+  };
+
+  const toggleReminders = async () => {
+    if (!order || updatingReminders) return;
+    setUpdatingReminders(true);
+    try {
+      const updated = await orderService.updateReminderPreference(order.id, !order.remindersEnabled);
+      setOrder(updated);
+      toast.success(updated.remindersEnabled ? 'In-app reminders enabled.' : 'In-app reminders turned off.');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update reminder preferences.');
+    } finally {
+      setUpdatingReminders(false);
     }
   };
 
@@ -123,8 +159,10 @@ export const OrderDetail: React.FC = () => {
   if (!order) {
     return (
       <div className="bg-white rounded-2xl p-12 text-center border border-gray-200">
-        <h3 className="text-base font-bold text-gray-800">Order Not Found</h3>
-        <p className="text-xs text-gray-500 mt-1 mb-4">We could not locate the requested order.</p>
+        <h3 className="text-base font-bold text-gray-800">Booking unavailable</h3>
+        <p role="alert" className="text-xs text-red-700 mt-1 mb-4">
+          {loadError || 'We could not locate the requested booking.'}
+        </p>
         <Link to="/dashboard/orders">
           <Button variant="primary" size="sm">
             Back to Orders
@@ -134,7 +172,7 @@ export const OrderDetail: React.FC = () => {
     );
   }
 
-  const canCancel = order.orderStatus === 'PLACED' || order.orderStatus === 'ACCEPTED';
+  const canCancel = order.orderStatus === 'PLACED' || order.orderStatus === 'AWAITING_REVIEW' || order.orderStatus === 'ACCEPTED';
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -164,7 +202,7 @@ export const OrderDetail: React.FC = () => {
           {order.orderStatus !== 'DELIVERED' && order.orderStatus !== 'CANCELLED' && (
             <Link to={`/dashboard/orders/${order.id}/track`}>
               <Button variant="primary" size="sm" leftIcon={<Truck className="w-4 h-4" />}>
-                Track Real-Time
+                View Delivery Status
               </Button>
             </Link>
           )}
@@ -292,6 +330,22 @@ export const OrderDetail: React.FC = () => {
                   Size: {item.size} • Rate: ₹{item.unitPrice} each × {item.quantity}
                 </p>
               </div>
+
+              {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'REJECTED' && (
+                <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-bold text-slate-900">In-app refill reminders</p>
+                    <p className="text-sm text-slate-600">
+                      {order.remindersEnabled
+                        ? 'You have opted in to a reminder every two days during this booking period.'
+                        : 'Reminders are off. Enable them if you would like in-app notifications.'}
+                    </p>
+                  </div>
+                  <Button variant="outline" isLoading={updatingReminders} onClick={toggleReminders}>
+                    {order.remindersEnabled ? 'Turn reminders off' : 'Turn reminders on'}
+                  </Button>
+                </div>
+              )}
               <span className="font-black text-gray-900">₹{item.subtotal}</span>
             </div>
           ))}
@@ -303,13 +357,21 @@ export const OrderDetail: React.FC = () => {
             <span className="font-semibold text-gray-900">₹{order.subtotal}</span>
           </div>
           <div className="flex justify-between text-gray-600">
-            <span>Delivery Charges</span>
-            <span className="font-semibold text-emerald-600">FREE</span>
+            <span>Delivery charges</span>
+            <span className="font-semibold text-gray-900">₹{order.deliveryCharges}</span>
           </div>
-          <div className="flex justify-between text-gray-600">
-            <span>Applicable Taxes (5%)</span>
-            <span className="font-semibold text-gray-900">₹{order.taxes}</span>
-          </div>
+          {order.taxes > 0 && (
+            <div className="flex justify-between text-gray-600">
+              <span>Applicable configured taxes</span>
+              <span className="font-semibold text-gray-900">₹{order.taxes}</span>
+            </div>
+          )}
+          {(order.welcomeOfferDiscount || 0) > 0 && (
+            <div className="flex justify-between text-emerald-700">
+              <span>New customer welcome offer</span>
+              <span className="font-semibold">−₹{order.welcomeOfferDiscount}</span>
+            </div>
+          )}
           {order.paymentFee > 0 && (
             <div className="flex justify-between text-gray-600">
               <span>Card Processing Fee</span>
@@ -328,6 +390,24 @@ export const OrderDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {['ACCEPTED', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'ARRIVED', 'OTP_PENDING'].includes(order.orderStatus) &&
+        order.paymentMethod !== 'COD' &&
+        order.paymentStatus !== 'PAID' && (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-bold text-amber-950">Booking approved — payment pending</h3>
+                <p className="mt-1 text-sm text-amber-900">
+                  Pay ₹{order.totalAmount} using secure Razorpay checkout. Payment details are not stored by DS Shinde Gas.
+                </p>
+              </div>
+              <Button variant="primary" onClick={handlePayment} isLoading={paying} leftIcon={<CreditCard className="h-4 w-4" />}>
+                Pay ₹{order.totalAmount}
+              </Button>
+            </div>
+          </div>
+        )}
 
       {/* Cancel Order Modal */}
       <Modal

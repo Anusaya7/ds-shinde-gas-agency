@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 export const CustomerManagement: React.FC = () => {
   const [customers, setCustomers] = useState<User[]>([]);
@@ -23,35 +24,9 @@ export const CustomerManagement: React.FC = () => {
     adminService
       .getCustomers()
       .then((res) => setCustomers(res.customers))
-      .catch(() => {
-        setCustomers([
-          {
-            id: 'cust-1',
-            name: 'Anil Deshmukh',
-            phone: '9822012345',
-            email: 'anil.deshmukh@gmail.com',
-            role: 'CUSTOMER',
-            isActive: true,
-            createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
-          },
-          {
-            id: 'cust-2',
-            name: 'Green Spice Restaurant',
-            phone: '9423098765',
-            email: 'greenspice@hotel.com',
-            role: 'CUSTOMER',
-            isActive: true,
-            createdAt: new Date(Date.now() - 86400000 * 60).toISOString(),
-          },
-          {
-            id: 'cust-3',
-            name: 'Kavita Joshi',
-            phone: '9890123456',
-            role: 'CUSTOMER',
-            isActive: true,
-            createdAt: new Date(Date.now() - 86400000 * 15).toISOString(),
-          },
-        ]);
+      .catch((error: any) => {
+        setCustomers([]);
+        toast.error(error.response?.data?.message || 'Could not load customers.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -65,8 +40,9 @@ export const CustomerManagement: React.FC = () => {
       .then((data) => {
         setCustomerOrders(data.orders || []);
       })
-      .catch(() => {
+      .catch((error: any) => {
         setCustomerOrders([]);
+        toast.error(error.response?.data?.message || 'Could not load this customer’s bookings.');
       })
       .finally(() => setLoadingDetails(false));
   };

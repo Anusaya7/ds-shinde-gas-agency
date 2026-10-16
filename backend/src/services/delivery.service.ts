@@ -1,4 +1,4 @@
-import { OrderStatus, NotificationType } from '../constants/enums.js';
+import { OrderStatus, PaymentStatus, NotificationType } from '../constants/enums.js';
 import prisma from '../config/database.js';
 import config from '../config/index.js';
 import { generateOtp, hashOtp, verifyOtpHash } from '../utils/otp.js';
@@ -242,7 +242,7 @@ export class DeliveryService {
       data: { status: OrderStatus.OTP_PENDING },
     });
 
-    const message = `Your D.S SHINDE GAS delivery confirmation OTP for order ${order.orderNumber} is: ${plainOtp}. Share this ONLY with the delivery partner upon cylinder inspection.`;
+    const message = `Your DS Shinde Gas delivery confirmation OTP for order ${order.orderNumber} is: ${plainOtp}. Share this ONLY with the delivery partner upon cylinder inspection.`;
 
     // Send SMS to delivery phone
     await sendSms({
@@ -257,7 +257,7 @@ export class DeliveryService {
         subject: `Delivery OTP for Order ${order.orderNumber}`,
         text: message,
         html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2 style="color: #ea580c;">D.S SHINDE GAS AGENCY</h2>
+          <h2 style="color: #ea580c;">DS Shinde Gas</h2>
           <p>Your delivery partner is at your doorstep. Please share this Delivery Confirmation OTP after inspecting your cylinder:</p>
           <h1 style="letter-spacing: 6px; color: #1e293b; background: #fef3c7; padding: 12px 24px; display: inline-block;">${plainOtp}</h1>
           <p>Order Number: <strong>${order.orderNumber}</strong></p>
@@ -337,13 +337,26 @@ export class DeliveryService {
         'Delivery OTP must be verified before marking delivery as completed.'
       );
     }
+    if (order.paymentStatus !== PaymentStatus.PAID) {
+      throw new BadRequestError('Payment must be recorded before completing this delivery.');
+    }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      const deliveredAt = new Date();
+      const remindersEndAt = new Date(deliveredAt);
+      remindersEndAt.setDate(remindersEndAt.getDate() + order.bookingDurationDays);
+      const nextReminderAt = new Date(deliveredAt);
+      nextReminderAt.setDate(nextReminderAt.getDate() + 2);
       const ord = await tx.order.update({
         where: { id: orderId },
         data: {
           status: OrderStatus.DELIVERED,
-          deliveredAt: new Date(),
+          deliveredAt,
+          remindersEndAt,
+          nextReminderAt:
+            order.remindersEnabled && nextReminderAt < remindersEndAt
+              ? nextReminderAt
+              : null,
         },
       });
 
@@ -368,7 +381,7 @@ export class DeliveryService {
     await NotificationService.createNotification({
       userId: order.customerId,
       title: 'Order Delivered!',
-      message: `Your LPG cylinder order ${order.orderNumber} has been delivered successfully. Thank you for choosing D.S SHINDE GAS AGENCY!`,
+      message: `Your LPG cylinder order ${order.orderNumber} has been delivered successfully. Thank you for choosing DS Shinde Gas!`,
       type: NotificationType.DELIVERY,
       orderId,
     });

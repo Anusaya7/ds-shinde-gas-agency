@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, CheckCheck, Clock, AlertTriangle, Package, Info } from 'lucide-react';
-import { notificationService, fallbackNotifications } from '../../services/notification.service';
+import { notificationService } from '../../services/notification.service';
 import { AppNotification } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
@@ -10,34 +10,47 @@ import toast from 'react-hot-toast';
 export const AdminNotifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setLoading(true);
     notificationService
       .getNotifications()
       .then((data) => setNotifications(data))
-      .catch(() => setNotifications(fallbackNotifications))
+      .catch((requestError: any) => {
+        setError(requestError.response?.data?.message || 'Could not load notifications.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const handleMarkAsRead = async (id: string) => {
-    await notificationService.markAsRead(id);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+    try {
+      await notificationService.markAsRead(id);
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      );
+    } catch (requestError: any) {
+      toast.error(requestError.response?.data?.message || 'Could not mark notification as read.');
+    }
   };
 
   const handleMarkAllRead = async () => {
-    await notificationService.markAllAsRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    toast.success('All notifications marked as read');
+    try {
+      await notificationService.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      toast.success('All notifications marked as read');
+    } catch (requestError: any) {
+      toast.error(requestError.response?.data?.message || 'Could not update notifications.');
+    }
   };
 
   const getIcon = (type: string) => {
     switch (type) {
       case 'ORDER':
+      case 'ORDER_UPDATE':
         return <Package className="w-5 h-5 text-primary" />;
       case 'ALERT':
+      case 'DELIVERY':
         return <AlertTriangle className="w-5 h-5 text-accent" />;
       default:
         return <Info className="w-5 h-5 text-blue-500" />;
@@ -62,6 +75,8 @@ export const AdminNotifications: React.FC = () => {
           Mark All as Read
         </Button>
       </div>
+
+      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
 
       {loading ? (
         <div className="py-20">

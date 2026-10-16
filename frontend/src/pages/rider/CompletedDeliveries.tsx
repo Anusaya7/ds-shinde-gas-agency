@@ -4,6 +4,7 @@ import { riderService } from '../../services/rider.service';
 import { Order } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
+import toast from 'react-hot-toast';
 
 export const CompletedDeliveries: React.FC = () => {
   const [completedOrders, setCompletedOrders] = useState<Order[]>([]);
@@ -14,87 +15,9 @@ export const CompletedDeliveries: React.FC = () => {
     riderService
       .getCompletedDeliveries()
       .then((data) => setCompletedOrders(data))
-      .catch(() => {
-        setCompletedOrders([
-          {
-            id: 'ord-1042',
-            orderNumber: 'DS-2026-1042',
-            customerId: 'cust-5',
-            customerName: 'Vinayak Shinde',
-            customerPhone: '9822334455',
-            deliveryAddress: {
-              id: 'addr-5',
-              fullName: 'Vinayak Shinde',
-              phone: '9822334455',
-              addressLine1: 'Row House 4, Green Meadows',
-              area: 'East Suburb',
-              city: 'Pune',
-              state: 'Maharashtra',
-              pincode: '411014',
-            },
-            items: [
-              {
-                productId: 'prod-14kg',
-                productName: '14.2 kg Domestic Cylinder',
-                size: '14.2 kg',
-                unitPrice: 920,
-                quantity: 1,
-                subtotal: 920,
-              },
-            ],
-            subtotal: 920,
-            deliveryCharges: 0,
-            taxes: 46,
-            paymentFee: 0,
-            totalAmount: 966,
-            paymentMethod: 'COD',
-            paymentStatus: 'PAID',
-            orderStatus: 'DELIVERED',
-            deliveredAt: new Date(Date.now() - 7200000).toISOString(),
-            statusHistory: [],
-            createdAt: new Date(Date.now() - 14400000).toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: 'ord-1039',
-            orderNumber: 'DS-2026-1039',
-            customerId: 'cust-6',
-            customerName: 'Hotel Royal Treat',
-            customerPhone: '9422001122',
-            deliveryAddress: {
-              id: 'addr-6',
-              fullName: 'Hotel Royal Treat',
-              phone: '9422001122',
-              addressLine1: 'Plot 18, Station Road',
-              area: 'Central City',
-              city: 'Pune',
-              state: 'Maharashtra',
-              pincode: '411001',
-            },
-            items: [
-              {
-                productId: 'prod-19kg',
-                productName: '19 kg Commercial Cylinder',
-                size: '19 kg',
-                unitPrice: 1850,
-                quantity: 2,
-                subtotal: 3700,
-              },
-            ],
-            subtotal: 3700,
-            deliveryCharges: 0,
-            taxes: 185,
-            paymentFee: 0,
-            totalAmount: 3885,
-            paymentMethod: 'ONLINE',
-            paymentStatus: 'PAID',
-            orderStatus: 'DELIVERED',
-            deliveredAt: new Date(Date.now() - 18000000).toISOString(),
-            statusHistory: [],
-            createdAt: new Date(Date.now() - 25000000).toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-        ]);
+      .catch((error: any) => {
+        setCompletedOrders([]);
+        toast.error(error.response?.data?.message || 'Could not load completed deliveries.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -156,7 +79,7 @@ export const CompletedDeliveries: React.FC = () => {
               <div className="text-right">
                 <span className="text-base font-black text-gray-900">₹{order.totalAmount}</span>
                 <span className="block text-[10px] text-gray-400 uppercase font-semibold">
-                  {order.paymentMethod} (PAID)
+                  {order.paymentMethod} ({order.paymentStatus})
                 </span>
               </div>
             </div>

@@ -34,6 +34,7 @@ export interface Product {
   size: string; // e.g. "14.2 kg", "19 kg", "5 kg"
   description: string;
   price: number;
+  deliveryCharge?: number;
   inStock: boolean;
   stockQuantity?: number;
   imageUrl?: string;
@@ -89,6 +90,7 @@ export interface Order {
   totalAmount: number;
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
+  welcomeOfferDiscount?: number;
   orderStatus: OrderStatus;
   statusHistory: StatusHistoryItem[];
   riderId?: string;
@@ -99,6 +101,9 @@ export interface Order {
   cancellationReason?: string;
   rejectionReason?: string;
   notes?: string;
+  bookingDurationDays?: number;
+  remindersEnabled?: boolean;
+  estimatedDelivery?: string;
   deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -149,9 +154,8 @@ export interface AgencySettings {
   deliveryAreas: string[];
   deliveryCharges: number;
   taxPercentage: number;
-  onlinePaymentFee: number;
-  cardPaymentFee: number;
-  codPaymentFee: number;
+  welcomeOfferEnabled: boolean;
+  welcomeOfferAmount: number;
   isOrderingEnabled: boolean;
   businessHours: string;
   // CMS & Public Site Fields
@@ -186,7 +190,7 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'ORDER' | 'SYSTEM' | 'ALERT';
+  type: 'ORDER' | 'ORDER_UPDATE' | 'DELIVERY' | 'PAYMENT' | 'SYSTEM' | 'ALERT';
   isRead: boolean;
   linkUrl?: string;
   createdAt: string;

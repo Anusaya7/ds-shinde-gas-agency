@@ -34,6 +34,8 @@ export const AdminLayout: React.FC = () => {
     { name: 'Website CMS', path: '/admin/cms', icon: Globe },
     { name: 'Customer Inquiries', path: '/admin/enquiries', icon: Mail },
     { name: 'Orders Dispatch', path: '/admin/orders', icon: Package },
+    { name: 'Customer Applications', path: '/admin/customer-applications', icon: Users },
+    { name: 'Rider Applications', path: '/admin/rider-applications', icon: Bike },
     { name: 'Delivery Riders', path: '/admin/riders', icon: Bike },
     { name: 'Customer Directory', path: '/admin/customers', icon: Users },
     { name: 'Products & Pricing', path: '/admin/products', icon: Layers },
@@ -50,7 +52,7 @@ export const AdminLayout: React.FC = () => {
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <Flame className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-sm tracking-tight">DS SHINDE • ADMIN</span>
+          <span className="font-bold text-sm tracking-tight">DS GAS • ADMIN</span>
         </div>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -82,7 +84,7 @@ export const AdminLayout: React.FC = () => {
                 <Flame className="w-5 h-5 text-white" />
               </div>
               <div>
-                <span className="font-bold text-sm tracking-tight block">D.S SHINDE GAS</span>
+                <span className="font-bold text-sm tracking-tight block">DS Shinde Gas</span>
                 <span className="text-[10px] text-accentLight uppercase tracking-wider font-extrabold block">
                   Admin Console
                 </span>

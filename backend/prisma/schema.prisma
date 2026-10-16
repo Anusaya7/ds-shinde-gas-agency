@@ -12,7 +12,7 @@ model User {
   id           String   @id @default(uuid())
   email        String?  @unique
   phone        String?  @unique
-  passwordHash String
+  passwordHash String?
   role         String   @default("CUSTOMER")
   isActive     Boolean  @default(true)
   isVerified   Boolean  @default(false)
@@ -22,6 +22,7 @@ model User {
 
   customerProfile     CustomerProfile?
   riderProfile        Rider?
+  riderApplication    RiderApplication?
   orders              Order[]              @relation("CustomerOrders")
   orderStatusChanges  OrderStatusHistory[] @relation("StatusChanges")
   collectedPayments   Payment[]            @relation("CollectedPayments")
@@ -38,9 +39,42 @@ model CustomerProfile {
   userId         String         @unique
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   alternatePhone String?
+  fsiNumber      String?
+  udyamDocument  Bytes?
+  udyamMimeType  String?
+  udyamConsentAt DateTime?
+  welcomeOfferUsedAt DateTime?
   addresses      SavedAddress[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
+}
+
+model RiderApplication {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName           String
+  phone              String
+  email              String?
+  address            String
+  vehicleNumber      String
+  rcDocument         Bytes?
+  rcMimeType         String
+  frontPhoto         Bytes?
+  frontPhotoMimeType String
+  backPhoto          Bytes?
+  backPhotoMimeType  String
+  selfie             Bytes?
+  selfieMimeType     String
+  status             String   @default("PENDING")
+  consentAt          DateTime?
+  rejectionReason    String?
+  reviewedAt         DateTime?
+  reviewedById       String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([status, createdAt])
 }
 
 model SavedAddress {
@@ -126,6 +160,12 @@ model Order {
   deliveredAt        DateTime?
   estimatedDelivery  DateTime?
   notes              String?
+  bookingDurationDays Int                 @default(1)
+  remindersEnabled    Boolean             @default(false)
+  nextReminderAt      DateTime?
+  remindersEndAt      DateTime?
+  fsiNumber           String?
+  welcomeOfferDiscount Decimal              @default(0)
   items              OrderItem[]
   statusHistory      OrderStatusHistory[]
   payments           Payment[]
@@ -269,4 +309,3 @@ model ContactEnquiry {
   @@index([status])
   @@index([createdAt])
 }
-

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Bike, Plus, Edit2, Phone, CheckCircle, XCircle, Search, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Bike, Edit2, Phone, CheckCircle, XCircle, Search, ToggleLeft, ToggleRight } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { Rider } from '../../types';
 import { Button } from '../../components/ui/Button';
@@ -21,7 +22,6 @@ export const RiderManagement: React.FC = () => {
     phone: '',
     email: '',
     vehicleNumber: '',
-    password: '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -30,38 +30,8 @@ export const RiderManagement: React.FC = () => {
     adminService
       .getRiders()
       .then((data) => setRiders(data))
-      .catch(() => {
-        setRiders([
-          {
-            id: 'rider-1',
-            name: 'Ramesh Patil',
-            phone: '9975300929',
-            email: 'ramesh@dsshindegas.com',
-            vehicleNumber: 'MH-12-AB-1234',
-            isActive: true,
-            assignedOrdersCount: 2,
-            completedOrdersCount: 142,
-          },
-          {
-            id: 'rider-2',
-            name: 'Suresh More',
-            phone: '9822998877',
-            email: 'suresh@dsshindegas.com',
-            vehicleNumber: 'MH-12-CD-5678',
-            isActive: true,
-            assignedOrdersCount: 1,
-            completedOrdersCount: 98,
-          },
-          {
-            id: 'rider-3',
-            name: 'Vikas Jadhav',
-            phone: '9765432100',
-            vehicleNumber: 'MH-12-EF-9012',
-            isActive: false,
-            assignedOrdersCount: 0,
-            completedOrdersCount: 65,
-          },
-        ]);
+      .catch((error: any) => {
+        toast.error(error.response?.data?.message || 'Could not load the rider list.');
       })
       .finally(() => setLoading(false));
   };
@@ -70,18 +40,6 @@ export const RiderManagement: React.FC = () => {
     loadRiders();
   }, []);
 
-  const openAddModal = () => {
-    setEditingRider(null);
-    setFormData({
-      name: '',
-      phone: '',
-      email: '',
-      vehicleNumber: '',
-      password: '',
-    });
-    setIsModalOpen(true);
-  };
-
   const openEditModal = (rider: Rider) => {
     setEditingRider(rider);
     setFormData({
@@ -89,66 +47,38 @@ export const RiderManagement: React.FC = () => {
       phone: rider.phone,
       email: rider.email || '',
       vehicleNumber: rider.vehicleNumber || '',
-      password: '',
     });
     setIsModalOpen(true);
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.phone) {
-      toast.error('Name and phone are required');
+    if (!editingRider || !formData.name || !formData.phone) {
+      toast.error('Select an approved rider to update.');
       return;
     }
     setSaving(true);
     try {
-      if (editingRider) {
-        const updated = await adminService.updateRider(editingRider.id, formData);
-        setRiders((prev) => prev.map((r) => (r.id === editingRider.id ? { ...r, ...formData } : r)));
-        toast.success('Rider details updated');
-      } else {
-        const created = await adminService.addRider(formData);
-        setRiders((prev) => [...prev, created]);
-        toast.success('New rider onboarded successfully');
-      }
+      const updated = await adminService.updateRider(editingRider.id, formData);
+      setRiders((prev) => prev.map((r) => (r.id === editingRider.id ? { ...r, ...updated } : r)));
+      toast.success('Rider details updated');
       setIsModalOpen(false);
-    } catch {
-      if (editingRider) {
-        setRiders((prev) => prev.map((r) => (r.id === editingRider.id ? { ...r, ...formData } : r)));
-        toast.success('Rider updated');
-      } else {
-        const mock: Rider = {
-          id: `rider-${Date.now()}`,
-          name: formData.name,
-          phone: formData.phone,
-          email: formData.email,
-          vehicleNumber: formData.vehicleNumber,
-          isActive: true,
-          assignedOrdersCount: 0,
-          completedOrdersCount: 0,
-        };
-        setRiders((prev) => [...prev, mock]);
-        toast.success('Rider onboarded');
-      }
-      setIsModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not save rider details.');
     } finally {
       setSaving(false);
     }
   };
 
   const toggleStatus = async (rider: Rider) => {
-    const nextStatus = !rider.isActive;
     try {
-      await adminService.toggleRiderStatus(rider.id, nextStatus);
+      const updated = await adminService.toggleRiderStatus(rider.id);
       setRiders((prev) =>
-        prev.map((r) => (r.id === rider.id ? { ...r, isActive: nextStatus } : r))
+        prev.map((r) => (r.id === rider.id ? { ...r, isActive: updated.isActive } : r))
       );
-      toast.success(`Rider marked ${nextStatus ? 'Active' : 'Inactive'}`);
-    } catch {
-      setRiders((prev) =>
-        prev.map((r) => (r.id === rider.id ? { ...r, isActive: nextStatus } : r))
-      );
-      toast.success(`Rider status changed`);
+      toast.success(`Rider marked ${updated.isActive ? 'Active' : 'Inactive'}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update rider status.');
     }
   };
 
@@ -168,9 +98,9 @@ export const RiderManagement: React.FC = () => {
             Manage delivery executives, assign vehicles, and monitor completed cylinder drop-offs
           </p>
         </div>
-        <Button variant="primary" size="sm" onClick={openAddModal} leftIcon={<Plus className="w-4 h-4" />}>
-          Add New Delivery Rider
-        </Button>
+        <Link to="/admin/rider-applications" className="inline-flex min-h-10 items-center rounded-xl bg-primary px-4 text-sm font-bold text-white">
+          Review Rider Applications
+        </Link>
       </div>
 
       {/* Search Bar */}
@@ -328,23 +258,12 @@ export const RiderManagement: React.FC = () => {
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
           />
 
-          {!editingRider && (
-            <Input
-              label="Temporary Password"
-              type="password"
-              placeholder="At least 6 characters"
-              required
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-            />
-          )}
-
           <div className="pt-2 flex justify-end gap-2 border-t border-gray-100">
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" variant="primary" isLoading={saving}>
-              {editingRider ? 'Update Rider' : 'Save & Onboard'}
+              Update Rider
             </Button>
           </div>
         </form>

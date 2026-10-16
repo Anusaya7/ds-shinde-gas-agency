@@ -41,7 +41,7 @@ export const DashboardLayout: React.FC = () => {
           <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center">
             <Flame className="w-5 h-5 text-white" />
           </div>
-          <span className="font-bold text-base tracking-tight">D.S SHINDE GAS</span>
+          <span className="font-bold text-base tracking-tight">DS Shinde Gas</span>
         </Link>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -73,7 +73,7 @@ export const DashboardLayout: React.FC = () => {
                 <Flame className="w-6 h-6 text-white" />
               </div>
               <div>
-                <span className="font-extrabold text-base tracking-tight block">D.S SHINDE</span>
+                <span className="font-extrabold text-base tracking-tight block">DS Shinde Gas</span>
                 <span className="text-xs text-blue-300 uppercase tracking-wider block">Customer Portal</span>
               </div>
             </Link>

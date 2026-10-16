@@ -6,6 +6,9 @@ export interface LoginPayload {
   password?: string;
   otp?: string;
   type: 'PASSWORD' | 'OTP';
+  role?: 'CUSTOMER' | 'RIDER';
+  purpose?: 'LOGIN' | 'REGISTER';
+  name?: string;
 }
 
 export interface RegisterPayload {
@@ -36,13 +39,33 @@ export const authService = {
     return { user: raw.user, token, accessToken: token };
   },
 
-  async sendOtp(phone: string): Promise<{ success: boolean; message: string; otp?: string }> {
-    const res = await api.post<{ success: boolean; message: string; otp?: string }>('/auth/send-otp', { phone });
-    return res.data;
+  async sendOtp(
+    identifier: string,
+    role: 'CUSTOMER' | 'RIDER',
+    purpose: 'LOGIN' | 'REGISTER' = 'LOGIN'
+  ): Promise<{ message: string }> {
+    const res = await api.post<{ success: boolean; data: { message: string } }>('/auth/send-otp', {
+      identifier,
+      purpose,
+      role,
+    });
+    return res.data.data;
   },
 
-  async verifyOtp(phone: string, otp: string): Promise<AuthResponse> {
-    const res = await api.post<{ success: boolean; data: any }>('/auth/verify-otp', { phone, otp });
+  async verifyOtp(
+    identifier: string,
+    otp: string,
+    role: 'CUSTOMER' | 'RIDER',
+    purpose: 'LOGIN' | 'REGISTER' = 'LOGIN',
+    name?: string
+  ): Promise<AuthResponse> {
+    const res = await api.post<{ success: boolean; data: any }>('/auth/verify-otp', {
+      identifier,
+      otp,
+      purpose,
+      role,
+      name,
+    });
     const raw = res.data.data;
     const token = raw.token || raw.accessToken || '';
     return { user: raw.user, token, accessToken: token };

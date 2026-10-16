@@ -6,20 +6,21 @@ import {
   Flame,
   CreditCard,
   KeyRound,
-  Scale,
   ArrowRight,
   Phone,
   CheckCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export const HowToOrderPage: React.FC = () => {
+  const { settings } = useSettings();
   const steps = [
     {
       step: '01',
       title: 'Sign In or Create Your Account',
       description:
-        'Log in securely using your mobile number with a one-time OTP or password. New customers can register in under 30 seconds.',
+        'Sign in or create an account securely using a one-time code sent to your mobile number or email. No password is needed.',
       icon: UserCheck,
       color: 'bg-blue-100 text-primary',
     },
@@ -35,7 +36,7 @@ export const HowToOrderPage: React.FC = () => {
       step: '03',
       title: 'Select Cylinder Capacity & Quantity',
       description:
-        'Choose from our complete 7-tier catalog: 5 KG, 13 KG, 15 KG, 19.2 KG, 33 KG, 50 KG, or 425 KG industrial vessel according to your needs.',
+        'Choose an available cylinder size from the current catalog. Each option shows its capacity, price, and availability.',
       icon: Flame,
       color: 'bg-red-100 text-[#F59E0B]',
     },
@@ -43,15 +44,15 @@ export const HowToOrderPage: React.FC = () => {
       step: '04',
       title: 'Choose Payment Option',
       description:
-        'Pay instantly online via Razorpay (UPI, Google Pay, PhonePe, Debit/Credit Cards) or select Cash on Delivery (COD).',
+        'Select online payment or Cash on Delivery. Online payment becomes available after the agency approves your booking.',
       icon: CreditCard,
       color: 'bg-amber-100 text-warm-dark',
     },
     {
       step: '05',
-      title: 'Track Rider & Handover OTP',
+      title: 'Track Booking & Confirm Handover',
       description:
-        'Follow your assigned delivery rider in real time. Once the rider arrives at your doorstep, verify the cylinder weight on their digital scale and share the 6-digit delivery OTP to complete handover.',
+        'Follow your booking status in your dashboard. At delivery, inspect the cylinder and share the 6-digit delivery OTP only after handover.',
       icon: KeyRound,
       color: 'bg-purple-100 text-purple-700',
     },
@@ -69,7 +70,7 @@ export const HowToOrderPage: React.FC = () => {
             How to Order Your LPG Cylinder
           </h1>
           <p className="mt-3 text-base sm:text-lg text-gray-600">
-            A quick, transparent, and completely digital guide to having certified cooking gas delivered safely to your premises.
+            A clear guide to booking LPG cylinders, tracking order status, and arranging a safe handover.
           </p>
         </div>
 
@@ -106,15 +107,15 @@ export const HowToOrderPage: React.FC = () => {
               </span>
               <h3 className="text-xl font-bold mt-2">Book by Phone Call</h3>
               <p className="text-xs text-blue-100 mt-2 leading-relaxed">
-                Our support desk is operational daily from 8:00 AM to 8:00 PM for phone booking and inquiry.
+                Contact the agency during the listed support hours for phone booking and assistance.
               </p>
             </div>
             <div className="mt-6 pt-4 border-t border-blue-800">
               <a
-                href="tel:9511760208"
+                href={`tel:${settings.primaryPhone}`}
                 className="inline-flex items-center gap-2 font-bold text-accentLight hover:underline text-sm"
               >
-                <Phone className="w-4 h-4" /> Call 9511760208
+                <Phone className="w-4 h-4" /> Call {settings.primaryPhone}
               </a>
             </div>
           </div>
@@ -130,7 +131,7 @@ export const HowToOrderPage: React.FC = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <span>
-                  <strong>Check the Tare Weight:</strong> Verify net weight stamped on cylinder collar minus gross weight shown on rider scale.
+                  <strong>Check the cylinder weight:</strong> Ask the delivery partner to verify the weight with you at handover.
                 </span>
               </div>
               <div className="flex items-start gap-3">

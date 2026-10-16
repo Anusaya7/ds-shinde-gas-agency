@@ -5,25 +5,29 @@ import { adminService, fallbackSettings } from '../services/admin.service';
 interface SettingsContextType {
   settings: AgencySettings;
   loading: boolean;
+  error: string | null;
   refreshSettings: () => Promise<void>;
 }
 
 const SettingsContext = createContext<SettingsContextType>({
   settings: fallbackSettings,
   loading: false,
+  error: null,
   refreshSettings: async () => {},
 });
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [settings, setSettings] = useState<AgencySettings>(fallbackSettings);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchSettings = async () => {
+    setError(null);
     try {
       const data = await adminService.getPublicSettings();
       setSettings(data);
-    } catch {
-      setSettings(fallbackSettings);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Public agency settings could not be loaded.');
     } finally {
       setLoading(false);
     }
@@ -34,7 +38,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   return (
-    <SettingsContext.Provider value={{ settings, loading, refreshSettings: fetchSettings }}>
+    <SettingsContext.Provider value={{ settings, loading, error, refreshSettings: fetchSettings }}>
       {children}
     </SettingsContext.Provider>
   );

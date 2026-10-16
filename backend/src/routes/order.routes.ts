@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { OrderController } from '../controllers/order.controller.js';
-import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { Role } from '../constants/enums.js';
 import { validate } from '../middleware/validate.js';
 
 const router = Router();
@@ -26,29 +27,33 @@ const createOrderSchema = z.object({
   deliveryLandmark: z.string().optional(),
   deliveryMapLink: z.string().optional(),
   paymentMethod: z.enum(['ONLINE', 'COD', 'CARD']),
+  bookingDurationDays: z.number().int().min(1).max(31),
+  remindersEnabled: z.boolean(),
+  fsiNumber: z.string().trim().max(40).optional(),
   notes: z.string().optional(),
 });
 
 const cancelOrderSchema = z.object({
   reason: z.string().min(3, 'Cancellation reason is required'),
 });
-
-// Quick cylinder booking directly from website (Phone & Email supported, no login required)
-router.post('/quick-book', OrderController.quickBookOrder);
+const reminderPreferenceSchema = z.object({
+  enabled: z.boolean(),
+});
 
 // Create Order (Requires customer auth)
-router.post('/', authenticateToken, validate(createOrderSchema), OrderController.createOrder);
+router.post('/', authenticateToken, requireRole(Role.CUSTOMER), validate(createOrderSchema), OrderController.createOrder);
 
 // List Customer's Orders
-router.get('/', authenticateToken, OrderController.listCustomerOrders);
+router.get('/', authenticateToken, requireRole(Role.CUSTOMER), OrderController.listCustomerOrders);
 
-// Track Order (Accessible to user or tracking link with optional auth)
-router.get('/:id/track', optionalAuth, OrderController.trackOrder);
+// Tracking exposes rider contact details and is limited to the signed-in customer.
+router.get('/:id/track', authenticateToken, requireRole(Role.CUSTOMER), OrderController.trackOrder);
 
 // Get Order Details
-router.get('/:id', authenticateToken, OrderController.getOrderDetail);
+router.get('/:id', authenticateToken, requireRole(Role.CUSTOMER), OrderController.getOrderDetail);
 
 // Cancel Order
-router.post('/:id/cancel', authenticateToken, validate(cancelOrderSchema), OrderController.cancelOrder);
+router.post('/:id/cancel', authenticateToken, requireRole(Role.CUSTOMER), validate(cancelOrderSchema), OrderController.cancelOrder);
+router.patch('/:id/reminders', authenticateToken, requireRole(Role.CUSTOMER), validate(reminderPreferenceSchema), OrderController.updateReminderPreference);
 
 export default router;

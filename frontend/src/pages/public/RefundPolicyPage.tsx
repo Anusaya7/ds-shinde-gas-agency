@@ -18,7 +18,7 @@ export const RefundPolicyPage: React.FC = () => {
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-2">2. Cancellation by Agency</h2>
             <p>
-              D.S SHINDE GAS AGENCY reserves the right to cancel an order under exceptional circumstances, such as unreachable addresses, unverified contact numbers, severe weather blockages, or failure to produce an empty cylinder during exchange.
+              DS Shinde Gas may cancel an order under exceptional circumstances, such as unreachable addresses, unverified contact numbers, severe weather blockages, or failure to produce an empty cylinder during exchange.
             </p>
           </section>
 

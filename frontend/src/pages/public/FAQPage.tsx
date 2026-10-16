@@ -15,27 +15,27 @@ export const FAQPage: React.FC = () => {
   const faqs: FAQItem[] = [
     {
       category: 'Ordering & Booking',
-      question: 'How do I book an LPG cylinder online through D.S SHINDE GAS AGENCY?',
+      question: 'How do I book an LPG cylinder online through DS Shinde Gas?',
       answer:
-        'Booking takes less than a minute. Sign up or log into your account, select your cylinder refill size (14.2 kg domestic or 19 kg commercial), choose your delivery address, select your payment method (Online or COD), and confirm. You will receive an immediate confirmation SMS and order tracking number.',
+        'Sign in with an OTP, choose an available cylinder, provide your delivery details, and select a booking period from 1 to 31 days. The agency reviews the booking before online payment is enabled. You can follow its status from your account.',
     },
     {
       category: 'Ordering & Booking',
       question: 'What is the delivery turnaround time after booking?',
       answer:
-        'Orders confirmed before 4:00 PM are dispatched on the same day within our primary delivery zones (typical delivery time 2 to 4 hours). Orders placed later in the evening are scheduled for priority next-morning delivery between 8:00 AM and 11:00 AM.',
+        'Delivery timing depends on your location, cylinder availability, and agency scheduling. Check your booking dashboard for status updates or contact the agency for an estimate.',
     },
     {
       category: 'Ordering & Booking',
       question: 'Can I book a cylinder without an existing consumer number or proof?',
       answer:
-        'Yes! For households or bachelors without local residential documents, we offer 5 kg Free Trade LPG (FTL) cylinders which require no domestic connection proof. For regular subsidized 14.2 kg connections, standard consumer onboarding is required.',
+        'Requirements depend on the selected cylinder and applicable eligibility rules. Submit the requested booking details and the agency will review your application before payment.',
     },
     {
       category: 'Safety & Quality',
       question: 'How do I verify that my cylinder has the exact net weight of gas?',
       answer:
-        'All D.S SHINDE GAS delivery riders carry certified electronic hanging scales. The rider is mandated to check the cylinder gross weight in your presence upon request. Subtract the tare weight stamped on the cylinder shroud to confirm exact gas quantity.',
+        'You can ask the delivery partner about a weight check at handover. The cylinder tare weight is stamped on its body; contact the agency if you have questions about the delivered cylinder.',
     },
     {
       category: 'Safety & Quality',
@@ -59,7 +59,7 @@ export const FAQPage: React.FC = () => {
       category: 'Delivery & Handover',
       question: 'Why do I receive a 6-digit OTP for delivery?',
       answer:
-        'The delivery OTP guarantees that your cylinder is safely handed over only to you or your designated household member. The rider cannot mark an order complete without entering the correct OTP, completely eliminating missed deliveries.',
+        'The delivery OTP is used to confirm handover. Share it with the delivery partner only after you have received the cylinder.',
     },
     {
       category: 'Delivery & Handover',
@@ -71,7 +71,7 @@ export const FAQPage: React.FC = () => {
       category: 'Emergency & Technical',
       question: 'What immediate steps should I take if I smell gas leakage?',
       answer:
-        'Immediately switch off the regulator knob and put on the safety cap. Open all doors and windows to dissipate the gas. DO NOT turn electric switches ON or OFF, do not strike matches or lighters. Evacuate the area and immediately call our 24/7 hotline at 9511760208 or the national LPG emergency number 1906.',
+        'Do not operate electrical switches or use flames. If it is safe, turn off the regulator, ventilate the area, and move people away. Call the national LPG emergency number 1906 and follow the operator’s instructions.',
     },
     {
       category: 'Commercial',

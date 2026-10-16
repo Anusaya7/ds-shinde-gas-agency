@@ -1,53 +1,58 @@
 import api from './api';
-import { Order, Rider, RiderDashboardStats } from '../types';
+import { Order, RiderDashboardStats } from '../types';
+import { normalizeOrder } from '../utils/order';
 
-export const fallbackRiderStats: RiderDashboardStats = {
-  assignedCount: 4,
-  activeDeliveryCount: 1,
-  completedTodayCount: 7,
-  totalDelivered: 142,
-  totalCashCollected: 6440,
-};
+export interface RiderProfileData {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  vehicleNumber?: string;
+  isActive: boolean;
+}
+
+interface RiderProfileResponse {
+  id: string;
+  vehicleNumber?: string;
+  user: {
+    name: string;
+    phone: string;
+    email?: string | null;
+    isActive: boolean;
+  };
+}
 
 export const riderService = {
   async getDashboardStats(): Promise<RiderDashboardStats> {
-    try {
-      const res = await api.get<{ success: boolean; data: RiderDashboardStats }>('/rider/dashboard');
-      return res.data.data;
-    } catch {
-      return fallbackRiderStats;
-    }
+    const res = await api.get<{ success: boolean; data: RiderDashboardStats }>('/rider/dashboard');
+    return res.data.data;
   },
 
   async getAssignedOrders(status?: string): Promise<Order[]> {
-    try {
-      const res = await api.get<{ success: boolean; data: Order[] }>('/rider/orders', {
-        params: { status },
-      });
-      return res.data.data || [];
-    } catch {
-      return [];
-    }
+    const res = await api.get<{ success: boolean; data: Order[] }>('/rider/orders', {
+      params: { status },
+    });
+    return (res.data.data || []).map(normalizeOrder);
   },
 
   async getOrderDetail(id: string): Promise<Order> {
     const res = await api.get<{ success: boolean; data: Order }>(`/rider/orders/${id}`);
-    return res.data.data;
+    return normalizeOrder(res.data.data);
   },
 
   async acceptAssignment(orderId: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/accept`);
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/accept`);
+    return normalizeOrder(res.data.data);
   },
 
   async startDelivery(orderId: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/start-delivery`);
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/out-for-delivery`);
+    return normalizeOrder(res.data.data);
   },
 
   async markArrived(orderId: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/arrived`);
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/arrived`);
+    return normalizeOrder(res.data.data);
   },
 
   async sendDeliveryOtp(orderId: string): Promise<{ success: boolean; message: string; otp?: string }> {
@@ -66,32 +71,31 @@ export const riderService = {
   },
 
   async completeDelivery(
-    orderId: string,
-    payload: { amountCollected?: number; paymentMethod?: string; notes?: string }
+    orderId: string
   ): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(
-      `/rider/orders/${orderId}/complete`,
-      payload
-    );
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/rider/orders/${orderId}/complete`);
+    return normalizeOrder(res.data.data);
+  },
+
+  async collectCash(orderId: string, amount: number): Promise<void> {
+    await api.put(`/rider/orders/${orderId}/collect-payment`, { amount });
   },
 
   async getCompletedDeliveries(): Promise<Order[]> {
-    try {
-      const res = await api.get<{ success: boolean; data: Order[] }>('/rider/completed');
-      return res.data.data || [];
-    } catch {
-      return [];
-    }
+    const res = await api.get<{ success: boolean; data: Order[] }>('/rider/completed');
+    return (res.data.data || []).map(normalizeOrder);
   },
 
-  async getProfile(): Promise<Rider> {
-    const res = await api.get<{ success: boolean; data: Rider }>('/rider/profile');
-    return res.data.data;
-  },
-
-  async updateProfile(data: Partial<Rider>): Promise<Rider> {
-    const res = await api.put<{ success: boolean; data: Rider }>('/rider/profile', data);
-    return res.data.data;
+  async getProfile(): Promise<RiderProfileData> {
+    const res = await api.get<{ success: boolean; data: RiderProfileResponse }>('/rider/profile');
+    const profile = res.data.data;
+    return {
+      id: profile.id,
+      name: profile.user.name,
+      phone: profile.user.phone,
+      email: profile.user.email || undefined,
+      vehicleNumber: profile.vehicleNumber,
+      isActive: profile.user.isActive,
+    };
   },
 };

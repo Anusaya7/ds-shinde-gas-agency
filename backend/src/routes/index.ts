@@ -8,8 +8,26 @@ import adminRoutes from './admin.routes.js';
 import riderRoutes from './rider.routes.js';
 import notificationRoutes from './notification.routes.js';
 import prisma from '../config/database.js';
+import config from '../config/index.js';
+import { ReminderService } from '../services/reminder.service.js';
+import { UnauthorizedError, AppError } from '../utils/errors.js';
 
 const apiRouter = Router();
+
+apiRouter.get('/reminders/process', async (req, res, next) => {
+  try {
+    if (!config.cronSecret) {
+      throw new AppError('Reminder scheduling is not configured.', 503);
+    }
+    if (req.get('authorization') !== `Bearer ${config.cronSecret}`) {
+      throw new UnauthorizedError('A valid scheduler authorization is required.');
+    }
+    const result = await ReminderService.dispatchDueReminders();
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Health check endpoint
 apiRouter.get('/health', async (req, res) => {
@@ -18,14 +36,14 @@ apiRouter.get('/health', async (req, res) => {
     await prisma.$queryRaw`SELECT 1`;
     res.status(200).json({
       status: 'ok',
-      service: 'D.S SHINDE GAS AGENCY API',
+      service: 'DS Shinde Gas API',
       timestamp: new Date().toISOString(),
       database: 'connected',
     });
   } catch (error) {
     res.status(503).json({
       status: 'degraded',
-      service: 'D.S SHINDE GAS AGENCY API',
+      service: 'DS Shinde Gas API',
       timestamp: new Date().toISOString(),
       database: 'disconnected',
     });
@@ -33,13 +51,13 @@ apiRouter.get('/health', async (req, res) => {
 });
 
 // Public Settings endpoint
-apiRouter.get('/settings/public', async (req, res) => {
+apiRouter.get('/settings/public', async (req, res, next) => {
   try {
     const settingsList = await prisma.agencySetting.findMany();
     const map = new Map(settingsList.map((s) => [s.key, s.value]));
 
     const structured = {
-      agencyName: map.get('agency_name') || 'D.S SHINDE GAS AGENCY',
+      agencyName: 'DS Shinde Gas',
       primaryPhone: map.get('contact_phone_1') || '9511760208',
       secondaryPhone: map.get('contact_phone_2') || '9975300929',
       email: map.get('agency_email') || 'support@dsshindegas.com',
@@ -49,6 +67,10 @@ apiRouter.get('/settings/public', async (req, res) => {
         .map((s) => s.trim())
         .filter(Boolean),
       businessHours: map.get('support_hours') || '8:00 AM - 8:00 PM (Monday to Saturday)',
+      deliveryCharges: Number(map.get('delivery_charge_default') || 50),
+      taxPercentage: Number(map.get('tax_percentage') || 0),
+      welcomeOfferEnabled: map.get('welcome_offer_enabled') === 'true',
+      welcomeOfferAmount: Number(map.get('welcome_offer_amount') || 0),
       heroHeadline: map.get('hero_headline') || 'Your Trusted LPG Gas Partner',
       heroSubheadline: map.get('hero_subheadline') || 'Reliable LPG Cylinder Solutions for Home and Business',
       heroDescription: map.get('hero_description') || 'Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.',
@@ -70,34 +92,7 @@ apiRouter.get('/settings/public', async (req, res) => {
       message: 'Public settings loaded successfully',
     });
   } catch (error) {
-    const defaultStructured = {
-      agencyName: 'D.S SHINDE GAS AGENCY',
-      primaryPhone: '9511760208',
-      secondaryPhone: '9975300929',
-      email: 'support@dsshindegas.com',
-      address: 'Shop No. 4, Main Road, Near Market Yard, Maharashtra, India',
-      deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
-      businessHours: '8:00 AM - 8:00 PM (Monday to Saturday)',
-      heroHeadline: 'Your Trusted LPG Gas Partner',
-      heroSubheadline: 'Reliable LPG Cylinder Solutions for Home and Business',
-      heroDescription: 'Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.',
-      heroPrimaryCtaText: 'Order a Cylinder',
-      heroPrimaryCtaLink: '/dashboard/orders/new',
-      heroSecondaryCtaText: 'Explore Cylinder Sizes',
-      heroSecondaryCtaLink: '/#cylinder-gallery',
-      heroImageUrl: '/assets/cylinders/hero-cylinder.jpg',
-      cylinderSectionTitle: 'Explore Our LPG Cylinder Sizes',
-      cylinderSectionSubtitle: 'Choose a cylinder capacity that matches your requirements.',
-      announcementBanner: '',
-      headerCtaText: 'Order Cylinder',
-      headerCtaLink: '/dashboard/orders/new',
-    };
-
-    res.status(200).json({
-      success: true,
-      data: defaultStructured,
-      message: 'Default settings loaded successfully',
-    });
+    next(error);
   }
 });
 

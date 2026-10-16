@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 export const AdminSettings: React.FC = () => {
   const [settings, setSettings] = useState<AgencySettings>(fallbackSettings);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [saving, setSaving] = useState(false);
   const [newAreaInput, setNewAreaInput] = useState('');
 
@@ -20,7 +21,9 @@ export const AdminSettings: React.FC = () => {
     adminService
       .getSettings()
       .then((data) => setSettings(data))
-      .catch(() => setSettings(fallbackSettings))
+      .catch((error: any) => {
+        setLoadError(error.response?.data?.message || 'Could not load agency settings.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -30,8 +33,8 @@ export const AdminSettings: React.FC = () => {
     try {
       await adminService.updateSettings(settings);
       toast.success('Agency settings saved successfully');
-    } catch {
-      toast.success('Settings updated');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not save agency settings.');
     } finally {
       setSaving(false);
     }
@@ -63,6 +66,17 @@ export const AdminSettings: React.FC = () => {
     return (
       <div className="py-20 flex justify-center">
         <Spinner size="lg" label="Loading agency configuration..." />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
+        <p role="alert" className="text-sm text-red-800">{loadError}</p>
+        <Button className="mt-4" variant="primary" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
       </div>
     );
   }
@@ -161,25 +175,37 @@ export const AdminSettings: React.FC = () => {
               onChange={(e) =>
                 setSettings({ ...settings, taxPercentage: Number(e.target.value) })
               }
-              helperText="Standard LPG GST is 5%"
+              helperText="Defaults to 0. Configure only after verifying the applicable tax treatment."
             />
+          </div>
+        </Card>
+
+        <Card title="New Customer Welcome Offer">
+          <div className="space-y-4">
+            <label className="flex items-start gap-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={settings.welcomeOfferEnabled}
+                onChange={(event) =>
+                  setSettings({ ...settings, welcomeOfferEnabled: event.target.checked })
+                }
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#10284A] focus:ring-[#10284A]"
+              />
+              <span>
+                Enable a one-time fixed-amount discount for a customer’s first booking.
+                The offer is disabled by default and applies only when an amount is configured.
+              </span>
+            </label>
             <Input
-              label="Card Convenience Fee (₹)"
+              label="First booking discount (₹)"
               type="number"
               min={0}
-              value={settings.cardPaymentFee}
-              onChange={(e) =>
-                setSettings({ ...settings, cardPaymentFee: Number(e.target.value) })
+              step={0.01}
+              value={settings.welcomeOfferAmount}
+              onChange={(event) =>
+                setSettings({ ...settings, welcomeOfferAmount: Number(event.target.value) })
               }
-            />
-            <Input
-              label="Online UPI Surcharge (₹)"
-              type="number"
-              min={0}
-              value={settings.onlinePaymentFee}
-              onChange={(e) =>
-                setSettings({ ...settings, onlinePaymentFee: Number(e.target.value) })
-              }
+              helperText="The backend applies this once to eligible new customers and caps it at the order total."
             />
           </div>
         </Card>

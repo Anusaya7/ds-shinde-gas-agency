@@ -19,7 +19,10 @@ export class CustomerController {
           phone: true,
           role: true,
           customerProfile: {
-            include: {
+            select: {
+              id: true,
+              alternatePhone: true,
+              fsiNumber: true,
               addresses: {
                 orderBy: { isDefault: 'desc' },
               },
@@ -44,15 +47,24 @@ export class CustomerController {
   static async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const userId = req.user!.id;
-      const { name, email, phone, alternatePhone } = req.body;
+      const { name, email, phone, alternatePhone, fsiNumber } = req.body;
 
       const updatedUser = await prisma.$transaction(async (tx) => {
+        const existingUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { email: true, phone: true },
+        });
+        if (!existingUser) {
+          throw new NotFoundError('Customer not found');
+        }
+        if ((email && email !== existingUser.email) || (phone && phone !== existingUser.phone)) {
+          throw new BadRequestError('Changing your phone or email requires OTP verification. Please contact the agency for assistance.');
+        }
+
         const user = await tx.user.update({
           where: { id: userId },
           data: {
             ...(name && { name }),
-            ...(email && { email }),
-            ...(phone && { phone }),
           },
           select: {
             id: true,
@@ -63,11 +75,14 @@ export class CustomerController {
           },
         });
 
-        if (alternatePhone !== undefined) {
+        if (alternatePhone !== undefined || fsiNumber !== undefined) {
           await tx.customerProfile.upsert({
             where: { userId },
-            update: { alternatePhone },
-            create: { userId, alternatePhone },
+            update: {
+              ...(alternatePhone !== undefined && { alternatePhone }),
+              ...(fsiNumber !== undefined && { fsiNumber }),
+            },
+            create: { userId, alternatePhone, fsiNumber },
           });
         }
 

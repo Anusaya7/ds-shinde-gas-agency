@@ -5,8 +5,10 @@ import {
   verifyRazorpayPaymentSignature,
   verifyRazorpayWebhookSignature,
 } from '../utils/payment.js';
-import { BadRequestError, NotFoundError } from '../utils/errors.js';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../utils/errors.js';
+import config from '../config/index.js';
 import { NotificationService } from './notification.service.js';
+import { recordAuditLog } from './audit.service.js';
 
 export interface VerifyPaymentDTO {
   orderId: string;
@@ -30,11 +32,25 @@ export class PaymentService {
     }
 
     if (customerId && order.customerId !== customerId) {
-      throw new BadRequestError('Unauthorized to create payment for this order');
+      throw new ForbiddenError('You cannot create payment for another customer’s order.');
+    }
+
+    const payableStatuses: OrderStatus[] = [
+      OrderStatus.ACCEPTED,
+      OrderStatus.RIDER_ASSIGNED,
+      OrderStatus.OUT_FOR_DELIVERY,
+      OrderStatus.ARRIVED,
+      OrderStatus.OTP_PENDING,
+    ];
+    if (!payableStatuses.some((status) => status === order.status)) {
+      throw new BadRequestError('Payment is available only after the booking is approved by the agency.');
     }
 
     if (order.paymentStatus === PaymentStatus.PAID) {
       throw new BadRequestError('This order is already marked as paid');
+    }
+    if (config.razorpay.keyId.includes('placeholder') || config.razorpay.keySecret.includes('placeholder')) {
+      throw new BadRequestError('Online payments are not configured. Please contact the agency for payment options.');
     }
 
     const amountInRupees = Number(order.totalAmount);
@@ -62,6 +78,7 @@ export class PaymentService {
           razorpayOrderId: razorpayOrder.id,
           amount: order.totalAmount,
           method: PaymentMethod.ONLINE,
+          status: PaymentStatus.PENDING,
         },
       });
     } else {
@@ -76,13 +93,21 @@ export class PaymentService {
       });
     }
 
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentMethod: PaymentMethod.ONLINE,
+        paymentStatus: PaymentStatus.PENDING,
+      },
+    });
+
     return {
       orderId: order.id,
       orderNumber: order.orderNumber,
       razorpayOrderId: razorpayOrder.id,
-      amount: amountInRupees,
+      amount: Math.round(amountInRupees * 100),
       currency: 'INR',
-      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+      keyId: config.razorpay.keyId,
       customerName: order.deliveryName,
       customerPhone: order.deliveryPhone,
     };
@@ -112,38 +137,28 @@ export class PaymentService {
     if (!order) {
       throw new NotFoundError('Order not found');
     }
+    if (order.customerId !== userId) {
+      throw new ForbiddenError('You cannot confirm payment for another customer’s order.');
+    }
+
+    const pendingPayment = await prisma.payment.findFirst({
+      where: { orderId: order.id, razorpayOrderId, status: PaymentStatus.PENDING },
+    });
+    if (!pendingPayment) {
+      throw new BadRequestError('This payment order is not pending for this booking.');
+    }
 
     // Execute in transaction
     const result = await prisma.$transaction(async (tx) => {
-      // Find or create payment record
-      let payment = await tx.payment.findFirst({
-        where: { orderId, razorpayOrderId },
+      const payment = await tx.payment.update({
+        where: { id: pendingPayment.id },
+        data: {
+          status: PaymentStatus.PAID,
+          razorpayPaymentId,
+          razorpaySignature,
+          verifiedAt: new Date(),
+        },
       });
-
-      if (payment) {
-        payment = await tx.payment.update({
-          where: { id: payment.id },
-          data: {
-            status: PaymentStatus.PAID,
-            razorpayPaymentId,
-            razorpaySignature,
-            verifiedAt: new Date(),
-          },
-        });
-      } else {
-        payment = await tx.payment.create({
-          data: {
-            orderId,
-            amount: order.totalAmount,
-            method: PaymentMethod.ONLINE,
-            status: PaymentStatus.PAID,
-            razorpayOrderId,
-            razorpayPaymentId,
-            razorpaySignature,
-            verifiedAt: new Date(),
-          },
-        });
-      }
 
       // Update Order
       const updatedOrder = await tx.order.update({
@@ -162,6 +177,13 @@ export class PaymentService {
           note: `Online payment received via Razorpay (Txn ID: ${razorpayPaymentId})`,
           changedById: userId,
         },
+      });
+      await recordAuditLog(tx, {
+        userId,
+        action: 'PAYMENT_SUCCESS',
+        entity: 'Order',
+        entityId: order.id,
+        details: `Verified online payment for ${order.orderNumber}.`,
       });
 
       return { payment, order: updatedOrder };
@@ -184,6 +206,45 @@ export class PaymentService {
     });
 
     return result;
+  }
+
+  static async markPaymentFailed(orderId: string, razorpayOrderId: string, userId: string) {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundError('Order not found.');
+    if (order.customerId !== userId) {
+      throw new ForbiddenError('You cannot update payment for another customer’s order.');
+    }
+
+    const payment = await prisma.payment.findFirst({
+      where: { orderId, razorpayOrderId, status: PaymentStatus.PENDING },
+    });
+    if (!payment) throw new BadRequestError('This payment attempt is not pending.');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: PaymentStatus.FAILED },
+      });
+      await tx.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: PaymentStatus.FAILED },
+      });
+      await recordAuditLog(tx, {
+        userId,
+        action: 'PAYMENT_FAILED',
+        entity: 'Order',
+        entityId: order.id,
+        details: `Online payment failed for ${order.orderNumber}.`,
+      });
+    });
+    await NotificationService.createNotification({
+      userId,
+      title: 'Payment not completed',
+      message: `Payment for booking ${order.orderNumber} was not completed. You can retry through your dashboard.`,
+      type: NotificationType.PAYMENT,
+      orderId,
+    });
+    return { status: PaymentStatus.FAILED };
   }
 
   /**
@@ -257,6 +318,9 @@ export class PaymentService {
     }
 
     const collectedAmount = params.amount !== undefined ? params.amount : Number(order.totalAmount);
+    if (Math.abs(collectedAmount - Number(order.totalAmount)) > 0.01) {
+      throw new BadRequestError('The collected amount must match the order total.');
+    }
 
     const payment = await prisma.$transaction(async (tx) => {
       const createdPayment = await tx.payment.create({
@@ -275,6 +339,7 @@ export class PaymentService {
         where: { id: order.id },
         data: {
           paymentStatus: PaymentStatus.PAID,
+          paymentMethod: PaymentMethod.COD,
         },
       });
 

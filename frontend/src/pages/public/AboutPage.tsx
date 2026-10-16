@@ -16,7 +16,7 @@ export const AboutPage: React.FC = () => {
             Delivering Warmth, Safety & Reliability to Every Household
           </h1>
           <p className="mt-4 text-base sm:text-lg text-gray-600 leading-relaxed">
-            D.S SHINDE GAS AGENCY is a trusted LPG distribution and home delivery agency serving thousands of households, commercial kitchens, and enterprises.
+            DS Shinde Gas is a trusted LPG distribution and home delivery agency serving households, commercial kitchens, and businesses.
           </p>
         </div>
 
@@ -27,10 +27,10 @@ export const AboutPage: React.FC = () => {
               Our Journey & Commitment to Excellence
             </h2>
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-              Founded with the goal of bringing transparent, punctual, and safe LPG cylinder delivery to our local community, D.S SHINDE GAS AGENCY has evolved into a technologically modern cylinder distributor.
+              Founded to bring transparent, punctual, and safe LPG cylinder delivery to our community, DS Shinde Gas has grown into a modern, technology-enabled cylinder distributor.
             </p>
             <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-              We recognized the everyday struggle of families and commercial kitchens facing cylinder shortages, unpredictable delivery windows, and questionable cylinder weights. By coupling dedicated logistics with digital order tracking and transparent OTP delivery checks, we guarantee peace of mind with every cylinder.
+              We recognized the everyday needs of families and commercial kitchens. Our online booking, order status updates, and OTP-verified handover are designed to make the process clearer.
             </p>
             <div className="pt-2 flex items-center gap-4">
               <Link to="/products">
@@ -48,27 +48,27 @@ export const AboutPage: React.FC = () => {
                 <Flame className="w-6 h-6" />
               </div>
               <div>
-                <h4 className="font-bold text-gray-900 text-lg">D.S SHINDE GAS AGENCY</h4>
-                <p className="text-xs text-gray-500">Government Authorized LPG Distributor</p>
+                <h4 className="font-bold text-gray-900 text-lg">DS Shinde Gas</h4>
+                <p className="text-xs text-gray-500">Local LPG Agency</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-blue-200/60">
               <div className="bg-white p-4 rounded-xl shadow-xs">
-                <span className="text-2xl font-black text-primary">10,000+</span>
-                <p className="text-xs text-gray-500 mt-1">Cylinders Delivered</p>
+                <span className="text-2xl font-black text-primary">OTP</span>
+                <p className="text-xs text-gray-500 mt-1">Customer and rider sign-in</p>
               </div>
               <div className="bg-white p-4 rounded-xl shadow-xs">
-                <span className="text-2xl font-black text-accent">99.8%</span>
-                <p className="text-xs text-gray-500 mt-1">On-Time Refill Rate</p>
+                <span className="text-2xl font-black text-accent">Review</span>
+                <p className="text-xs text-gray-500 mt-1">Booking checked before online payment</p>
               </div>
               <div className="bg-white p-4 rounded-xl shadow-xs">
-                <span className="text-2xl font-black text-warm">100%</span>
-                <p className="text-xs text-gray-500 mt-1">Safety Seal Inspected</p>
+                <span className="text-2xl font-black text-warm">1–31</span>
+                <p className="text-xs text-gray-500 mt-1">Day booking period options</p>
               </div>
               <div className="bg-white p-4 rounded-xl shadow-xs">
-                <span className="text-2xl font-black text-emerald-600">7 Days</span>
-                <p className="text-xs text-gray-500 mt-1">Weekly Delivery Service</p>
+                <span className="text-2xl font-black text-emerald-600">Status</span>
+                <p className="text-xs text-gray-500 mt-1">Booking progress in your dashboard</p>
               </div>
             </div>
           </div>
@@ -86,28 +86,28 @@ export const AboutPage: React.FC = () => {
               <ShieldCheck className="w-8 h-8 text-accent mb-4" />
               <h3 className="font-bold text-gray-900 mb-2">Safety Above All</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Zero tolerance for leaky valves, expired testing dates, or damaged cylinders.
+                Follow LPG safety guidance and inspect the cylinder and seal at handover.
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition-shadow">
               <Clock className="w-8 h-8 text-primary mb-4" />
               <h3 className="font-bold text-gray-900 mb-2">Punctual Fulfillment</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                We value your cooking hours. Our dispatch routes guarantee prompt arrival.
+                Check your booking status for the latest order progress and delivery updates.
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition-shadow">
               <Award className="w-8 h-8 text-warm mb-4" />
-              <h3 className="font-bold text-gray-900 mb-2">Certified Weight Accuracy</h3>
+              <h3 className="font-bold text-gray-900 mb-2">Clear Handover</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Every delivery vehicle carries calibrated electronic scales to weigh on demand.
+                Review the cylinder and ask the delivery partner about a weight check at handover.
               </p>
             </div>
             <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:shadow-md transition-shadow">
               <HeartHandshake className="w-8 h-8 text-emerald-600 mb-4" />
               <h3 className="font-bold text-gray-900 mb-2">Customer Care</h3>
               <p className="text-xs text-gray-600 leading-relaxed">
-                Instant helpline support for refill requests, emergency leaks, or new connections.
+                Contact the agency for help with bookings, account details, and delivery questions.
               </p>
             </div>
           </div>
@@ -117,7 +117,7 @@ export const AboutPage: React.FC = () => {
         <div className="bg-primaryDark rounded-3xl p-8 sm:p-12 text-white text-center">
           <h2 className="text-2xl sm:text-3xl font-extrabold mb-3">Speak to our Agency Representatives</h2>
           <p className="text-sm text-blue-200 max-w-xl mx-auto mb-6">
-            Have questions regarding new gas connection, commercial manifold installation, or subsidy queries?
+            Have questions about booking, cylinder options, or your order status?
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <a

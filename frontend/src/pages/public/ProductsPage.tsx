@@ -6,10 +6,12 @@ import { Product } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'DOMESTIC' | 'COMMERCIAL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const { isAuthenticated } = useAuth();
@@ -17,8 +19,11 @@ export const ProductsPage: React.FC = () => {
   useEffect(() => {
     productService.getProducts(false).then((data) => {
       setProducts(data);
-      setLoading(false);
-    });
+    }).catch((error: any) => {
+      const message = error.response?.data?.message || 'Could not load available cylinders.';
+      setLoadError(message);
+      toast.error(message);
+    }).finally(() => setLoading(false));
   }, []);
 
   const filteredProducts = products.filter((prod) => {
@@ -111,6 +116,10 @@ export const ProductsPage: React.FC = () => {
           <div className="py-20 flex justify-center">
             <Spinner size="lg" label="Loading cylinder catalog..." />
           </div>
+        ) : loadError ? (
+          <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm text-red-800">
+            {loadError}
+          </div>
         ) : filteredProducts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredProducts.map((prod) => {
@@ -162,11 +171,11 @@ export const ProductsPage: React.FC = () => {
                     <div className="space-y-1.5 pt-3 border-t border-[#E2E8F0] text-xs text-[#1F2937]">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#15803D]" />
-                        <span>Weight check certified at delivery</span>
+                        <span>Ask about a weight check at handover</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="w-3.5 h-3.5 text-[#2878C8]" />
-                        <span>Tamper-proof safety shrink seal</span>
+                        <span>Inspect the safety seal at handover</span>
                       </div>
                     </div>
                   </div>
@@ -181,14 +190,14 @@ export const ProductsPage: React.FC = () => {
                         Out of Stock
                       </span>
                     ) : (
-                      <Link to={isAuthenticated ? '/dashboard/orders/new' : `/quick-book?size=${parseFloat(prod.size.replace(/[^0-9.]/g, '')) || 15}`}>
+                      <Link to={isAuthenticated ? '/dashboard/orders/new' : '/login'}>
                         <Button
                           variant="accent"
                           size="sm"
                           leftIcon={<ShoppingCart className="w-4 h-4" />}
                           className="font-bold shadow"
                         >
-                          {isAuthenticated ? 'Order Refill' : '⚡ Quick Book Refill'}
+                          {isAuthenticated ? 'Order Cylinder' : 'Customer Booking'}
                         </Button>
                       </Link>
                     )}

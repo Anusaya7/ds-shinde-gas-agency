@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Phone, Mail, Shield, Save, KeyRound } from 'lucide-react';
+import { User, Save } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { customerService } from '../../services/customer.service';
 import { Button } from '../../components/ui/Button';
@@ -11,14 +11,7 @@ export const Profile: React.FC = () => {
   const { user, updateUser } = useAuth();
 
   const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
   const [saving, setSaving] = useState(false);
-
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,47 +21,22 @@ export const Profile: React.FC = () => {
     }
     setSaving(true);
     try {
-      await customerService.updateProfile({ name, email, phone });
-      updateUser({ name, email, phone });
+      await customerService.updateProfile({ name });
+      updateUser({ name });
       toast.success('Profile updated successfully');
-    } catch {
-      updateUser({ name, email, phone });
-      toast.success('Profile updated');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update your profile.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentPassword) {
-      toast.error('Please enter your existing password');
-      return;
-    }
-    if (newPassword.length < 6) {
-      toast.error('New password must be at least 6 characters');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    setChangingPassword(true);
-    setTimeout(() => {
-      setChangingPassword(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      toast.success('Password updated successfully');
-    }, 800);
-  };
-
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Customer Profile & KYC</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight">Customer Profile</h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-1">
-          Manage your personal information, contact numbers, and security credentials
+          Manage your personal and contact information. Sign in securely with OTP.
         </p>
       </div>
 
@@ -84,8 +52,10 @@ export const Profile: React.FC = () => {
               {user?.role}
             </span>
           </div>
-          <p className="text-xs text-gray-500">📞 {user?.phone} • {user?.email || 'No email attached'}</p>
-          <p className="text-[11px] text-emerald-600 font-medium">✓ Verified LPG Consumer Connection</p>
+          <p className="text-xs text-gray-500">{user?.phone} • {user?.email || 'No email attached'}</p>
+          <p className="text-[11px] text-emerald-600 font-medium">
+            OTP-based sign-in
+          </p>
         </div>
       </div>
 
@@ -100,23 +70,9 @@ export const Profile: React.FC = () => {
             required
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="Primary Contact Phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              leftIcon={<Phone className="w-4 h-4" />}
-              maxLength={10}
-              required
-            />
-            <Input
-              label="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              leftIcon={<Mail className="w-4 h-4" />}
-              type="email"
-            />
-          </div>
+          <p className="text-xs text-gray-500">
+            Phone and email are used for OTP sign-in. To change either contact, contact the agency so it can be verified.
+          </p>
 
           <div className="pt-2 flex justify-end">
             <Button
@@ -132,50 +88,6 @@ export const Profile: React.FC = () => {
         </form>
       </Card>
 
-      {/* Change Password Card */}
-      <Card title="Change Account Password">
-        <form onSubmit={handleChangePassword} className="space-y-4">
-          <Input
-            label="Current Password"
-            type="password"
-            placeholder="Enter current password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            required
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input
-              label="New Password"
-              type="password"
-              placeholder="Minimum 6 characters"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-            <Input
-              label="Confirm New Password"
-              type="password"
-              placeholder="Repeat new password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="pt-2 flex justify-end">
-            <Button
-              type="submit"
-              variant="outline"
-              size="md"
-              isLoading={changingPassword}
-              leftIcon={<KeyRound className="w-4 h-4" />}
-            >
-              Update Password
-            </Button>
-          </div>
-        </form>
-      </Card>
     </div>
   );
 };

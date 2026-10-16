@@ -14,13 +14,17 @@ export const WebsiteCms: React.FC = () => {
   const [settings, setSettings] = useState<AgencySettings>(fallbackSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     setLoading(true);
     adminService
       .getSettings()
       .then((data) => setSettings(data))
-      .catch(() => setSettings(fallbackSettings))
+      .catch((error: any) => {
+        setLoadError(error.response?.data?.message || 'Could not load website settings. Refresh the page to try again.');
+        toast.error(error.response?.data?.message || 'Could not load website settings.');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -42,6 +46,14 @@ export const WebsiteCms: React.FC = () => {
     return (
       <div className="py-20 flex justify-center">
         <Spinner size="lg" label="Loading Website CMS..." />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+        {loadError}
       </div>
     );
   }

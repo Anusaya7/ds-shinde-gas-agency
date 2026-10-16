@@ -34,6 +34,10 @@ export const paymentService = {
     return res.data;
   },
 
+  async markPaymentFailed(orderId: string, razorpayOrderId: string): Promise<void> {
+    await api.post('/payments/failed', { orderId, razorpayOrderId });
+  },
+
   loadRazorpayScript(): Promise<boolean> {
     return new Promise((resolve) => {
       if (window.Razorpay) {

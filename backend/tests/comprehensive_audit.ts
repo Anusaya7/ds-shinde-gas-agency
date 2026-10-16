@@ -49,7 +49,7 @@ async function request(path: string, options: RequestInit = {}) {
 
 async function runAudit() {
   console.log('================================================================');
-  console.log('  D.S SHINDE GAS AGENCY — COMPREHENSIVE END-TO-END AUDIT SUITE');
+  console.log('  DS SHINDE GAS — COMPREHENSIVE END-TO-END AUDIT SUITE');
   console.log('================================================================\n');
 
   const runSeed = Date.now().toString().slice(-6);
@@ -269,7 +269,7 @@ async function runAudit() {
       method: 'PUT',
       headers: { Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({
-        agencyName: 'D.S SHINDE GAS AGENCY',
+        agencyName: 'DS Shinde Gas',
         primaryPhone: '9511760208',
         secondaryPhone: '9975300929',
         deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],

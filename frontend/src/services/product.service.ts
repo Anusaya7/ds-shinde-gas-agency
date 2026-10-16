@@ -126,6 +126,9 @@ export function normalizeProduct(raw: any): Product {
     size: size,
     description: raw.description || '',
     price: typeof raw.price === 'number' ? raw.price : parseFloat(raw.price || 0) || 0,
+    deliveryCharge: typeof raw.deliveryCharge === 'number'
+      ? raw.deliveryCharge
+      : parseFloat(raw.deliveryCharge || 0) || 0,
     inStock: raw.inStock ?? raw.isActive ?? true,
     stockQuantity: raw.stockQuantity ?? 50,
     imageUrl: raw.imageUrl,
@@ -136,34 +139,18 @@ export function normalizeProduct(raw: any): Product {
 
 export const productService = {
   async getProducts(onlyActive = true): Promise<Product[]> {
-    try {
-      const res = await api.get<{ success: boolean; data: any[] }>('/products', {
-        params: { active: onlyActive },
-      });
-      if (res.data?.data && Array.isArray(res.data.data) && res.data.data.length > 0) {
-        return res.data.data.map(normalizeProduct);
-      }
-      return fallbackProducts;
-    } catch {
-      // Return default catalog if backend isn't up yet
-      return fallbackProducts;
+    const res = await api.get<{ success: boolean; data: any[] }>('/products', {
+      params: { active: onlyActive },
+    });
+    if (!Array.isArray(res.data?.data)) {
+      throw new Error('The cylinder catalog response was invalid.');
     }
+    return res.data.data.map(normalizeProduct);
   },
 
   async getProductById(id: string): Promise<Product> {
-    try {
-      const res = await api.get<{ success: boolean; data: any }>(`/products/${id}`);
-      if (res.data?.data) {
-        return normalizeProduct(res.data.data);
-      }
-      const found = fallbackProducts.find((p) => p.id === id);
-      if (found) return found;
-      throw new Error('Product not found');
-    } catch {
-      const found = fallbackProducts.find((p) => p.id === id);
-      if (found) return found;
-      throw new Error('Product not found');
-    }
+    const res = await api.get<{ success: boolean; data: any }>(`/products/${id}`);
+    if (!res.data?.data) throw new Error('Product not found.');
+    return normalizeProduct(res.data.data);
   },
 };
-

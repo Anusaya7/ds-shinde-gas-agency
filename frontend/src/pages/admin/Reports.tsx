@@ -18,50 +18,25 @@ import toast from 'react-hot-toast';
 export const Reports: React.FC = () => {
   const [reports, setReports] = useState<ReportItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [startDate, setStartDate] = useState('2026-10-01');
+  const [loadError, setLoadError] = useState('');
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-01`;
+  });
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     setLoading(true);
+    setLoadError('');
     adminService
       .getReports({ startDate, endDate })
       .then((data) => setReports(data))
-      .catch(() => {
-        // Fallback reports
-        setReports([
-          {
-            date: '2026-10-14',
-            ordersCount: 28,
-            deliveredCount: 24,
-            totalRevenue: 28450,
-            cylinderBreakdown: { '14.2 kg': 20, '19 kg': 5, '5 kg': 3 },
-            paymentBreakdown: { COD: 16, ONLINE: 10, CARD: 2 },
-          },
-          {
-            date: '2026-10-13',
-            ordersCount: 32,
-            deliveredCount: 31,
-            totalRevenue: 34120,
-            cylinderBreakdown: { '14.2 kg': 22, '19 kg': 8, '5 kg': 2 },
-            paymentBreakdown: { COD: 18, ONLINE: 12, CARD: 2 },
-          },
-          {
-            date: '2026-10-12',
-            ordersCount: 25,
-            deliveredCount: 25,
-            totalRevenue: 26900,
-            cylinderBreakdown: { '14.2 kg': 19, '19 kg': 4, '5 kg': 2 },
-            paymentBreakdown: { COD: 15, ONLINE: 9, CARD: 1 },
-          },
-          {
-            date: '2026-10-11',
-            ordersCount: 30,
-            deliveredCount: 29,
-            totalRevenue: 31500,
-            cylinderBreakdown: { '14.2 kg': 21, '19 kg': 6, '5 kg': 3 },
-            paymentBreakdown: { COD: 17, ONLINE: 11, CARD: 2 },
-          },
-        ]);
+      .catch((error: any) => {
+        setReports([]);
+        const message = error.response?.data?.message || 'Could not load report data.';
+        setLoadError(message);
+        toast.error(message);
       })
       .finally(() => setLoading(false));
   }, [startDate, endDate]);
@@ -84,6 +59,10 @@ export const Reports: React.FC = () => {
   });
 
   const exportCSV = () => {
+    if (loadError) {
+      toast.error('Reports are unavailable; no CSV was created.');
+      return;
+    }
     const headers = ['Date', 'Total Orders', 'Delivered Orders', 'Revenue (INR)'];
     const rows = reports.map((r) => [r.date, r.ordersCount, r.deliveredCount, r.totalRevenue]);
     const csvContent =
@@ -98,6 +77,14 @@ export const Reports: React.FC = () => {
     document.body.removeChild(link);
     toast.success('CSV Export downloaded successfully');
   };
+
+  if (loadError) {
+    return (
+      <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+        {loadError} Refresh the page to try again.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

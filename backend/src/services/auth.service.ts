@@ -11,6 +11,7 @@ import {
   ConflictError,
   NotFoundError,
   UnauthorizedError,
+  AppError,
 } from '../utils/errors.js';
 
 export interface RegisterDTO {
@@ -28,6 +29,7 @@ export interface LoginDTO {
 export interface SendOtpDTO {
   identifier: string; // email or phone
   purpose: AuthOtpPurpose;
+  role?: Role.CUSTOMER | Role.RIDER;
 }
 
 export interface VerifyOtpDTO {
@@ -35,6 +37,7 @@ export interface VerifyOtpDTO {
   otp: string;
   purpose: AuthOtpPurpose;
   name?: string;
+  role?: Role.CUSTOMER | Role.RIDER;
 }
 
 export interface ResetPasswordDTO {
@@ -138,6 +141,10 @@ export class AuthService {
       throw new UnauthorizedError('Account is deactivated. Please contact support.');
     }
 
+    if (user.role !== Role.ADMIN || !user.passwordHash) {
+      throw new UnauthorizedError('Use one-time-code sign-in for customer or rider accounts.');
+    }
+
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedError('Invalid credentials');
@@ -171,20 +178,24 @@ export class AuthService {
    */
   static async sendAuthOtp(dto: SendOtpDTO) {
     const { identifier, purpose } = dto;
+    const role = dto.role || Role.CUSTOMER;
 
     const isEmail = identifier.includes('@');
+    if (purpose === AuthOtpPurpose.FORGOT_PASSWORD) {
+      throw new BadRequestError('Password recovery is only available to administrator accounts.');
+    }
 
-    // For LOGIN or FORGOT_PASSWORD, verify user exists
-    if (purpose === AuthOtpPurpose.LOGIN || purpose === AuthOtpPurpose.FORGOT_PASSWORD) {
-      const existingUser = await prisma.user.findFirst({
-        where: isEmail ? { email: identifier } : { phone: identifier },
-      });
-      if (!existingUser) {
-        throw new NotFoundError('No user found with the provided identifier');
-      }
-      if (!existingUser.isActive) {
-        throw new BadRequestError('Account is deactivated. Please contact support.');
-      }
+    const existingUser = await prisma.user.findFirst({
+      where: isEmail ? { email: identifier } : { phone: identifier },
+    });
+    if (!existingUser && purpose === AuthOtpPurpose.LOGIN) {
+      throw new NotFoundError('No account found with the provided identifier. Create an account to continue.');
+    }
+    if (existingUser && (existingUser.role !== role || !existingUser.isActive)) {
+      throw new BadRequestError('This contact belongs to an account that cannot use this sign-in portal.');
+    }
+    if (purpose === AuthOtpPurpose.REGISTER && existingUser) {
+      throw new ConflictError('An account with this contact already exists. Please sign in.');
     }
 
     // Invalidate previous unexpired OTPs for same identifier & purpose
@@ -201,7 +212,7 @@ export class AuthService {
     const otpHash = await hashOtp(plainOtp);
     const expiresAt = new Date(Date.now() + config.otp.expiryMinutes * 60 * 1000);
 
-    await prisma.authOtp.create({
+    const otpRecord = await prisma.authOtp.create({
       data: {
         identifier,
         otpHash,
@@ -213,27 +224,41 @@ export class AuthService {
       },
     });
 
-    const message = `Your D.S SHINDE GAS verification code is: ${plainOtp}. Valid for ${config.otp.expiryMinutes} minutes. Never share this with anyone.`;
+    const message = `Your DS Shinde Gas verification code is: ${plainOtp}. Valid for ${config.otp.expiryMinutes} minutes. Never share this with anyone.`;
 
     // Dispatch OTP
-    if (isEmail) {
-      await sendEmail({
+    let delivered: boolean;
+    try {
+      delivered = isEmail
+        ? await sendEmail({
         to: identifier,
-        subject: `D.S SHINDE GAS - Verification Code (${purpose})`,
+        subject: `DS Shinde Gas - Verification Code (${purpose})`,
         text: message,
         html: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #ea580c;">D.S SHINDE GAS AGENCY</h2>
+          <h2 style="color: #ea580c;">DS Shinde Gas</h2>
           <p>Your one-time verification code is:</p>
           <h1 style="letter-spacing: 5px; color: #1e293b; background: #f1f5f9; padding: 10px 20px; display: inline-block;">${plainOtp}</h1>
           <p>This code will expire in ${config.otp.expiryMinutes} minutes.</p>
           <p>If you did not request this, please ignore this email.</p>
         </div>`,
-      });
-    } else {
-      await sendSms({
+      })
+        : await sendSms({
         phone: identifier,
         message,
       });
+    } catch (error) {
+      await prisma.authOtp.update({
+        where: { id: otpRecord.id },
+        data: { isUsed: true },
+      });
+      throw error;
+    }
+    if (!delivered) {
+      await prisma.authOtp.update({
+        where: { id: otpRecord.id },
+        data: { isUsed: true },
+      });
+      throw new AppError('OTP delivery is not configured. Please contact the agency.', 503);
     }
 
     // Dev mode logging
@@ -251,6 +276,7 @@ export class AuthService {
    */
   static async verifyAuthOtp(dto: VerifyOtpDTO) {
     const { identifier, otp, purpose, name } = dto;
+    const role = dto.role || Role.CUSTOMER;
 
     const otpRecord = await prisma.authOtp.findFirst({
       where: {
@@ -299,26 +325,35 @@ export class AuthService {
     const isEmail = identifier.includes('@');
     let user = await prisma.user.findFirst({
       where: isEmail ? { email: identifier } : { phone: identifier },
-      include: { customerProfile: true, riderProfile: true },
+      include: { customerProfile: true, riderProfile: true, riderApplication: true },
     });
 
     // If REGISTER purpose and user doesn't exist, create user
-    if (!user && (purpose === AuthOtpPurpose.REGISTER || purpose === AuthOtpPurpose.LOGIN)) {
-      const randomPassword = await bcrypt.hash(generateOtp(12), 10);
+    if (user && (user.role !== role || !user.isActive)) {
+      throw new UnauthorizedError('This account cannot sign in through this portal.');
+    }
+
+    if (!user && purpose === AuthOtpPurpose.LOGIN) {
+      throw new NotFoundError('No account found with the provided identifier. Create an account to continue.');
+    }
+
+    if (!user && purpose === AuthOtpPurpose.REGISTER) {
       user = await prisma.user.create({
         data: {
-          name: name || (isEmail ? identifier.split('@')[0] : `Customer ${identifier.slice(-4)}`),
+          name: name ||
+            (role === Role.RIDER ? `Rider ${identifier.slice(-4)}` :
+              isEmail ? identifier.split('@')[0] : `Customer ${identifier.slice(-4)}`),
           email: isEmail ? identifier : null,
           phone: !isEmail ? identifier : null,
-          passwordHash: randomPassword,
-          role: Role.CUSTOMER,
+          passwordHash: null,
+          role,
           isActive: true,
           isVerified: true,
-          customerProfile: {
+          ...(role === Role.CUSTOMER && { customerProfile: {
             create: {},
-          },
+          } }),
         },
-        include: { customerProfile: true, riderProfile: true },
+        include: { customerProfile: true, riderProfile: true, riderApplication: true },
       });
     }
 
@@ -354,6 +389,7 @@ export class AuthService {
         isVerified: user.isVerified,
         customerProfile: user.customerProfile,
         riderProfile: user.riderProfile,
+        riderApplication: user.riderApplication,
       },
       accessToken,
       refreshToken,

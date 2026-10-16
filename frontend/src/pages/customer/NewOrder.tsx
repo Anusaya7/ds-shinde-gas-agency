@@ -10,10 +10,9 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Truck,
   ArrowRight,
   ArrowLeft,
-  ShoppingBag,
+  Package,
 } from 'lucide-react';
 import { Stepper, StepItem } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
@@ -22,27 +21,40 @@ import { Select } from '../../components/ui/Select';
 import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { customerService } from '../../services/customer.service';
 import { productService } from '../../services/product.service';
 import { orderService } from '../../services/order.service';
-import { paymentService } from '../../services/payment.service';
 import { Address, Product, PaymentMethod, Order } from '../../types';
+import {
+  clearCustomerBookingCoordinates,
+  getCustomerBookingMapLink,
+} from '../../utils/customerBookingLocation';
 import toast from 'react-hot-toast';
 
 const STEPS: StepItem[] = [
   { title: 'Delivery Address', subtitle: 'Where to deliver' },
   { title: 'Select Cylinder', subtitle: 'Choose type & qty' },
-  { title: 'Payment Mode', subtitle: 'COD or Online' },
+  { title: 'Payment Preference', subtitle: 'Select preferred method' },
   { title: 'Review & Confirm', subtitle: 'Final verification' },
 ];
 
 export const NewOrder: React.FC = () => {
   const { user } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [loadingError, setLoadingError] = useState('');
+  const [durationDays, setDurationDays] = useState(1);
+  const [reminderConsent, setReminderConsent] = useState(false);
+  const [fsiNumber, setFsiNumber] = useState('');
+  const [udyamDocument, setUdyamDocument] = useState<File | undefined>();
+  const [udyamConsent, setUdyamConsent] = useState(false);
+  const [gettingLocation, setGettingLocation] = useState(false);
+  const [signupLocationMapLink, setSignupLocationMapLink] = useState('');
 
   // Addresses
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
@@ -53,15 +65,34 @@ export const NewOrder: React.FC = () => {
     altPhone: '',
     addressLine1: '',
     addressLine2: '',
-    area: 'Central City',
-    city: 'Pune',
+    area: '',
+    city: '',
     state: 'Maharashtra',
-    pincode: '411001',
+    pincode: '',
     landmark: '',
     mapLink: '',
     isDefault: true,
   });
   const [saveThisAddress, setSaveThisAddress] = useState(true);
+
+  useEffect(() => {
+    try {
+      const mapLink = getCustomerBookingMapLink();
+      setSignupLocationMapLink(mapLink);
+      if (mapLink) {
+        setAddressForm((current) => ({
+          ...current,
+          mapLink: current.mapLink || mapLink,
+        }));
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Could not read the saved location. Enter your delivery address manually.'
+      );
+    }
+  }, []);
 
   // Products & Cart
   const [products, setProducts] = useState<Product[]>([]);
@@ -77,6 +108,7 @@ export const NewOrder: React.FC = () => {
   // Fetch initial data
   useEffect(() => {
     setLoading(true);
+    setLoadingError('');
     Promise.all([
       customerService.getAddresses().catch(() => []),
       productService.getProducts(true),
@@ -109,8 +141,54 @@ export const NewOrder: React.FC = () => {
           setCart({ [defaultProd.id]: 1 });
         }
       })
+      .catch((error: any) => {
+        setLoadingError(
+          error.response?.data?.message ||
+            'Cylinder prices are unavailable. Please try again when the booking service is online.'
+        );
+      })
       .finally(() => setLoading(false));
   }, [user]);
+
+  const captureDeliveryLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error('Location is not available in this browser. You can enter or edit the map link below.');
+      return;
+    }
+    setGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setAddressForm((current) => ({
+          ...current,
+          mapLink: `https://www.google.com/maps?q=${coords.latitude},${coords.longitude}`,
+        }));
+        setGettingLocation(false);
+        toast.success('Location added. You can edit the map link before continuing.');
+      },
+      () => {
+        setGettingLocation(false);
+        toast.error('Location permission was not granted. You can enter the address and map link manually.');
+      },
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 }
+    );
+  };
+
+  const handleUdyamDocument = (file?: File) => {
+    if (!file) {
+      setUdyamDocument(undefined);
+      return;
+    }
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Choose a PDF, JPEG, PNG, or WebP certificate.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('The optional Udyam certificate must be 5 MB or smaller.');
+      return;
+    }
+    setUdyamDocument(file);
+  };
 
   // Handle pre-selected cylinder from homepage or other entry points
   const location = useLocation();
@@ -155,12 +233,12 @@ export const NewOrder: React.FC = () => {
         altPhone: '',
         addressLine1: '',
         addressLine2: '',
-        area: 'Central City',
-        city: 'Pune',
+        area: '',
+        city: '',
         state: 'Maharashtra',
-        pincode: '411001',
+        pincode: '',
         landmark: '',
-        mapLink: '',
+        mapLink: signupLocationMapLink,
         isDefault: false,
       });
     }
@@ -190,6 +268,8 @@ export const NewOrder: React.FC = () => {
         productId: prod.id,
         productName: prod.name,
         size: prod.size,
+        type: prod.type,
+        deliveryCharge: prod.deliveryCharge || 0,
         unitPrice: prod.price,
         quantity: qty,
         subtotal: prod.price * qty,
@@ -199,15 +279,25 @@ export const NewOrder: React.FC = () => {
     productId: string;
     productName: string;
     size: string;
+    type: Product['type'];
+    deliveryCharge: number;
     unitPrice: number;
     quantity: number;
     subtotal: number;
   }>;
 
   const subtotal = selectedItems.reduce((acc, item) => acc + item.subtotal, 0);
-  const deliveryCharges = 0; // Free delivery configured
-  const taxes = Math.round(subtotal * 0.05); // 5% GST on LPG
-  const paymentFee = paymentMethod === 'CARD' ? 15 : 0;
+  const deliveryCharges =
+    selectedItems.length > 0
+      ? Math.max(
+          ...selectedItems.map((item) =>
+            item.deliveryCharge > 0 ? item.deliveryCharge : settings.deliveryCharges
+          )
+        )
+      : 0;
+  const hasCommercialItem = selectedItems.some((item) => item.type === 'COMMERCIAL');
+  const taxes = hasCommercialItem ? Math.round((subtotal * settings.taxPercentage) / 100) : 0;
+  const paymentFee = 0;
   const totalAmount = subtotal + deliveryCharges + taxes + paymentFee;
 
   // Step Validation
@@ -230,6 +320,10 @@ export const NewOrder: React.FC = () => {
     }
     if (!addressForm.pincode || addressForm.pincode.length < 6) {
       toast.error('Valid 6-digit Pincode is required');
+      return false;
+    }
+    if (!Number.isInteger(durationDays) || durationDays < 1 || durationDays > 31) {
+      toast.error('Choose a booking duration from 1 to 31 days.');
       return false;
     }
     return true;
@@ -258,16 +352,28 @@ export const NewOrder: React.FC = () => {
   // Submit Order
   const handleConfirmOrder = async () => {
     if (submitting) return;
+    if (udyamDocument && !udyamConsent) {
+      toast.error('Consent is required before uploading the optional Udyam certificate.');
+      return;
+    }
     setSubmitting(true);
 
     try {
+      if (udyamDocument || fsiNumber.trim()) {
+        await customerService.saveBusinessDetails({
+          ...(fsiNumber.trim() && { fsiNumber: fsiNumber.trim() }),
+          ...(udyamDocument && { udyamDocument }),
+          ...(udyamDocument && { udyamConsent }),
+        });
+      }
+
+      if (user?.name !== addressForm.fullName.trim()) {
+        await customerService.updateProfile({ name: addressForm.fullName.trim() });
+      }
+
       // Save address if marked and newly entered
       if (selectedAddressId === 'new' && saveThisAddress) {
-        try {
-          await customerService.addAddress(addressForm);
-        } catch {
-          // ignore error if duplicate
-        }
+        await customerService.addAddress(addressForm);
       }
 
       const activeDeliveryAddress: Address = {
@@ -285,95 +391,22 @@ export const NewOrder: React.FC = () => {
           quantity: item.quantity,
         })),
         paymentMethod,
+        bookingDurationDays: durationDays,
+        remindersEnabled: reminderConsent,
+        fsiNumber: fsiNumber.trim() || undefined,
         notes: orderNotes.trim() || undefined,
       };
 
-      let createdOrder: Order;
+      const createdOrder = await orderService.createOrder(payload);
+      setCompletedOrder(createdOrder);
       try {
-        createdOrder = await orderService.createOrder(payload);
-      } catch (err: any) {
-        // Fallback demo order simulation
-        createdOrder = {
-          id: `ord-${Date.now()}`,
-          orderNumber: `DS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-          customerId: user?.id || 'demo-user',
-          customerName: addressForm.fullName,
-          customerPhone: addressForm.phone,
-          deliveryAddress: activeDeliveryAddress,
-          items: selectedItems.map((i) => ({ ...i, id: `item-${Date.now()}` })),
-          subtotal,
-          deliveryCharges,
-          taxes,
-          paymentFee,
-          totalAmount,
-          paymentMethod,
-          paymentStatus: paymentMethod === 'COD' ? 'PENDING' : 'PAID',
-          orderStatus: 'PLACED',
-          statusHistory: [
-            {
-              status: 'PLACED',
-              timestamp: new Date().toISOString(),
-              comment: 'Order placed by customer online',
-            },
-          ],
-          deliveryOtp: Math.floor(100000 + Math.random() * 900000).toString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
+        clearCustomerBookingCoordinates();
+      } catch {
+        toast.error('Booking submitted, but the saved location remains in this browser tab.');
       }
-
-      // If Payment Method is ONLINE or CARD, attempt Razorpay flow
-      if (paymentMethod === 'ONLINE' || paymentMethod === 'CARD') {
-        const isLoaded = await paymentService.loadRazorpayScript();
-        if (isLoaded && window.Razorpay) {
-          try {
-            const rzpOrder = await paymentService.createRazorpayOrder(createdOrder.id);
-            const options = {
-              key: rzpOrder.keyId || 'rzp_test_demoKey123',
-              amount: rzpOrder.amount || totalAmount * 100,
-              currency: 'INR',
-              name: 'D.S SHINDE GAS AGENCY',
-              description: `LPG Refill Payment (#${createdOrder.orderNumber})`,
-              order_id: rzpOrder.razorpayOrderId,
-              handler: async (response: any) => {
-                await paymentService.verifyPayment({
-                  orderId: createdOrder.id,
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature,
-                });
-                createdOrder.paymentStatus = 'PAID';
-                setCompletedOrder(createdOrder);
-                toast.success('Payment verified successfully!');
-              },
-              prefill: {
-                name: addressForm.fullName,
-                contact: addressForm.phone,
-                email: user?.email || 'customer@example.com',
-              },
-              theme: { color: '#0d47a1' },
-            };
-            const rzp = new window.Razorpay(options);
-            rzp.open();
-            setCompletedOrder(createdOrder);
-            return;
-          } catch {
-            // Proceed to mock success
-            createdOrder.paymentStatus = 'PAID';
-            setCompletedOrder(createdOrder);
-          }
-        } else {
-          // Razorpay script not reachable or offline test
-          createdOrder.paymentStatus = 'PAID';
-          setCompletedOrder(createdOrder);
-        }
-      } else {
-        setCompletedOrder(createdOrder);
-      }
-
-      toast.success('LPG Cylinder booked successfully!');
+      toast.success('Booking submitted for admin review. Payment will be available after approval.');
     } catch (err: any) {
-      toast.error('Booking failed. Please try again.');
+      toast.error(err?.response?.data?.message || err?.message || 'Booking failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -387,38 +420,61 @@ export const NewOrder: React.FC = () => {
     );
   }
 
-  // SUCCESS SCREEN AFTER ORDER PLACED
+  if (loadingError) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm">
+        <AlertCircle className="mx-auto h-10 w-10 text-red-600" />
+        <h1 className="mt-3 text-lg font-bold text-gray-900">Booking details are unavailable</h1>
+        <p role="alert" className="mt-2 text-sm text-red-800">{loadingError}</p>
+        <Button className="mt-4" variant="primary" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   if (completedOrder) {
     return (
       <div className="max-w-2xl mx-auto py-8">
         <div className="bg-white rounded-3xl p-8 sm:p-10 border border-gray-200 shadow-xl text-center space-y-6">
-          <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner animate-pulse">
+          <div className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner ${
+            completedOrder.paymentStatus === 'PAID'
+              ? 'bg-emerald-100 text-emerald-600'
+              : completedOrder.paymentStatus === 'FAILED'
+                ? 'bg-red-100 text-red-600'
+                : 'bg-amber-100 text-amber-700'
+          }`}>
             <CheckCircle2 className="w-10 h-10" />
           </div>
 
           <div>
             <span className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-              Booking Confirmed
+              {completedOrder.orderStatus === 'AWAITING_REVIEW' ? 'Pending admin approval' : 'Booking submitted'}
             </span>
             <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-3">
               Order #{completedOrder.orderNumber}
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Your cylinder booking has been recorded. Dispatch team is preparing delivery.
+              Your booking is recorded. Payment will be available after agency approval.
             </p>
           </div>
 
-          {/* Delivery OTP Highlight */}
-          <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 max-w-sm mx-auto">
-            <span className="text-xs font-bold text-primary uppercase tracking-wider block">
-              Your 6-Digit Delivery OTP
+          <div className={`rounded-2xl border p-4 text-left text-sm ${
+            completedOrder.paymentStatus === 'PAID'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+              : completedOrder.paymentStatus === 'FAILED'
+                ? 'border-red-200 bg-red-50 text-red-900'
+                : 'border-amber-200 bg-amber-50 text-amber-900'
+          }`}>
+            Payment status: <strong>{completedOrder.paymentStatus}</strong>
+            <span className="mt-1 block">Final payable: <strong>₹{completedOrder.totalAmount}</strong></span>
+            <span className="mt-1 block">
+              Booking duration: <strong>{completedOrder.bookingDurationDays || durationDays}{' '}
+                {(completedOrder.bookingDurationDays || durationDays) === 1 ? 'day' : 'days'}</strong>
             </span>
-            <span className="text-3xl font-black font-mono text-primaryDark tracking-widest block my-1">
-              {completedOrder.deliveryOtp || '849201'}
-            </span>
-            <p className="text-[11px] text-gray-500 leading-tight">
-              Share this code with the delivery rider only upon cylinder physical arrival and weight check.
-            </p>
+            {completedOrder.paymentStatus !== 'PAID' && (
+              <span className="mt-2 block text-xs">You can pay securely from My Orders after the agency approves this booking.</span>
+            )}
           </div>
 
           {/* Order Details summary */}
@@ -446,6 +502,12 @@ export const NewOrder: React.FC = () => {
                 {completedOrder.paymentMethod} ({completedOrder.paymentStatus})
               </span>
             </div>
+            {(completedOrder.welcomeOfferDiscount || 0) > 0 && (
+              <div className="flex justify-between border-b border-gray-200/60 pb-2 text-emerald-700">
+                <span>New customer welcome offer</span>
+                <span className="font-bold">−₹{completedOrder.welcomeOfferDiscount}</span>
+              </div>
+            )}
             <div className="flex justify-between pt-1 text-base font-extrabold text-gray-900">
               <span>Total Payable</span>
               <span className="text-primary">₹{completedOrder.totalAmount}</span>
@@ -453,9 +515,9 @@ export const NewOrder: React.FC = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-            <Link to={`/dashboard/orders/${completedOrder.id}/track`} className="w-full sm:w-auto">
-              <Button variant="primary" size="md" className="w-full" leftIcon={<Truck className="w-4 h-4" />}>
-                Track Delivery Real-Time
+            <Link to={`/dashboard/orders/${completedOrder.id}`} className="w-full sm:w-auto">
+              <Button variant="primary" size="md" className="w-full" leftIcon={<Package className="w-4 h-4" />}>
+                View Booking Status
               </Button>
             </Link>
             <Link to="/dashboard/orders" className="w-full sm:w-auto">
@@ -474,12 +536,18 @@ export const NewOrder: React.FC = () => {
       {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-          Book LPG Cylinder Refill
+          Book with DS Shinde Gas
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-1">
           Complete the quick steps below to schedule genuine cylinder delivery at your doorstep
         </p>
       </div>
+
+      {loadingError && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {loadingError}
+        </div>
+      )}
 
       {/* Stepper Indicator */}
       <div className="bg-white rounded-2xl p-4 sm:p-6 border border-gray-200 shadow-sm">
@@ -631,11 +699,102 @@ export const NewOrder: React.FC = () => {
                 />
                 <Input
                   label="Google Maps Link (Optional)"
-                  placeholder="https://maps.app.goo.gl/..."
+                  placeholder="Paste or add your map location"
                   value={addressForm.mapLink || ''}
                   onChange={(e) => setAddressForm({ ...addressForm, mapLink: e.target.value })}
                 />
+                <button
+                  type="button"
+                  onClick={captureDeliveryLocation}
+                  disabled={gettingLocation}
+                  className="min-h-11 self-end rounded-xl border border-[#10284A] px-3 text-sm font-semibold text-[#10284A] hover:bg-blue-50 disabled:opacity-60"
+                >
+                  {gettingLocation ? 'Getting location…' : 'Use my current location'}
+                </button>
               </div>
+
+              <fieldset className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+                <legend className="px-2 text-sm font-extrabold text-[#10284A]">
+                  Booking duration <span className="text-red-600">*</span>
+                </legend>
+                <label htmlFor="booking-duration" className="block text-sm font-semibold text-slate-800">
+                  Choose a duration from 1 to 31 days. If you consent, reminders run during this period after delivery.
+                </label>
+                <select
+                  id="booking-duration"
+                  value={durationDays}
+                  onChange={(event) => setDurationDays(Number(event.target.value))}
+                  required
+                  className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-[#10284A] focus:border-[#10284A] focus:outline-none focus:ring-2 focus:ring-[#10284A]/15 sm:max-w-xs"
+                >
+                  {Array.from({ length: 31 }, (_, index) => index + 1).map((days) => (
+                    <option key={days} value={days}>
+                      {days} {days === 1 ? 'day' : 'days'}
+                    </option>
+                  ))}
+                </select>
+                <p role="status" className="text-sm text-slate-700">
+                  Selected booking duration: <strong>{durationDays} {durationDays === 1 ? 'day' : 'days'}</strong>.
+                  Duration is a reminder window and does not multiply the cylinder quantity or price.
+                </p>
+                <label className="flex cursor-pointer items-start gap-2.5 text-sm leading-5 text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={reminderConsent}
+                    onChange={(event) => setReminderConsent(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-[#10284A] focus:ring-[#10284A]"
+                  />
+                  <span>
+                    I agree to receive an in-app refill reminder every 2 days after delivery,
+                    during this booking period. I can leave this unchecked.
+                  </span>
+                </label>
+              </fieldset>
+
+              <details className="rounded-xl border border-slate-200 p-4">
+                <summary className="cursor-pointer text-sm font-semibold text-slate-800">
+                  Optional business information
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <Input
+                    label="FSI number (optional, if applicable)"
+                    maxLength={40}
+                    value={fsiNumber}
+                    onChange={(event) => setFsiNumber(event.target.value)}
+                  />
+                  <div>
+                    <label htmlFor="udyam-document" className="mb-1.5 block text-sm font-semibold text-slate-800">
+                      Udyam certificate (optional; upload only if required)
+                    </label>
+                    <input
+                      id="udyam-document"
+                      type="file"
+                      accept=".pdf,image/jpeg,image/png,image/webp"
+                      onChange={(event) => handleUdyamDocument(event.target.files?.[0])}
+                      aria-describedby="udyam-file-hint"
+                      className="block w-full rounded-xl border border-slate-300 p-2 text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2 file:py-2 file:font-bold file:text-[#10284A]"
+                    />
+                    <p id="udyam-file-hint" className="mt-1 text-xs leading-5 text-slate-500">
+                      PDF, JPEG, PNG or WebP; maximum 5 MB. The file is encrypted and only administrators can view it.
+                    </p>
+                    {udyamDocument && (
+                      <p className="mt-1 text-xs font-semibold text-emerald-700">{udyamDocument.name}</p>
+                    )}
+                    <label className="mt-3 flex items-start gap-2 text-xs leading-5 text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={udyamConsent}
+                        onChange={(event) => setUdyamConsent(event.target.checked)}
+                        className="mt-1 h-4 w-4"
+                      />
+                      <span>
+                        I consent to storing this certificate encrypted and allowing restricted agency administrators
+                        to access it for booking review. I may choose not to provide it.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </details>
 
               {selectedAddressId === 'new' && (
                 <label className="flex items-center gap-2 pt-2 text-xs text-gray-700 cursor-pointer">
@@ -652,7 +811,7 @@ export const NewOrder: React.FC = () => {
 
             <div className="pt-4 border-t border-gray-100 flex justify-end">
               <Button variant="primary" size="lg" onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />}>
-                Proceed to Select Cylinder
+                Continue to cylinder selection
               </Button>
             </div>
           </div>
@@ -751,7 +910,7 @@ export const NewOrder: React.FC = () => {
                     disabled={selectedItems.length === 0}
                     rightIcon={<ArrowRight className="w-4 h-4" />}
                   >
-                    Proceed to Payment Mode
+                    Continue to Payment Preference
                   </Button>
                 </div>
               </div>
@@ -762,8 +921,11 @@ export const NewOrder: React.FC = () => {
 
       {/* STEP 3: PAYMENT METHOD */}
       {currentStep === 3 && (
-        <Card title="Step 3: Select Payment Method & Billing Summary">
+        <Card title="Step 3: Choose Payment Preference & Billing Summary">
           <div className="space-y-6">
+            <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+              This records your preferred payment method. Payment is collected only after agency approval.
+            </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Online Payment */}
               <div
@@ -778,7 +940,7 @@ export const NewOrder: React.FC = () => {
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <h4 className="font-bold text-gray-900 text-sm">Online UPI / NetBanking</h4>
-                <p className="text-xs text-gray-500 mt-1">Instant payment via Razorpay, Google Pay, PhonePe, Paytm</p>
+                <p className="text-xs text-gray-500 mt-1">Pay after approval via Razorpay UPI or net banking options.</p>
                 <span className="inline-block mt-3 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                   0% Additional Fees
                 </span>
@@ -803,7 +965,7 @@ export const NewOrder: React.FC = () => {
                 </span>
               </div>
 
-              {/* Card Payment at Doorstep */}
+              {/* Card Payment */}
               <div
                 onClick={() => setPaymentMethod('CARD')}
                 className={`p-5 rounded-2xl border cursor-pointer transition-all ${
@@ -816,9 +978,11 @@ export const NewOrder: React.FC = () => {
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <h4 className="font-bold text-gray-900 text-sm">Debit / Credit Card</h4>
-                <p className="text-xs text-gray-500 mt-1">Swipe card via rider mobile POS machine or online card checkout</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Pay through secure Razorpay checkout after approval. Card details are not stored by DS Shinde Gas.
+                </p>
                 <span className="inline-block mt-3 text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                  + ₹15 Processing
+                  No added card surcharge
                 </span>
               </div>
             </div>
@@ -841,15 +1005,15 @@ export const NewOrder: React.FC = () => {
             <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200 space-y-2.5 text-sm">
               <h4 className="font-bold text-gray-900 border-b border-gray-200 pb-2">Price Breakdown</h4>
               <div className="flex justify-between text-gray-600">
-                <span>Cylinder Refill Subtotal</span>
+                <span>Cylinder base amount</span>
                 <span className="font-semibold text-gray-900">₹{subtotal}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Doorstep Delivery Charges</span>
-                <span className="font-semibold text-emerald-600">FREE</span>
+                <span>Delivery charges</span>
+                <span className="font-semibold text-gray-900">₹{deliveryCharges}</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>Applicable GST / Taxes (5%)</span>
+                <span>Applicable configured GST / taxes</span>
                 <span className="font-semibold text-gray-900">₹{taxes}</span>
               </div>
               {paymentFee > 0 && (
@@ -883,7 +1047,7 @@ export const NewOrder: React.FC = () => {
             <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 text-xs text-blue-900 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <span>
-                Please review your delivery details and items carefully. Upon confirmation, a unique 6-digit delivery OTP will be generated to guarantee safe handover.
+                Please review your delivery details and items carefully. A unique 6-digit delivery OTP will be used to confirm handover.
               </span>
             </div>
 
@@ -944,12 +1108,12 @@ export const NewOrder: React.FC = () => {
             {/* Total banner */}
             <div className="bg-primaryDark text-white rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
-                <span className="text-xs text-blue-200 uppercase tracking-wider block">Final Total Due</span>
+                <span className="text-xs text-blue-200 uppercase tracking-wider block">Final payable after approval</span>
                 <span className="text-3xl font-black">₹{totalAmount}</span>
               </div>
               <div className="text-xs text-blue-200 text-right">
-                <span>Free Doorstep Delivery</span>
-                <span className="block text-emerald-400 font-bold">Includes 5% Standard Taxes</span>
+                <span>Delivery charges shown in the breakdown</span>
+                <span className="block text-emerald-400 font-bold">Taxes use configured rates</span>
               </div>
             </div>
 

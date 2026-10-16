@@ -50,67 +50,11 @@ export const AdminOrderDetail: React.FC = () => {
         setRiders(ridersData);
         if (ridersData.length > 0) setSelectedRiderId(ridersData[0].id);
       })
-      .catch(() => {
-        // Fallback demo order
-        setOrder({
-          id: id,
-          orderNumber: id.startsWith('DS-') ? id : 'DS-2026-1049',
-          customerId: 'cust-1',
-          customerName: 'Anil Deshmukh',
-          customerPhone: '9822012345',
-          deliveryAddress: {
-            id: 'addr-1',
-            fullName: 'Anil Deshmukh',
-            phone: '9822012345',
-            addressLine1: 'B-14, Shanti Park',
-            area: 'Market Yard',
-            city: 'Pune',
-            state: 'Maharashtra',
-            pincode: '411002',
-            landmark: 'Near Vegetable Mandi Gate 2',
-          },
-          items: [
-            {
-              productId: 'prod-14kg',
-              productName: '14.2 kg Domestic Cylinder',
-              size: '14.2 kg',
-              unitPrice: 920,
-              quantity: 1,
-              subtotal: 920,
-            },
-          ],
-          subtotal: 920,
-          deliveryCharges: 0,
-          taxes: 46,
-          paymentFee: 0,
-          totalAmount: 966,
-          paymentMethod: 'COD',
-          paymentStatus: 'PENDING',
-          orderStatus: 'PLACED',
-          deliveryOtp: '849201',
-          statusHistory: [
-            {
-              status: 'PLACED',
-              timestamp: new Date().toISOString(),
-              comment: 'Order placed online',
-            },
-          ],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
-
-        setRiders([
-          {
-            id: 'rider-1',
-            name: 'Ramesh Patil',
-            phone: '9975300929',
-            vehicleNumber: 'MH-12-AB-1234',
-            isActive: true,
-            assignedOrdersCount: 2,
-            completedOrdersCount: 45,
-          },
-        ]);
-        setSelectedRiderId('rider-1');
+      .catch((error: any) => {
+        setOrder(null);
+        setRiders([]);
+        setSelectedRiderId('');
+        toast.error(error.response?.data?.message || 'Could not load this order.');
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -122,9 +66,8 @@ export const AdminOrderDetail: React.FC = () => {
       const updated = await adminService.acceptOrder(order.id);
       setOrder(updated);
       toast.success('Order accepted');
-    } catch {
-      setOrder({ ...order, orderStatus: 'ACCEPTED' });
-      toast.success('Order accepted');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not accept this order.');
     } finally {
       setActionLoading(false);
     }
@@ -139,17 +82,8 @@ export const AdminOrderDetail: React.FC = () => {
       setOrder(updated);
       setAssignModalOpen(false);
       toast.success(`Assigned to ${riderObj?.name}`);
-    } catch {
-      const riderObj = riders.find((r) => r.id === selectedRiderId);
-      setOrder({
-        ...order,
-        orderStatus: 'ASSIGNED',
-        riderId: selectedRiderId,
-        riderName: riderObj?.name,
-        riderPhone: riderObj?.phone,
-      });
-      setAssignModalOpen(false);
-      toast.success(`Assigned to ${riderObj?.name}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not assign this rider.');
     } finally {
       setActionLoading(false);
     }
@@ -166,10 +100,8 @@ export const AdminOrderDetail: React.FC = () => {
       setOrder(updated);
       setRejectModalOpen(false);
       toast.success('Order rejected');
-    } catch {
-      setOrder({ ...order, orderStatus: 'REJECTED', rejectionReason: reason });
-      setRejectModalOpen(false);
-      toast.success('Order rejected');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not reject this order.');
     } finally {
       setActionLoading(false);
     }
@@ -186,10 +118,8 @@ export const AdminOrderDetail: React.FC = () => {
       setOrder(updated);
       setCancelModalOpen(false);
       toast.success('Order cancelled');
-    } catch {
-      setOrder({ ...order, orderStatus: 'CANCELLED', cancellationReason: reason });
-      setCancelModalOpen(false);
-      toast.success('Order cancelled');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not cancel this order.');
     } finally {
       setActionLoading(false);
     }
@@ -352,7 +282,7 @@ export const AdminOrderDetail: React.FC = () => {
                 Delivery Handover OTP
               </span>
               <span className="text-xl font-mono font-black text-gray-900 block mt-0.5">
-                {order.deliveryOtp || '849201'}
+                {order.deliveryOtp || 'Not generated'}
               </span>
               <span className="text-[10px] text-gray-500">
                 Status: {order.isOtpVerified ? 'Verified by Rider' : 'Pending Handover'}
@@ -389,9 +319,19 @@ export const AdminOrderDetail: React.FC = () => {
               <span className="font-semibold text-gray-900">₹{order.subtotal}</span>
             </div>
             <div className="flex justify-between text-gray-600">
-              <span>Taxes (5%)</span>
+              <span>Applicable configured taxes</span>
               <span className="font-semibold text-gray-900">₹{order.taxes}</span>
             </div>
+            <div className="flex justify-between text-gray-600">
+              <span>Delivery charges</span>
+              <span className="font-semibold text-gray-900">₹{order.deliveryCharges}</span>
+            </div>
+            {order.paymentFee > 0 && (
+              <div className="flex justify-between text-gray-600">
+                <span>Payment fee</span>
+                <span className="font-semibold text-gray-900">₹{order.paymentFee}</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-black text-gray-900 pt-2 border-t border-gray-200">
               <span>Total Amount</span>
               <span className="text-primary">₹{order.totalAmount}</span>

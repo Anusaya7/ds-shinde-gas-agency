@@ -1,27 +1,10 @@
 import { Prisma } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 import { OrderStatus, PaymentMethod, PaymentStatus, Role, NotificationType } from '../constants/enums.js';
 import prisma from '../config/database.js';
 import { generateOrderNumber } from '../utils/orderNumber.js';
-import { createRazorpayOrder } from '../utils/payment.js';
 import { BadRequestError, NotFoundError, ForbiddenError } from '../utils/errors.js';
 import { NotificationService } from './notification.service.js';
-
-export interface QuickBookDTO {
-  customerName: string;
-  phone: string;
-  email?: string;
-  sizeKg?: number;
-  productId?: string;
-  quantity?: number;
-  deliveryAddress: string;
-  deliveryArea: string;
-  deliveryCity: string;
-  deliveryPinCode: string;
-  deliveryLandmark?: string;
-  paymentMethod?: 'COD' | 'ONLINE' | 'CARD';
-  notes?: string;
-}
+import { recordAuditLog } from './audit.service.js';
 
 export interface CreateOrderItemInput {
   productId: string;
@@ -41,6 +24,9 @@ export interface CreateOrderDTO {
   deliveryLandmark?: string;
   deliveryMapLink?: string;
   paymentMethod: PaymentMethod;
+  bookingDurationDays: number;
+  remindersEnabled: boolean;
+  fsiNumber?: string;
   notes?: string;
 }
 
@@ -72,15 +58,22 @@ export class OrderService {
     const settings = await prisma.agencySetting.findMany({
       where: {
         key: {
-          in: ['delivery_charge_default', 'tax_percentage', 'online_payment_fee_percent'],
+          in: ['delivery_charge_default', 'tax_percentage', 'welcome_offer_enabled', 'welcome_offer_amount'],
         },
       },
     });
 
     const settingMap = new Map(settings.map((s) => [s.key, s.value]));
     const defaultDeliveryFee = parseFloat(settingMap.get('delivery_charge_default') || '50.00');
-    const taxRatePercent = parseFloat(settingMap.get('tax_percentage') || '5.0');
-    const onlineFeePercent = parseFloat(settingMap.get('online_payment_fee_percent') || '0');
+    const taxRatePercent = parseFloat(settingMap.get('tax_percentage') || '0');
+    const welcomeOfferEnabled = settingMap.get('welcome_offer_enabled') === 'true';
+    const welcomeOfferAmount = Number(settingMap.get('welcome_offer_amount') || 0);
+    if (!Number.isFinite(taxRatePercent) || taxRatePercent < 0 || taxRatePercent > 100) {
+      throw new BadRequestError('Configured tax rate is invalid. Please contact the agency.');
+    }
+    if (!Number.isFinite(welcomeOfferAmount) || welcomeOfferAmount < 0) {
+      throw new BadRequestError('Configured welcome offer is invalid. Please contact the agency.');
+    }
 
     // 3. Compute item totals & subtotal
     let subtotal = 0;
@@ -123,39 +116,45 @@ export class OrderService {
       };
     });
 
-    // 4. Calculate Taxes and Payment Fees
-    // Domestic cylinders are exempted or minimal GST, commercial applies configured tax
+    // 4. Apply the configured tax rate only to commercial cylinder orders.
     const taxes = hasCommercialItem ? (subtotal * taxRatePercent) / 100 : 0;
-    const paymentFee = dto.paymentMethod === PaymentMethod.ONLINE ? (subtotal * onlineFeePercent) / 100 : 0;
-    const totalAmount = subtotal + totalDeliveryCharge + taxes + paymentFee;
+    const paymentFee = 0;
+    const baseTotal = subtotal + totalDeliveryCharge + taxes + paymentFee;
 
     const orderNumber = generateOrderNumber();
+    let welcomeOfferDiscount = 0;
+    let totalAmount = baseTotal;
 
-    // 5. Pre-create Razorpay order if online payment
-    let razorpayOrderData: any = null;
-    if (dto.paymentMethod === PaymentMethod.ONLINE || dto.paymentMethod === PaymentMethod.CARD) {
-      try {
-        razorpayOrderData = await createRazorpayOrder({
-          amountInRupees: totalAmount,
-          receipt: orderNumber,
-          notes: {
-            orderNumber,
-            deliveryPhone: dto.deliveryPhone,
-          },
-        });
-      } catch (err) {
-        console.error('Error creating Razorpay order:', err);
-        // Fallback: order will still be created and online payment retried
-      }
-    }
-
-    // 6. Execute atomic database transaction
+    // 5. Persist the booking before any payment step can open.
     const createdOrder = await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: customerId },
+        data: { name: dto.deliveryName },
+      });
+      await tx.customerProfile.upsert({
+        where: { userId: customerId },
+        update: { ...(dto.fsiNumber !== undefined && { fsiNumber: dto.fsiNumber.trim() || null }) },
+        create: { userId: customerId, fsiNumber: dto.fsiNumber?.trim() || null },
+      });
+      if (welcomeOfferEnabled && welcomeOfferAmount > 0) {
+        const existingOrderCount = await tx.order.count({ where: { customerId } });
+        if (existingOrderCount === 0) {
+          const claim = await tx.customerProfile.updateMany({
+            where: { userId: customerId, welcomeOfferUsedAt: null },
+            data: { welcomeOfferUsedAt: new Date() },
+          });
+          if (claim.count === 1) {
+            welcomeOfferDiscount = Math.min(welcomeOfferAmount, baseTotal);
+          }
+        }
+      }
+      totalAmount = Math.max(0, baseTotal - welcomeOfferDiscount);
+
       const order = await tx.order.create({
         data: {
           orderNumber,
           customerId,
-          status: OrderStatus.ORDER_PLACED,
+          status: OrderStatus.AWAITING_REVIEW,
           deliveryName: dto.deliveryName,
           deliveryPhone: dto.deliveryPhone,
           deliveryAltPhone: dto.deliveryAltPhone,
@@ -172,6 +171,10 @@ export class OrderService {
           paymentFee: new Prisma.Decimal(paymentFee),
           totalAmount: new Prisma.Decimal(totalAmount),
           paymentMethod: dto.paymentMethod,
+          bookingDurationDays: dto.bookingDurationDays,
+          remindersEnabled: dto.remindersEnabled,
+          fsiNumber: dto.fsiNumber?.trim() || null,
+          welcomeOfferDiscount: new Prisma.Decimal(welcomeOfferDiscount),
           paymentStatus: PaymentStatus.PENDING,
           notes: dto.notes,
           items: {
@@ -179,8 +182,8 @@ export class OrderService {
           },
           statusHistory: {
             create: {
-              status: OrderStatus.ORDER_PLACED,
-              note: 'Order placed by customer via web platform',
+              status: OrderStatus.AWAITING_REVIEW,
+              note: 'Booking submitted by customer and awaiting admin review',
               changedById: customerId,
             },
           },
@@ -189,7 +192,6 @@ export class OrderService {
               method: dto.paymentMethod,
               amount: new Prisma.Decimal(totalAmount),
               status: PaymentStatus.PENDING,
-              razorpayOrderId: razorpayOrderData?.id || null,
             },
           },
         },
@@ -199,29 +201,35 @@ export class OrderService {
           statusHistory: true,
         },
       });
+      await recordAuditLog(tx, {
+        userId: customerId,
+        action: 'ORDER_CREATE',
+        entity: 'Order',
+        entityId: order.id,
+        details: `Created booking ${order.orderNumber}; first-order discount ₹${welcomeOfferDiscount}.`,
+      });
 
       return order;
     });
 
-    // 7. Notify Admins & Customer
+    // Notify administrators before the customer can proceed to payment.
     await NotificationService.notifyAdmins({
       title: 'New Cylinder Order Placed',
-      message: `New order ${createdOrder.orderNumber} placed for ₹${totalAmount} by ${dto.deliveryName}.`,
+      message: `New booking ${createdOrder.orderNumber} is awaiting review for ₹${totalAmount} by ${dto.deliveryName}.`,
       type: NotificationType.ORDER_UPDATE,
       orderId: createdOrder.id,
     });
 
     await NotificationService.createNotification({
       userId: customerId,
-      title: 'Order Confirmed',
-      message: `Your LPG cylinder order ${createdOrder.orderNumber} has been placed successfully.`,
+      title: 'Booking submitted',
+      message: `Your ${createdOrder.items.map((item) => `${item.sizeKg} kg`).join(', ')} cylinder booking (${dto.bookingDurationDays} days) is awaiting admin review. Payment is available after approval.`,
       type: NotificationType.ORDER_UPDATE,
       orderId: createdOrder.id,
     });
 
     return {
       order: createdOrder,
-      razorpayOrder: razorpayOrderData,
     };
   }
 
@@ -303,6 +311,59 @@ export class OrderService {
     }
 
     return order;
+  }
+
+  static async updateReminderPreference(orderId: string, customerId: string, enabled: boolean) {
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, customerId },
+      select: {
+        id: true,
+        status: true,
+        deliveredAt: true,
+        bookingDurationDays: true,
+        remindersEndAt: true,
+      },
+    });
+    if (!order) throw new NotFoundError('Order not found');
+    if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.REJECTED) {
+      throw new BadRequestError('Reminders cannot be changed for a cancelled or rejected booking.');
+    }
+
+    let nextReminderAt: Date | null = null;
+    let remindersEndAt = order.remindersEndAt;
+    if (enabled && order.status === OrderStatus.DELIVERED) {
+      if (!order.deliveredAt) {
+        throw new BadRequestError('Delivery date is unavailable; reminders cannot be scheduled.');
+      }
+      remindersEndAt ??= new Date(
+        order.deliveredAt.getTime() + order.bookingDurationDays * 24 * 60 * 60 * 1000
+      );
+      if (remindersEndAt <= new Date()) {
+        throw new BadRequestError('The reminder period for this booking has ended.');
+      }
+      nextReminderAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+      if (nextReminderAt >= remindersEndAt) nextReminderAt = null;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          remindersEnabled: enabled,
+          nextReminderAt: enabled ? nextReminderAt : null,
+          ...(order.status === OrderStatus.DELIVERED && { remindersEndAt }),
+        },
+      });
+      await recordAuditLog(tx, {
+        userId: customerId,
+        action: enabled ? 'REMINDERS_ENABLED' : 'REMINDERS_DISABLED',
+        entity: 'Order',
+        entityId: order.id,
+        details: `Customer ${enabled ? 'enabled' : 'disabled'} in-app reminders.`,
+      });
+      return result;
+    });
+    return updated;
   }
 
   /**
@@ -447,135 +508,4 @@ export class OrderService {
     return cancelledOrder;
   }
 
-  /**
-   * Quick Booking directly from website (Phone & Email supported, no login required)
-   */
-  static async quickBookOrder(dto: QuickBookDTO) {
-    if (!dto.customerName || !dto.phone || !dto.deliveryAddress) {
-      throw new BadRequestError('Customer name, phone number, and delivery address are required');
-    }
-
-    const cleanPhone = dto.phone.replace(/\D/g, '').slice(-10);
-    if (cleanPhone.length < 10) {
-      throw new BadRequestError('A valid 10-digit mobile number is required');
-    }
-
-    // 1. Resolve product
-    let product: any = null;
-    if (dto.productId) {
-      product = await prisma.product.findUnique({ where: { id: dto.productId } });
-    }
-    if (!product && dto.sizeKg) {
-      product = await prisma.product.findFirst({
-        where: { sizeKg: Number(dto.sizeKg), isActive: true },
-      });
-    }
-    if (!product) {
-      product = await prisma.product.findFirst({
-        where: { isActive: true },
-        orderBy: { sizeKg: 'asc' },
-      });
-    }
-    if (!product) {
-      product = await prisma.product.create({
-        data: {
-          name: `${dto.sizeKg || 15} KG LPG Cylinder`,
-          sizeKg: Number(dto.sizeKg || 15),
-          price: new Prisma.Decimal(1080),
-          deliveryCharge: new Prisma.Decimal(50),
-          isActive: true,
-        },
-      });
-    }
-
-    // 2. Find or create user
-    const safeEmail = dto.email?.trim() || `customer_${cleanPhone}@dsshindegas.com`;
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { phone: cleanPhone },
-          ...(dto.email ? [{ email: dto.email.trim() }] : []),
-        ],
-      },
-    });
-
-    if (!user) {
-      const passwordHash = await bcrypt.hash('Customer@123', 10);
-      user = await prisma.user.create({
-        data: {
-          name: dto.customerName.trim(),
-          phone: cleanPhone,
-          email: safeEmail,
-          passwordHash,
-          role: Role.CUSTOMER,
-          isActive: true,
-          isVerified: true,
-          customerProfile: {
-            create: {
-              addresses: {
-                create: {
-                  fullName: dto.customerName.trim(),
-                  phone: cleanPhone,
-                  addressLine1: dto.deliveryAddress.trim(),
-                  area: dto.deliveryArea || 'City',
-                  city: dto.deliveryCity || 'Karad',
-                  state: 'Maharashtra',
-                  pinCode: dto.deliveryPinCode || '415110',
-                  landmark: dto.deliveryLandmark || null,
-                  isDefault: true,
-                },
-              },
-            },
-          },
-        },
-      });
-    }
-
-    // 3. Create the order using OrderService.createOrder
-    const orderData: CreateOrderDTO = {
-      items: [
-        {
-          productId: product.id,
-          quantity: Number(dto.quantity) || 1,
-        },
-      ],
-      deliveryName: dto.customerName.trim(),
-      deliveryPhone: cleanPhone,
-      deliveryAddress: dto.deliveryAddress.trim(),
-      deliveryArea: dto.deliveryArea || 'Main Road',
-      deliveryCity: dto.deliveryCity || 'Karad',
-      deliveryState: 'Maharashtra',
-      deliveryPinCode: dto.deliveryPinCode || '415110',
-      deliveryLandmark: dto.deliveryLandmark || undefined,
-      paymentMethod: (dto.paymentMethod as PaymentMethod) || PaymentMethod.COD,
-      notes: dto.notes || 'Direct booking from website',
-    };
-
-    const createdResult = await this.createOrder(user.id, orderData);
-    const createdOrder = createdResult.order;
-
-    // Notify admins of new public website booking
-    try {
-      await NotificationService.notifyAdmins({
-        title: 'New Cylinder Order Placed',
-        message: `New booking ${createdOrder.orderNumber} placed by ${dto.customerName} (${cleanPhone}) for ${product.name}`,
-        type: NotificationType.ORDER_UPDATE,
-        orderId: createdOrder.id,
-      });
-    } catch (err) {
-      console.warn('Failed to dispatch admin notification:', err);
-    }
-
-    return {
-      order: createdOrder,
-      orderNumber: createdOrder.orderNumber,
-      orderId: createdOrder.id,
-      productName: product.name,
-      sizeKg: product.sizeKg,
-      totalAmount: Number(createdOrder.totalAmount),
-      trackingUrl: `/dashboard/orders/${createdOrder.id}/track`,
-      customerPhone: cleanPhone,
-      customerEmail: safeEmail,
-    };
-  }
 }

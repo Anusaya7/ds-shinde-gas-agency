@@ -29,7 +29,12 @@ api.interceptors.response.use(
   },
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      const isAuthUrl = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
+      const authUrl = error.config?.url || '';
+      const isAuthUrl =
+        authUrl.includes('/auth/login') ||
+        authUrl.includes('/auth/register') ||
+        authUrl.includes('/auth/send-otp') ||
+        authUrl.includes('/auth/verify-otp');
       if (!isAuthUrl) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');

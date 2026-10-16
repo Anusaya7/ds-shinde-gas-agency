@@ -1,6 +1,6 @@
-# D.S SHINDE GAS AGENCY — LPG Cylinder Order Management System
+# DS Shinde Gas — LPG Cylinder Order Management System
 
-A complete, production-ready web application for LPG cylinder ordering and delivery management.
+A full-stack web application for LPG cylinder booking and delivery management.
 
 ## 🏗️ Architecture
 
@@ -33,7 +33,6 @@ DS_Gas/
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL 14+
 
 ### 1. Clone & Install
 
@@ -50,16 +49,13 @@ npm install
 ### 2. Database Setup
 
 ```bash
-# Create a PostgreSQL database
-createdb ds_shinde_gas
-
-# Configure environment
+# Configure the backend environment (SQLite is used for local development)
 cd backend
 cp .env.example .env
-# Edit .env with your database URL and secrets
+# Edit .env and set local secrets
 
 # Run migrations
-npx prisma migrate dev --name init
+npx prisma migrate dev
 
 # Seed sample data
 npx prisma db seed
@@ -79,13 +75,14 @@ npm run dev
 
 Open http://localhost:5173 in your browser.
 
-### Default Credentials (Seeded)
+### Administrator Bootstrap
 
-| Role     | Email                  | Password     |
-|----------|------------------------|--------------|
-| Admin    | admin@dsshinde.com     | Admin@123    |
-| Rider    | rider@dsshinde.com     | Rider@123    |
-| Customer | customer@dsshinde.com  | Customer@123 |
+No default administrator password is created. Before seeding, configure
+`SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` in the backend environment. Use
+unique credentials and keep all production secrets out of frontend code and source control.
+
+Customer and rider accounts sign in using OTP. Rider access to delivery tools
+is enabled only after an administrator approves the rider application.
 
 ## 📱 Application Features
 
@@ -119,9 +116,11 @@ Open http://localhost:5173 in your browser.
 - Completed deliveries log
 
 ## 🔐 Security
-- JWT authentication with role-based access (Customer, Admin, Rider)
-- Bcrypt password hashing
+- JWT authentication with server-enforced role-based access (Customer, Admin, Rider)
+- Administrator-only password sign-in; customer and rider sign-in uses OTP
 - OTP with hash storage, expiry, attempt limits
+- Encrypted customer and rider documents with administrator-only access
+- Administrator approval workflow and audit logging
 - Rate limiting on auth/OTP endpoints
 - Server-side price calculation & validation
 - Zod schema validation on all inputs
@@ -145,7 +144,7 @@ See `backend/.env.example` for the full list. Key variables:
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | Local SQLite file; production needs a durable database and a matching Prisma provider |
 | `JWT_SECRET` | JWT signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token secret |
 | `RAZORPAY_KEY_ID` | Razorpay API key |
@@ -169,20 +168,14 @@ See `backend/.env.example` for the full list. Key variables:
 
 ## 🏭 Production Deployment
 
-```bash
-# Build frontend
-cd frontend
-npm run build
-
-# Build backend
-cd ../backend
-npm run build
-
-# Run production
-NODE_ENV=production node dist/index.js
-```
+The Vercel build compiles both the backend API bundle and frontend assets. Do not
+enable production bookings until a durable database is configured and the Prisma
+schema and migrations have been set up for it; the current SQLite database is
+for local development and is not durable on serverless functions. Configure the
+required JWT secrets, document-encryption key, payment-provider credentials,
+notification-provider settings, and cron secret in Vercel's environment settings.
 
 ## 📞 Business Contact
-- **D.S SHINDE GAS AGENCY**
+- **DS Shinde Gas**
 - Phone 1: 9511760208
 - Phone 2: 9975300929

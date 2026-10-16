@@ -23442,7 +23442,7 @@ var require_bcrypt = __commonJS({
         (global2["dcodeIO"] = global2["dcodeIO"] || {})["bcrypt"] = factory();
     })(exports2, function() {
       "use strict";
-      var bcrypt5 = {};
+      var bcrypt3 = {};
       var randomFallback = null;
       function random(len) {
         if (typeof module2 !== "undefined" && module2 && module2["exports"])
@@ -23467,10 +23467,10 @@ var require_bcrypt = __commonJS({
       } catch (e) {
       }
       randomFallback = null;
-      bcrypt5.setRandomFallback = function(random2) {
+      bcrypt3.setRandomFallback = function(random2) {
         randomFallback = random2;
       };
-      bcrypt5.genSaltSync = function(rounds, seed_length) {
+      bcrypt3.genSaltSync = function(rounds, seed_length) {
         rounds = rounds || GENSALT_DEFAULT_LOG2_ROUNDS;
         if (typeof rounds !== "number")
           throw Error("Illegal arguments: " + typeof rounds + ", " + typeof seed_length);
@@ -23487,7 +23487,7 @@ var require_bcrypt = __commonJS({
         salt.push(base64_encode(random(BCRYPT_SALT_LEN), BCRYPT_SALT_LEN));
         return salt.join("");
       };
-      bcrypt5.genSalt = function(rounds, seed_length, callback) {
+      bcrypt3.genSalt = function(rounds, seed_length, callback) {
         if (typeof seed_length === "function")
           callback = seed_length, seed_length = void 0;
         if (typeof rounds === "function")
@@ -23499,7 +23499,7 @@ var require_bcrypt = __commonJS({
         function _async(callback2) {
           nextTick(function() {
             try {
-              callback2(null, bcrypt5.genSaltSync(rounds));
+              callback2(null, bcrypt3.genSaltSync(rounds));
             } catch (err) {
               callback2(err);
             }
@@ -23520,19 +23520,19 @@ var require_bcrypt = __commonJS({
             });
           });
       };
-      bcrypt5.hashSync = function(s, salt) {
+      bcrypt3.hashSync = function(s, salt) {
         if (typeof salt === "undefined")
           salt = GENSALT_DEFAULT_LOG2_ROUNDS;
         if (typeof salt === "number")
-          salt = bcrypt5.genSaltSync(salt);
+          salt = bcrypt3.genSaltSync(salt);
         if (typeof s !== "string" || typeof salt !== "string")
           throw Error("Illegal arguments: " + typeof s + ", " + typeof salt);
         return _hash(s, salt);
       };
-      bcrypt5.hash = function(s, salt, callback, progressCallback) {
+      bcrypt3.hash = function(s, salt, callback, progressCallback) {
         function _async(callback2) {
           if (typeof s === "string" && typeof salt === "number")
-            bcrypt5.genSalt(salt, function(err, salt2) {
+            bcrypt3.genSalt(salt, function(err, salt2) {
               _hash(s, salt2, callback2, progressCallback);
             });
           else if (typeof s === "string" && typeof salt === "string")
@@ -23567,14 +23567,14 @@ var require_bcrypt = __commonJS({
           return false;
         return wrong === 0;
       }
-      bcrypt5.compareSync = function(s, hash) {
+      bcrypt3.compareSync = function(s, hash) {
         if (typeof s !== "string" || typeof hash !== "string")
           throw Error("Illegal arguments: " + typeof s + ", " + typeof hash);
         if (hash.length !== 60)
           return false;
-        return safeStringCompare(bcrypt5.hashSync(s, hash.substr(0, hash.length - 31)), hash);
+        return safeStringCompare(bcrypt3.hashSync(s, hash.substr(0, hash.length - 31)), hash);
       };
-      bcrypt5.compare = function(s, hash, callback, progressCallback) {
+      bcrypt3.compare = function(s, hash, callback, progressCallback) {
         function _async(callback2) {
           if (typeof s !== "string" || typeof hash !== "string") {
             nextTick(callback2.bind(this, Error("Illegal arguments: " + typeof s + ", " + typeof hash)));
@@ -23584,7 +23584,7 @@ var require_bcrypt = __commonJS({
             nextTick(callback2.bind(this, null, false));
             return;
           }
-          bcrypt5.hash(s, hash.substr(0, 29), function(err, comp) {
+          bcrypt3.hash(s, hash.substr(0, 29), function(err, comp) {
             if (err)
               callback2(err);
             else
@@ -23606,12 +23606,12 @@ var require_bcrypt = __commonJS({
             });
           });
       };
-      bcrypt5.getRounds = function(hash) {
+      bcrypt3.getRounds = function(hash) {
         if (typeof hash !== "string")
           throw Error("Illegal arguments: " + typeof hash);
         return parseInt(hash.split("$")[2], 10);
       };
-      bcrypt5.getSalt = function(hash) {
+      bcrypt3.getSalt = function(hash) {
         if (typeof hash !== "string")
           throw Error("Illegal arguments: " + typeof hash);
         if (hash.length !== 60)
@@ -25234,9 +25234,9 @@ var require_bcrypt = __commonJS({
           }, progressCallback);
         }
       }
-      bcrypt5.encodeBase64 = base64_encode;
-      bcrypt5.decodeBase64 = base64_decode;
-      return bcrypt5;
+      bcrypt3.encodeBase64 = base64_encode;
+      bcrypt3.decodeBase64 = base64_decode;
+      return bcrypt3;
     });
   }
 });
@@ -40313,6 +40313,7149 @@ var require_nodemailer = __commonJS({
   }
 });
 
+// node_modules/busboy/lib/utils.js
+var require_utils3 = __commonJS({
+  "node_modules/busboy/lib/utils.js"(exports2, module2) {
+    "use strict";
+    function parseContentType(str) {
+      if (str.length === 0)
+        return;
+      const params = /* @__PURE__ */ Object.create(null);
+      let i = 0;
+      for (; i < str.length; ++i) {
+        const code = str.charCodeAt(i);
+        if (TOKEN[code] !== 1) {
+          if (code !== 47 || i === 0)
+            return;
+          break;
+        }
+      }
+      if (i === str.length)
+        return;
+      const type = str.slice(0, i).toLowerCase();
+      const subtypeStart = ++i;
+      for (; i < str.length; ++i) {
+        const code = str.charCodeAt(i);
+        if (TOKEN[code] !== 1) {
+          if (i === subtypeStart)
+            return;
+          if (parseContentTypeParams(str, i, params) === void 0)
+            return;
+          break;
+        }
+      }
+      if (i === subtypeStart)
+        return;
+      const subtype = str.slice(subtypeStart, i).toLowerCase();
+      return { type, subtype, params };
+    }
+    function parseContentTypeParams(str, i, params) {
+      while (i < str.length) {
+        for (; i < str.length; ++i) {
+          const code = str.charCodeAt(i);
+          if (code !== 32 && code !== 9)
+            break;
+        }
+        if (i === str.length)
+          break;
+        if (str.charCodeAt(i++) !== 59)
+          return;
+        for (; i < str.length; ++i) {
+          const code = str.charCodeAt(i);
+          if (code !== 32 && code !== 9)
+            break;
+        }
+        if (i === str.length)
+          return;
+        let name;
+        const nameStart = i;
+        for (; i < str.length; ++i) {
+          const code = str.charCodeAt(i);
+          if (TOKEN[code] !== 1) {
+            if (code !== 61)
+              return;
+            break;
+          }
+        }
+        if (i === str.length)
+          return;
+        name = str.slice(nameStart, i);
+        ++i;
+        if (i === str.length)
+          return;
+        let value = "";
+        let valueStart;
+        if (str.charCodeAt(i) === 34) {
+          valueStart = ++i;
+          let escaping = false;
+          for (; i < str.length; ++i) {
+            const code = str.charCodeAt(i);
+            if (code === 92) {
+              if (escaping) {
+                valueStart = i;
+                escaping = false;
+              } else {
+                value += str.slice(valueStart, i);
+                escaping = true;
+              }
+              continue;
+            }
+            if (code === 34) {
+              if (escaping) {
+                valueStart = i;
+                escaping = false;
+                continue;
+              }
+              value += str.slice(valueStart, i);
+              break;
+            }
+            if (escaping) {
+              valueStart = i - 1;
+              escaping = false;
+            }
+            if (QDTEXT[code] !== 1)
+              return;
+          }
+          if (i === str.length)
+            return;
+          ++i;
+        } else {
+          valueStart = i;
+          for (; i < str.length; ++i) {
+            const code = str.charCodeAt(i);
+            if (TOKEN[code] !== 1) {
+              if (i === valueStart)
+                return;
+              break;
+            }
+          }
+          value = str.slice(valueStart, i);
+        }
+        name = name.toLowerCase();
+        if (params[name] === void 0)
+          params[name] = value;
+      }
+      return params;
+    }
+    function parseDisposition(str, defDecoder) {
+      if (str.length === 0)
+        return;
+      const params = /* @__PURE__ */ Object.create(null);
+      let i = 0;
+      for (; i < str.length; ++i) {
+        const code = str.charCodeAt(i);
+        if (TOKEN[code] !== 1) {
+          if (parseDispositionParams(str, i, params, defDecoder) === void 0)
+            return;
+          break;
+        }
+      }
+      const type = str.slice(0, i).toLowerCase();
+      return { type, params };
+    }
+    function parseDispositionParams(str, i, params, defDecoder) {
+      while (i < str.length) {
+        for (; i < str.length; ++i) {
+          const code = str.charCodeAt(i);
+          if (code !== 32 && code !== 9)
+            break;
+        }
+        if (i === str.length)
+          break;
+        if (str.charCodeAt(i++) !== 59)
+          return;
+        for (; i < str.length; ++i) {
+          const code = str.charCodeAt(i);
+          if (code !== 32 && code !== 9)
+            break;
+        }
+        if (i === str.length)
+          return;
+        let name;
+        const nameStart = i;
+        for (; i < str.length; ++i) {
+          const code = str.charCodeAt(i);
+          if (TOKEN[code] !== 1) {
+            if (code === 61)
+              break;
+            return;
+          }
+        }
+        if (i === str.length)
+          return;
+        let value = "";
+        let valueStart;
+        let charset;
+        name = str.slice(nameStart, i);
+        if (name.charCodeAt(name.length - 1) === 42) {
+          const charsetStart = ++i;
+          for (; i < str.length; ++i) {
+            const code = str.charCodeAt(i);
+            if (CHARSET[code] !== 1) {
+              if (code !== 39)
+                return;
+              break;
+            }
+          }
+          if (i === str.length)
+            return;
+          charset = str.slice(charsetStart, i);
+          ++i;
+          for (; i < str.length; ++i) {
+            const code = str.charCodeAt(i);
+            if (code === 39)
+              break;
+          }
+          if (i === str.length)
+            return;
+          ++i;
+          if (i === str.length)
+            return;
+          valueStart = i;
+          let encode = 0;
+          for (; i < str.length; ++i) {
+            const code = str.charCodeAt(i);
+            if (EXTENDED_VALUE[code] !== 1) {
+              if (code === 37) {
+                let hexUpper;
+                let hexLower;
+                if (i + 2 < str.length && (hexUpper = HEX_VALUES[str.charCodeAt(i + 1)]) !== -1 && (hexLower = HEX_VALUES[str.charCodeAt(i + 2)]) !== -1) {
+                  const byteVal = (hexUpper << 4) + hexLower;
+                  value += str.slice(valueStart, i);
+                  value += String.fromCharCode(byteVal);
+                  i += 2;
+                  valueStart = i + 1;
+                  if (byteVal >= 128)
+                    encode = 2;
+                  else if (encode === 0)
+                    encode = 1;
+                  continue;
+                }
+                return;
+              }
+              break;
+            }
+          }
+          value += str.slice(valueStart, i);
+          value = convertToUTF8(value, charset, encode);
+          if (value === void 0)
+            return;
+        } else {
+          ++i;
+          if (i === str.length)
+            return;
+          if (str.charCodeAt(i) === 34) {
+            valueStart = ++i;
+            let escaping = false;
+            for (; i < str.length; ++i) {
+              const code = str.charCodeAt(i);
+              if (code === 92) {
+                if (escaping) {
+                  valueStart = i;
+                  escaping = false;
+                } else {
+                  value += str.slice(valueStart, i);
+                  escaping = true;
+                }
+                continue;
+              }
+              if (code === 34) {
+                if (escaping) {
+                  valueStart = i;
+                  escaping = false;
+                  continue;
+                }
+                value += str.slice(valueStart, i);
+                break;
+              }
+              if (escaping) {
+                valueStart = i - 1;
+                escaping = false;
+              }
+              if (QDTEXT[code] !== 1)
+                return;
+            }
+            if (i === str.length)
+              return;
+            ++i;
+          } else {
+            valueStart = i;
+            for (; i < str.length; ++i) {
+              const code = str.charCodeAt(i);
+              if (TOKEN[code] !== 1) {
+                if (i === valueStart)
+                  return;
+                break;
+              }
+            }
+            value = str.slice(valueStart, i);
+          }
+          value = defDecoder(value, 2);
+          if (value === void 0)
+            return;
+        }
+        name = name.toLowerCase();
+        if (params[name] === void 0)
+          params[name] = value;
+      }
+      return params;
+    }
+    function getDecoder(charset) {
+      let lc;
+      while (true) {
+        switch (charset) {
+          case "utf-8":
+          case "utf8":
+            return decoders.utf8;
+          case "latin1":
+          case "ascii":
+          // TODO: Make these a separate, strict decoder?
+          case "us-ascii":
+          case "iso-8859-1":
+          case "iso8859-1":
+          case "iso88591":
+          case "iso_8859-1":
+          case "windows-1252":
+          case "iso_8859-1:1987":
+          case "cp1252":
+          case "x-cp1252":
+            return decoders.latin1;
+          case "utf16le":
+          case "utf-16le":
+          case "ucs2":
+          case "ucs-2":
+            return decoders.utf16le;
+          case "base64":
+            return decoders.base64;
+          default:
+            if (lc === void 0) {
+              lc = true;
+              charset = charset.toLowerCase();
+              continue;
+            }
+            return decoders.other.bind(charset);
+        }
+      }
+    }
+    var decoders = {
+      utf8: (data, hint) => {
+        if (data.length === 0)
+          return "";
+        if (typeof data === "string") {
+          if (hint < 2)
+            return data;
+          data = Buffer.from(data, "latin1");
+        }
+        return data.utf8Slice(0, data.length);
+      },
+      latin1: (data, hint) => {
+        if (data.length === 0)
+          return "";
+        if (typeof data === "string")
+          return data;
+        return data.latin1Slice(0, data.length);
+      },
+      utf16le: (data, hint) => {
+        if (data.length === 0)
+          return "";
+        if (typeof data === "string")
+          data = Buffer.from(data, "latin1");
+        return data.ucs2Slice(0, data.length);
+      },
+      base64: (data, hint) => {
+        if (data.length === 0)
+          return "";
+        if (typeof data === "string")
+          data = Buffer.from(data, "latin1");
+        return data.base64Slice(0, data.length);
+      },
+      other: (data, hint) => {
+        if (data.length === 0)
+          return "";
+        if (typeof data === "string")
+          data = Buffer.from(data, "latin1");
+        try {
+          const decoder = new TextDecoder(exports2);
+          return decoder.decode(data);
+        } catch {
+        }
+      }
+    };
+    function convertToUTF8(data, charset, hint) {
+      const decode = getDecoder(charset);
+      if (decode)
+        return decode(data, hint);
+    }
+    function basename(path2) {
+      if (typeof path2 !== "string")
+        return "";
+      for (let i = path2.length - 1; i >= 0; --i) {
+        switch (path2.charCodeAt(i)) {
+          case 47:
+          // '/'
+          case 92:
+            path2 = path2.slice(i + 1);
+            return path2 === ".." || path2 === "." ? "" : path2;
+        }
+      }
+      return path2 === ".." || path2 === "." ? "" : path2;
+    }
+    var TOKEN = [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ];
+    var QDTEXT = [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ];
+    var CHARSET = [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ];
+    var EXTENDED_VALUE = [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ];
+    var HEX_VALUES = [
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1
+    ];
+    module2.exports = {
+      basename,
+      convertToUTF8,
+      getDecoder,
+      parseContentType,
+      parseDisposition
+    };
+  }
+});
+
+// node_modules/streamsearch/lib/sbmh.js
+var require_sbmh = __commonJS({
+  "node_modules/streamsearch/lib/sbmh.js"(exports2, module2) {
+    "use strict";
+    function memcmp(buf1, pos1, buf2, pos2, num) {
+      for (let i = 0; i < num; ++i) {
+        if (buf1[pos1 + i] !== buf2[pos2 + i])
+          return false;
+      }
+      return true;
+    }
+    var SBMH = class {
+      constructor(needle, cb) {
+        if (typeof cb !== "function")
+          throw new Error("Missing match callback");
+        if (typeof needle === "string")
+          needle = Buffer.from(needle);
+        else if (!Buffer.isBuffer(needle))
+          throw new Error(`Expected Buffer for needle, got ${typeof needle}`);
+        const needleLen = needle.length;
+        this.maxMatches = Infinity;
+        this.matches = 0;
+        this._cb = cb;
+        this._lookbehindSize = 0;
+        this._needle = needle;
+        this._bufPos = 0;
+        this._lookbehind = Buffer.allocUnsafe(needleLen);
+        this._occ = [
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen,
+          needleLen
+        ];
+        if (needleLen > 1) {
+          for (let i = 0; i < needleLen - 1; ++i)
+            this._occ[needle[i]] = needleLen - 1 - i;
+        }
+      }
+      reset() {
+        this.matches = 0;
+        this._lookbehindSize = 0;
+        this._bufPos = 0;
+      }
+      push(chunk, pos) {
+        let result;
+        if (!Buffer.isBuffer(chunk))
+          chunk = Buffer.from(chunk, "latin1");
+        const chunkLen = chunk.length;
+        this._bufPos = pos || 0;
+        while (result !== chunkLen && this.matches < this.maxMatches)
+          result = feed(this, chunk);
+        return result;
+      }
+      destroy() {
+        const lbSize = this._lookbehindSize;
+        if (lbSize)
+          this._cb(false, this._lookbehind, 0, lbSize, false);
+        this.reset();
+      }
+    };
+    function feed(self2, data) {
+      const len = data.length;
+      const needle = self2._needle;
+      const needleLen = needle.length;
+      let pos = -self2._lookbehindSize;
+      const lastNeedleCharPos = needleLen - 1;
+      const lastNeedleChar = needle[lastNeedleCharPos];
+      const end = len - needleLen;
+      const occ = self2._occ;
+      const lookbehind = self2._lookbehind;
+      if (pos < 0) {
+        while (pos < 0 && pos <= end) {
+          const nextPos = pos + lastNeedleCharPos;
+          const ch = nextPos < 0 ? lookbehind[self2._lookbehindSize + nextPos] : data[nextPos];
+          if (ch === lastNeedleChar && matchNeedle(self2, data, pos, lastNeedleCharPos)) {
+            self2._lookbehindSize = 0;
+            ++self2.matches;
+            if (pos > -self2._lookbehindSize)
+              self2._cb(true, lookbehind, 0, self2._lookbehindSize + pos, false);
+            else
+              self2._cb(true, void 0, 0, 0, true);
+            return self2._bufPos = pos + needleLen;
+          }
+          pos += occ[ch];
+        }
+        while (pos < 0 && !matchNeedle(self2, data, pos, len - pos))
+          ++pos;
+        if (pos < 0) {
+          const bytesToCutOff = self2._lookbehindSize + pos;
+          if (bytesToCutOff > 0) {
+            self2._cb(false, lookbehind, 0, bytesToCutOff, false);
+          }
+          self2._lookbehindSize -= bytesToCutOff;
+          lookbehind.copy(lookbehind, 0, bytesToCutOff, self2._lookbehindSize);
+          lookbehind.set(data, self2._lookbehindSize);
+          self2._lookbehindSize += len;
+          self2._bufPos = len;
+          return len;
+        }
+        self2._cb(false, lookbehind, 0, self2._lookbehindSize, false);
+        self2._lookbehindSize = 0;
+      }
+      pos += self2._bufPos;
+      const firstNeedleChar = needle[0];
+      while (pos <= end) {
+        const ch = data[pos + lastNeedleCharPos];
+        if (ch === lastNeedleChar && data[pos] === firstNeedleChar && memcmp(needle, 0, data, pos, lastNeedleCharPos)) {
+          ++self2.matches;
+          if (pos > 0)
+            self2._cb(true, data, self2._bufPos, pos, true);
+          else
+            self2._cb(true, void 0, 0, 0, true);
+          return self2._bufPos = pos + needleLen;
+        }
+        pos += occ[ch];
+      }
+      while (pos < len) {
+        if (data[pos] !== firstNeedleChar || !memcmp(data, pos, needle, 0, len - pos)) {
+          ++pos;
+          continue;
+        }
+        data.copy(lookbehind, 0, pos, len);
+        self2._lookbehindSize = len - pos;
+        break;
+      }
+      if (pos > 0)
+        self2._cb(false, data, self2._bufPos, pos < len ? pos : len, true);
+      self2._bufPos = len;
+      return len;
+    }
+    function matchNeedle(self2, data, pos, len) {
+      const lb = self2._lookbehind;
+      const lbSize = self2._lookbehindSize;
+      const needle = self2._needle;
+      for (let i = 0; i < len; ++i, ++pos) {
+        const ch = pos < 0 ? lb[lbSize + pos] : data[pos];
+        if (ch !== needle[i])
+          return false;
+      }
+      return true;
+    }
+    module2.exports = SBMH;
+  }
+});
+
+// node_modules/busboy/lib/types/multipart.js
+var require_multipart = __commonJS({
+  "node_modules/busboy/lib/types/multipart.js"(exports2, module2) {
+    "use strict";
+    var { Readable, Writable } = require("stream");
+    var StreamSearch = require_sbmh();
+    var {
+      basename,
+      convertToUTF8,
+      getDecoder,
+      parseContentType,
+      parseDisposition
+    } = require_utils3();
+    var BUF_CRLF = Buffer.from("\r\n");
+    var BUF_CR = Buffer.from("\r");
+    var BUF_DASH = Buffer.from("-");
+    function noop() {
+    }
+    var MAX_HEADER_PAIRS = 2e3;
+    var MAX_HEADER_SIZE = 16 * 1024;
+    var HPARSER_NAME = 0;
+    var HPARSER_PRE_OWS = 1;
+    var HPARSER_VALUE = 2;
+    var HeaderParser = class {
+      constructor(cb) {
+        this.header = /* @__PURE__ */ Object.create(null);
+        this.pairCount = 0;
+        this.byteCount = 0;
+        this.state = HPARSER_NAME;
+        this.name = "";
+        this.value = "";
+        this.crlf = 0;
+        this.cb = cb;
+      }
+      reset() {
+        this.header = /* @__PURE__ */ Object.create(null);
+        this.pairCount = 0;
+        this.byteCount = 0;
+        this.state = HPARSER_NAME;
+        this.name = "";
+        this.value = "";
+        this.crlf = 0;
+      }
+      push(chunk, pos, end) {
+        let start = pos;
+        while (pos < end) {
+          switch (this.state) {
+            case HPARSER_NAME: {
+              let done = false;
+              for (; pos < end; ++pos) {
+                if (this.byteCount === MAX_HEADER_SIZE)
+                  return -1;
+                ++this.byteCount;
+                const code = chunk[pos];
+                if (TOKEN[code] !== 1) {
+                  if (code !== 58)
+                    return -1;
+                  this.name += chunk.latin1Slice(start, pos);
+                  if (this.name.length === 0)
+                    return -1;
+                  ++pos;
+                  done = true;
+                  this.state = HPARSER_PRE_OWS;
+                  break;
+                }
+              }
+              if (!done) {
+                this.name += chunk.latin1Slice(start, pos);
+                break;
+              }
+            }
+            case HPARSER_PRE_OWS: {
+              let done = false;
+              for (; pos < end; ++pos) {
+                if (this.byteCount === MAX_HEADER_SIZE)
+                  return -1;
+                ++this.byteCount;
+                const code = chunk[pos];
+                if (code !== 32 && code !== 9) {
+                  start = pos;
+                  done = true;
+                  this.state = HPARSER_VALUE;
+                  break;
+                }
+              }
+              if (!done)
+                break;
+            }
+            case HPARSER_VALUE:
+              switch (this.crlf) {
+                case 0:
+                  for (; pos < end; ++pos) {
+                    if (this.byteCount === MAX_HEADER_SIZE)
+                      return -1;
+                    ++this.byteCount;
+                    const code = chunk[pos];
+                    if (FIELD_VCHAR[code] !== 1) {
+                      if (code !== 13)
+                        return -1;
+                      ++this.crlf;
+                      break;
+                    }
+                  }
+                  this.value += chunk.latin1Slice(start, pos++);
+                  break;
+                case 1:
+                  if (this.byteCount === MAX_HEADER_SIZE)
+                    return -1;
+                  ++this.byteCount;
+                  if (chunk[pos++] !== 10)
+                    return -1;
+                  ++this.crlf;
+                  break;
+                case 2: {
+                  if (this.byteCount === MAX_HEADER_SIZE)
+                    return -1;
+                  ++this.byteCount;
+                  const code = chunk[pos];
+                  if (code === 32 || code === 9) {
+                    start = pos;
+                    this.crlf = 0;
+                  } else {
+                    if (++this.pairCount < MAX_HEADER_PAIRS) {
+                      this.name = this.name.toLowerCase();
+                      if (this.header[this.name] === void 0)
+                        this.header[this.name] = [this.value];
+                      else
+                        this.header[this.name].push(this.value);
+                    }
+                    if (code === 13) {
+                      ++this.crlf;
+                      ++pos;
+                    } else {
+                      start = pos;
+                      this.crlf = 0;
+                      this.state = HPARSER_NAME;
+                      this.name = "";
+                      this.value = "";
+                    }
+                  }
+                  break;
+                }
+                case 3: {
+                  if (this.byteCount === MAX_HEADER_SIZE)
+                    return -1;
+                  ++this.byteCount;
+                  if (chunk[pos++] !== 10)
+                    return -1;
+                  const header = this.header;
+                  this.reset();
+                  this.cb(header);
+                  return pos;
+                }
+              }
+              break;
+          }
+        }
+        return pos;
+      }
+    };
+    var FileStream = class extends Readable {
+      constructor(opts, owner) {
+        super(opts);
+        this.truncated = false;
+        this._readcb = null;
+        this.once("end", () => {
+          this._read();
+          if (--owner._fileEndsLeft === 0 && owner._finalcb) {
+            const cb = owner._finalcb;
+            owner._finalcb = null;
+            process.nextTick(cb);
+          }
+        });
+      }
+      _read(n) {
+        const cb = this._readcb;
+        if (cb) {
+          this._readcb = null;
+          cb();
+        }
+      }
+    };
+    var ignoreData = {
+      push: (chunk, pos) => {
+      },
+      destroy: () => {
+      }
+    };
+    function callAndUnsetCb(self2, err) {
+      const cb = self2._writecb;
+      self2._writecb = null;
+      if (err)
+        self2.destroy(err);
+      else if (cb)
+        cb();
+    }
+    function nullDecoder(val, hint) {
+      return val;
+    }
+    var Multipart = class extends Writable {
+      constructor(cfg) {
+        const streamOpts = {
+          autoDestroy: true,
+          emitClose: true,
+          highWaterMark: typeof cfg.highWaterMark === "number" ? cfg.highWaterMark : void 0
+        };
+        super(streamOpts);
+        if (!cfg.conType.params || typeof cfg.conType.params.boundary !== "string")
+          throw new Error("Multipart: Boundary not found");
+        const boundary = cfg.conType.params.boundary;
+        const paramDecoder = typeof cfg.defParamCharset === "string" && cfg.defParamCharset ? getDecoder(cfg.defParamCharset) : nullDecoder;
+        const defCharset = cfg.defCharset || "utf8";
+        const preservePath = cfg.preservePath;
+        const fileOpts = {
+          autoDestroy: true,
+          emitClose: true,
+          highWaterMark: typeof cfg.fileHwm === "number" ? cfg.fileHwm : void 0
+        };
+        const limits = cfg.limits;
+        const fieldSizeLimit = limits && typeof limits.fieldSize === "number" ? limits.fieldSize : 1 * 1024 * 1024;
+        const fileSizeLimit = limits && typeof limits.fileSize === "number" ? limits.fileSize : Infinity;
+        const filesLimit = limits && typeof limits.files === "number" ? limits.files : Infinity;
+        const fieldsLimit = limits && typeof limits.fields === "number" ? limits.fields : Infinity;
+        const partsLimit = limits && typeof limits.parts === "number" ? limits.parts : Infinity;
+        let parts = -1;
+        let fields = 0;
+        let files = 0;
+        let skipPart = false;
+        this._fileEndsLeft = 0;
+        this._fileStream = void 0;
+        this._complete = false;
+        let fileSize = 0;
+        let field;
+        let fieldSize = 0;
+        let partCharset;
+        let partEncoding;
+        let partType;
+        let partName;
+        let partTruncated = false;
+        let hitFilesLimit = false;
+        let hitFieldsLimit = false;
+        this._hparser = null;
+        const hparser = new HeaderParser((header) => {
+          this._hparser = null;
+          skipPart = false;
+          partType = "text/plain";
+          partCharset = defCharset;
+          partEncoding = "7bit";
+          partName = void 0;
+          partTruncated = false;
+          let filename;
+          if (!header["content-disposition"]) {
+            skipPart = true;
+            return;
+          }
+          const disp = parseDisposition(
+            header["content-disposition"][0],
+            paramDecoder
+          );
+          if (!disp || disp.type !== "form-data") {
+            skipPart = true;
+            return;
+          }
+          if (disp.params) {
+            if (disp.params.name)
+              partName = disp.params.name;
+            if (disp.params["filename*"])
+              filename = disp.params["filename*"];
+            else if (disp.params.filename)
+              filename = disp.params.filename;
+            if (filename !== void 0 && !preservePath)
+              filename = basename(filename);
+          }
+          if (header["content-type"]) {
+            const conType = parseContentType(header["content-type"][0]);
+            if (conType) {
+              partType = `${conType.type}/${conType.subtype}`;
+              if (conType.params && typeof conType.params.charset === "string")
+                partCharset = conType.params.charset.toLowerCase();
+            }
+          }
+          if (header["content-transfer-encoding"])
+            partEncoding = header["content-transfer-encoding"][0].toLowerCase();
+          if (partType === "application/octet-stream" || filename !== void 0) {
+            if (files === filesLimit) {
+              if (!hitFilesLimit) {
+                hitFilesLimit = true;
+                this.emit("filesLimit");
+              }
+              skipPart = true;
+              return;
+            }
+            ++files;
+            if (this.listenerCount("file") === 0) {
+              skipPart = true;
+              return;
+            }
+            fileSize = 0;
+            this._fileStream = new FileStream(fileOpts, this);
+            ++this._fileEndsLeft;
+            this.emit(
+              "file",
+              partName,
+              this._fileStream,
+              {
+                filename,
+                encoding: partEncoding,
+                mimeType: partType
+              }
+            );
+          } else {
+            if (fields === fieldsLimit) {
+              if (!hitFieldsLimit) {
+                hitFieldsLimit = true;
+                this.emit("fieldsLimit");
+              }
+              skipPart = true;
+              return;
+            }
+            ++fields;
+            if (this.listenerCount("field") === 0) {
+              skipPart = true;
+              return;
+            }
+            field = [];
+            fieldSize = 0;
+          }
+        });
+        let matchPostBoundary = 0;
+        const ssCb = (isMatch, data, start, end, isDataSafe) => {
+          retrydata:
+            while (data) {
+              if (this._hparser !== null) {
+                const ret = this._hparser.push(data, start, end);
+                if (ret === -1) {
+                  this._hparser = null;
+                  hparser.reset();
+                  this.emit("error", new Error("Malformed part header"));
+                  break;
+                }
+                start = ret;
+              }
+              if (start === end)
+                break;
+              if (matchPostBoundary !== 0) {
+                if (matchPostBoundary === 1) {
+                  switch (data[start]) {
+                    case 45:
+                      matchPostBoundary = 2;
+                      ++start;
+                      break;
+                    case 13:
+                      matchPostBoundary = 3;
+                      ++start;
+                      break;
+                    default:
+                      matchPostBoundary = 0;
+                  }
+                  if (start === end)
+                    return;
+                }
+                if (matchPostBoundary === 2) {
+                  matchPostBoundary = 0;
+                  if (data[start] === 45) {
+                    this._complete = true;
+                    this._bparser = ignoreData;
+                    return;
+                  }
+                  const writecb = this._writecb;
+                  this._writecb = noop;
+                  ssCb(false, BUF_DASH, 0, 1, false);
+                  this._writecb = writecb;
+                } else if (matchPostBoundary === 3) {
+                  matchPostBoundary = 0;
+                  if (data[start] === 10) {
+                    ++start;
+                    if (parts >= partsLimit)
+                      break;
+                    this._hparser = hparser;
+                    if (start === end)
+                      break;
+                    continue retrydata;
+                  } else {
+                    const writecb = this._writecb;
+                    this._writecb = noop;
+                    ssCb(false, BUF_CR, 0, 1, false);
+                    this._writecb = writecb;
+                  }
+                }
+              }
+              if (!skipPart) {
+                if (this._fileStream) {
+                  let chunk;
+                  const actualLen = Math.min(end - start, fileSizeLimit - fileSize);
+                  if (!isDataSafe) {
+                    chunk = Buffer.allocUnsafe(actualLen);
+                    data.copy(chunk, 0, start, start + actualLen);
+                  } else {
+                    chunk = data.slice(start, start + actualLen);
+                  }
+                  fileSize += chunk.length;
+                  if (fileSize === fileSizeLimit) {
+                    if (chunk.length > 0)
+                      this._fileStream.push(chunk);
+                    this._fileStream.emit("limit");
+                    this._fileStream.truncated = true;
+                    skipPart = true;
+                  } else if (!this._fileStream.push(chunk)) {
+                    if (this._writecb)
+                      this._fileStream._readcb = this._writecb;
+                    this._writecb = null;
+                  }
+                } else if (field !== void 0) {
+                  let chunk;
+                  const actualLen = Math.min(
+                    end - start,
+                    fieldSizeLimit - fieldSize
+                  );
+                  if (!isDataSafe) {
+                    chunk = Buffer.allocUnsafe(actualLen);
+                    data.copy(chunk, 0, start, start + actualLen);
+                  } else {
+                    chunk = data.slice(start, start + actualLen);
+                  }
+                  fieldSize += actualLen;
+                  field.push(chunk);
+                  if (fieldSize === fieldSizeLimit) {
+                    skipPart = true;
+                    partTruncated = true;
+                  }
+                }
+              }
+              break;
+            }
+          if (isMatch) {
+            matchPostBoundary = 1;
+            if (this._fileStream) {
+              this._fileStream.push(null);
+              this._fileStream = null;
+            } else if (field !== void 0) {
+              let data2;
+              switch (field.length) {
+                case 0:
+                  data2 = "";
+                  break;
+                case 1:
+                  data2 = convertToUTF8(field[0], partCharset, 0);
+                  break;
+                default:
+                  data2 = convertToUTF8(
+                    Buffer.concat(field, fieldSize),
+                    partCharset,
+                    0
+                  );
+              }
+              field = void 0;
+              fieldSize = 0;
+              this.emit(
+                "field",
+                partName,
+                data2,
+                {
+                  nameTruncated: false,
+                  valueTruncated: partTruncated,
+                  encoding: partEncoding,
+                  mimeType: partType
+                }
+              );
+            }
+            if (++parts === partsLimit)
+              this.emit("partsLimit");
+          }
+        };
+        this._bparser = new StreamSearch(`\r
+--${boundary}`, ssCb);
+        this._writecb = null;
+        this._finalcb = null;
+        this.write(BUF_CRLF);
+      }
+      static detect(conType) {
+        return conType.type === "multipart" && conType.subtype === "form-data";
+      }
+      _write(chunk, enc, cb) {
+        this._writecb = cb;
+        this._bparser.push(chunk, 0);
+        if (this._writecb)
+          callAndUnsetCb(this);
+      }
+      _destroy(err, cb) {
+        this._hparser = null;
+        this._bparser = ignoreData;
+        if (!err)
+          err = checkEndState(this);
+        const fileStream = this._fileStream;
+        if (fileStream) {
+          this._fileStream = null;
+          fileStream.destroy(err);
+        }
+        cb(err);
+      }
+      _final(cb) {
+        this._bparser.destroy();
+        if (!this._complete)
+          return cb(new Error("Unexpected end of form"));
+        if (this._fileEndsLeft)
+          this._finalcb = finalcb.bind(null, this, cb);
+        else
+          finalcb(this, cb);
+      }
+    };
+    function finalcb(self2, cb, err) {
+      if (err)
+        return cb(err);
+      err = checkEndState(self2);
+      cb(err);
+    }
+    function checkEndState(self2) {
+      if (self2._hparser)
+        return new Error("Malformed part header");
+      const fileStream = self2._fileStream;
+      if (fileStream) {
+        self2._fileStream = null;
+        fileStream.destroy(new Error("Unexpected end of file"));
+      }
+      if (!self2._complete)
+        return new Error("Unexpected end of form");
+    }
+    var TOKEN = [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ];
+    var FIELD_VCHAR = [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ];
+    module2.exports = Multipart;
+  }
+});
+
+// node_modules/busboy/lib/types/urlencoded.js
+var require_urlencoded2 = __commonJS({
+  "node_modules/busboy/lib/types/urlencoded.js"(exports2, module2) {
+    "use strict";
+    var { Writable } = require("stream");
+    var { getDecoder } = require_utils3();
+    var URLEncoded = class extends Writable {
+      constructor(cfg) {
+        const streamOpts = {
+          autoDestroy: true,
+          emitClose: true,
+          highWaterMark: typeof cfg.highWaterMark === "number" ? cfg.highWaterMark : void 0
+        };
+        super(streamOpts);
+        let charset = cfg.defCharset || "utf8";
+        if (cfg.conType.params && typeof cfg.conType.params.charset === "string")
+          charset = cfg.conType.params.charset;
+        this.charset = charset;
+        const limits = cfg.limits;
+        this.fieldSizeLimit = limits && typeof limits.fieldSize === "number" ? limits.fieldSize : 1 * 1024 * 1024;
+        this.fieldsLimit = limits && typeof limits.fields === "number" ? limits.fields : Infinity;
+        this.fieldNameSizeLimit = limits && typeof limits.fieldNameSize === "number" ? limits.fieldNameSize : 100;
+        this._inKey = true;
+        this._keyTrunc = false;
+        this._valTrunc = false;
+        this._bytesKey = 0;
+        this._bytesVal = 0;
+        this._fields = 0;
+        this._key = "";
+        this._val = "";
+        this._byte = -2;
+        this._lastPos = 0;
+        this._encode = 0;
+        this._decoder = getDecoder(charset);
+      }
+      static detect(conType) {
+        return conType.type === "application" && conType.subtype === "x-www-form-urlencoded";
+      }
+      _write(chunk, enc, cb) {
+        if (this._fields >= this.fieldsLimit)
+          return cb();
+        let i = 0;
+        const len = chunk.length;
+        this._lastPos = 0;
+        if (this._byte !== -2) {
+          i = readPctEnc(this, chunk, i, len);
+          if (i === -1)
+            return cb(new Error("Malformed urlencoded form"));
+          if (i >= len)
+            return cb();
+          if (this._inKey)
+            ++this._bytesKey;
+          else
+            ++this._bytesVal;
+        }
+        main:
+          while (i < len) {
+            if (this._inKey) {
+              i = skipKeyBytes(this, chunk, i, len);
+              while (i < len) {
+                switch (chunk[i]) {
+                  case 61:
+                    if (this._lastPos < i)
+                      this._key += chunk.latin1Slice(this._lastPos, i);
+                    this._lastPos = ++i;
+                    this._key = this._decoder(this._key, this._encode);
+                    this._encode = 0;
+                    this._inKey = false;
+                    continue main;
+                  case 38:
+                    if (this._lastPos < i)
+                      this._key += chunk.latin1Slice(this._lastPos, i);
+                    this._lastPos = ++i;
+                    this._key = this._decoder(this._key, this._encode);
+                    this._encode = 0;
+                    if (this._bytesKey > 0) {
+                      this.emit(
+                        "field",
+                        this._key,
+                        "",
+                        {
+                          nameTruncated: this._keyTrunc,
+                          valueTruncated: false,
+                          encoding: this.charset,
+                          mimeType: "text/plain"
+                        }
+                      );
+                    }
+                    this._key = "";
+                    this._val = "";
+                    this._keyTrunc = false;
+                    this._valTrunc = false;
+                    this._bytesKey = 0;
+                    this._bytesVal = 0;
+                    if (++this._fields >= this.fieldsLimit) {
+                      this.emit("fieldsLimit");
+                      return cb();
+                    }
+                    continue;
+                  case 43:
+                    if (this._lastPos < i)
+                      this._key += chunk.latin1Slice(this._lastPos, i);
+                    this._key += " ";
+                    this._lastPos = i + 1;
+                    break;
+                  case 37:
+                    if (this._encode === 0)
+                      this._encode = 1;
+                    if (this._lastPos < i)
+                      this._key += chunk.latin1Slice(this._lastPos, i);
+                    this._lastPos = i + 1;
+                    this._byte = -1;
+                    i = readPctEnc(this, chunk, i + 1, len);
+                    if (i === -1)
+                      return cb(new Error("Malformed urlencoded form"));
+                    if (i >= len)
+                      return cb();
+                    ++this._bytesKey;
+                    i = skipKeyBytes(this, chunk, i, len);
+                    continue;
+                }
+                ++i;
+                ++this._bytesKey;
+                i = skipKeyBytes(this, chunk, i, len);
+              }
+              if (this._lastPos < i)
+                this._key += chunk.latin1Slice(this._lastPos, i);
+            } else {
+              i = skipValBytes(this, chunk, i, len);
+              while (i < len) {
+                switch (chunk[i]) {
+                  case 38:
+                    if (this._lastPos < i)
+                      this._val += chunk.latin1Slice(this._lastPos, i);
+                    this._lastPos = ++i;
+                    this._inKey = true;
+                    this._val = this._decoder(this._val, this._encode);
+                    this._encode = 0;
+                    if (this._bytesKey > 0 || this._bytesVal > 0) {
+                      this.emit(
+                        "field",
+                        this._key,
+                        this._val,
+                        {
+                          nameTruncated: this._keyTrunc,
+                          valueTruncated: this._valTrunc,
+                          encoding: this.charset,
+                          mimeType: "text/plain"
+                        }
+                      );
+                    }
+                    this._key = "";
+                    this._val = "";
+                    this._keyTrunc = false;
+                    this._valTrunc = false;
+                    this._bytesKey = 0;
+                    this._bytesVal = 0;
+                    if (++this._fields >= this.fieldsLimit) {
+                      this.emit("fieldsLimit");
+                      return cb();
+                    }
+                    continue main;
+                  case 43:
+                    if (this._lastPos < i)
+                      this._val += chunk.latin1Slice(this._lastPos, i);
+                    this._val += " ";
+                    this._lastPos = i + 1;
+                    break;
+                  case 37:
+                    if (this._encode === 0)
+                      this._encode = 1;
+                    if (this._lastPos < i)
+                      this._val += chunk.latin1Slice(this._lastPos, i);
+                    this._lastPos = i + 1;
+                    this._byte = -1;
+                    i = readPctEnc(this, chunk, i + 1, len);
+                    if (i === -1)
+                      return cb(new Error("Malformed urlencoded form"));
+                    if (i >= len)
+                      return cb();
+                    ++this._bytesVal;
+                    i = skipValBytes(this, chunk, i, len);
+                    continue;
+                }
+                ++i;
+                ++this._bytesVal;
+                i = skipValBytes(this, chunk, i, len);
+              }
+              if (this._lastPos < i)
+                this._val += chunk.latin1Slice(this._lastPos, i);
+            }
+          }
+        cb();
+      }
+      _final(cb) {
+        if (this._byte !== -2)
+          return cb(new Error("Malformed urlencoded form"));
+        if (!this._inKey || this._bytesKey > 0 || this._bytesVal > 0) {
+          if (this._inKey)
+            this._key = this._decoder(this._key, this._encode);
+          else
+            this._val = this._decoder(this._val, this._encode);
+          this.emit(
+            "field",
+            this._key,
+            this._val,
+            {
+              nameTruncated: this._keyTrunc,
+              valueTruncated: this._valTrunc,
+              encoding: this.charset,
+              mimeType: "text/plain"
+            }
+          );
+        }
+        cb();
+      }
+    };
+    function readPctEnc(self2, chunk, pos, len) {
+      if (pos >= len)
+        return len;
+      if (self2._byte === -1) {
+        const hexUpper = HEX_VALUES[chunk[pos++]];
+        if (hexUpper === -1)
+          return -1;
+        if (hexUpper >= 8)
+          self2._encode = 2;
+        if (pos < len) {
+          const hexLower = HEX_VALUES[chunk[pos++]];
+          if (hexLower === -1)
+            return -1;
+          if (self2._inKey)
+            self2._key += String.fromCharCode((hexUpper << 4) + hexLower);
+          else
+            self2._val += String.fromCharCode((hexUpper << 4) + hexLower);
+          self2._byte = -2;
+          self2._lastPos = pos;
+        } else {
+          self2._byte = hexUpper;
+        }
+      } else {
+        const hexLower = HEX_VALUES[chunk[pos++]];
+        if (hexLower === -1)
+          return -1;
+        if (self2._inKey)
+          self2._key += String.fromCharCode((self2._byte << 4) + hexLower);
+        else
+          self2._val += String.fromCharCode((self2._byte << 4) + hexLower);
+        self2._byte = -2;
+        self2._lastPos = pos;
+      }
+      return pos;
+    }
+    function skipKeyBytes(self2, chunk, pos, len) {
+      if (self2._bytesKey > self2.fieldNameSizeLimit) {
+        if (!self2._keyTrunc) {
+          if (self2._lastPos < pos)
+            self2._key += chunk.latin1Slice(self2._lastPos, pos - 1);
+        }
+        self2._keyTrunc = true;
+        for (; pos < len; ++pos) {
+          const code = chunk[pos];
+          if (code === 61 || code === 38)
+            break;
+          ++self2._bytesKey;
+        }
+        self2._lastPos = pos;
+      }
+      return pos;
+    }
+    function skipValBytes(self2, chunk, pos, len) {
+      if (self2._bytesVal > self2.fieldSizeLimit) {
+        if (!self2._valTrunc) {
+          if (self2._lastPos < pos)
+            self2._val += chunk.latin1Slice(self2._lastPos, pos - 1);
+        }
+        self2._valTrunc = true;
+        for (; pos < len; ++pos) {
+          if (chunk[pos] === 38)
+            break;
+          ++self2._bytesVal;
+        }
+        self2._lastPos = pos;
+      }
+      return pos;
+    }
+    var HEX_VALUES = [
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1,
+      -1
+    ];
+    module2.exports = URLEncoded;
+  }
+});
+
+// node_modules/busboy/lib/index.js
+var require_lib4 = __commonJS({
+  "node_modules/busboy/lib/index.js"(exports2, module2) {
+    "use strict";
+    var { parseContentType } = require_utils3();
+    function getInstance(cfg) {
+      const headers = cfg.headers;
+      const conType = parseContentType(headers["content-type"]);
+      if (!conType)
+        throw new Error("Malformed content type");
+      for (const type of TYPES) {
+        const matched = type.detect(conType);
+        if (!matched)
+          continue;
+        const instanceCfg = {
+          limits: cfg.limits,
+          headers,
+          conType,
+          highWaterMark: void 0,
+          fileHwm: void 0,
+          defCharset: void 0,
+          defParamCharset: void 0,
+          preservePath: false
+        };
+        if (cfg.highWaterMark)
+          instanceCfg.highWaterMark = cfg.highWaterMark;
+        if (cfg.fileHwm)
+          instanceCfg.fileHwm = cfg.fileHwm;
+        instanceCfg.defCharset = cfg.defCharset;
+        instanceCfg.defParamCharset = cfg.defParamCharset;
+        instanceCfg.preservePath = cfg.preservePath;
+        return new type(instanceCfg);
+      }
+      throw new Error(`Unsupported content type: ${headers["content-type"]}`);
+    }
+    var TYPES = [
+      require_multipart(),
+      require_urlencoded2()
+    ].filter(function(typemod) {
+      return typeof typemod.detect === "function";
+    });
+    module2.exports = (cfg) => {
+      if (typeof cfg !== "object" || cfg === null)
+        cfg = {};
+      if (typeof cfg.headers !== "object" || cfg.headers === null || typeof cfg.headers["content-type"] !== "string") {
+        throw new Error("Missing Content-Type");
+      }
+      return getInstance(cfg);
+    };
+  }
+});
+
+// node_modules/xtend/immutable.js
+var require_immutable = __commonJS({
+  "node_modules/xtend/immutable.js"(exports2, module2) {
+    module2.exports = extend;
+    var hasOwnProperty = Object.prototype.hasOwnProperty;
+    function extend() {
+      var target = {};
+      for (var i = 0; i < arguments.length; i++) {
+        var source = arguments[i];
+        for (var key in source) {
+          if (hasOwnProperty.call(source, key)) {
+            target[key] = source[key];
+          }
+        }
+      }
+      return target;
+    }
+  }
+});
+
+// node_modules/append-field/lib/parse-path.js
+var require_parse_path = __commonJS({
+  "node_modules/append-field/lib/parse-path.js"(exports2, module2) {
+    var reFirstKey = /^[^\[]*/;
+    var reDigitPath = /^\[(\d+)\]/;
+    var reNormalPath = /^\[([^\]]+)\]/;
+    function parsePath(key) {
+      function failure() {
+        return [{ type: "object", key, last: true }];
+      }
+      var firstKey = reFirstKey.exec(key)[0];
+      if (!firstKey) return failure();
+      var len = key.length;
+      var pos = firstKey.length;
+      var tail = { type: "object", key: firstKey };
+      var steps = [tail];
+      while (pos < len) {
+        var m;
+        if (key[pos] === "[" && key[pos + 1] === "]") {
+          pos += 2;
+          tail.append = true;
+          if (pos !== len) return failure();
+          continue;
+        }
+        m = reDigitPath.exec(key.substring(pos));
+        if (m !== null) {
+          pos += m[0].length;
+          tail.nextType = "array";
+          tail = { type: "array", key: parseInt(m[1], 10) };
+          steps.push(tail);
+          continue;
+        }
+        m = reNormalPath.exec(key.substring(pos));
+        if (m !== null) {
+          pos += m[0].length;
+          tail.nextType = "object";
+          tail = { type: "object", key: m[1] };
+          steps.push(tail);
+          continue;
+        }
+        return failure();
+      }
+      tail.last = true;
+      return steps;
+    }
+    module2.exports = parsePath;
+  }
+});
+
+// node_modules/append-field/lib/set-value.js
+var require_set_value = __commonJS({
+  "node_modules/append-field/lib/set-value.js"(exports2, module2) {
+    function valueType(value) {
+      if (value === void 0) return "undefined";
+      if (Array.isArray(value)) return "array";
+      if (typeof value === "object") return "object";
+      return "scalar";
+    }
+    function setLastValue(context, step, currentValue, entryValue) {
+      switch (valueType(currentValue)) {
+        case "undefined":
+          if (step.append) {
+            context[step.key] = [entryValue];
+          } else {
+            context[step.key] = entryValue;
+          }
+          break;
+        case "array":
+          context[step.key].push(entryValue);
+          break;
+        case "object":
+          return setLastValue(currentValue, { type: "object", key: "", last: true }, currentValue[""], entryValue);
+        case "scalar":
+          context[step.key] = [context[step.key], entryValue];
+          break;
+      }
+      return context;
+    }
+    function setValue(context, step, currentValue, entryValue) {
+      if (step.last) return setLastValue(context, step, currentValue, entryValue);
+      var obj;
+      switch (valueType(currentValue)) {
+        case "undefined":
+          if (step.nextType === "array") {
+            context[step.key] = [];
+          } else {
+            context[step.key] = /* @__PURE__ */ Object.create(null);
+          }
+          return context[step.key];
+        case "object":
+          return context[step.key];
+        case "array":
+          if (step.nextType === "array") {
+            return currentValue;
+          }
+          obj = /* @__PURE__ */ Object.create(null);
+          context[step.key] = obj;
+          currentValue.forEach(function(item, i) {
+            if (item !== void 0) obj["" + i] = item;
+          });
+          return obj;
+        case "scalar":
+          obj = /* @__PURE__ */ Object.create(null);
+          obj[""] = currentValue;
+          context[step.key] = obj;
+          return obj;
+      }
+    }
+    module2.exports = setValue;
+  }
+});
+
+// node_modules/append-field/index.js
+var require_append_field = __commonJS({
+  "node_modules/append-field/index.js"(exports2, module2) {
+    var parsePath = require_parse_path();
+    var setValue = require_set_value();
+    function appendField(store, key, value) {
+      var steps = parsePath(key);
+      steps.reduce(function(context, step) {
+        return setValue(context, step, context[step.key], value);
+      }, store);
+    }
+    module2.exports = appendField;
+  }
+});
+
+// node_modules/multer/lib/counter.js
+var require_counter = __commonJS({
+  "node_modules/multer/lib/counter.js"(exports2, module2) {
+    var EventEmitter = require("events").EventEmitter;
+    function Counter() {
+      EventEmitter.call(this);
+      this.value = 0;
+    }
+    Counter.prototype = Object.create(EventEmitter.prototype);
+    Counter.prototype.increment = function increment() {
+      this.value++;
+    };
+    Counter.prototype.decrement = function decrement() {
+      if (--this.value === 0) this.emit("zero");
+    };
+    Counter.prototype.isZero = function isZero() {
+      return this.value === 0;
+    };
+    Counter.prototype.onceZero = function onceZero(fn) {
+      if (this.isZero()) return fn();
+      this.once("zero", fn);
+    };
+    module2.exports = Counter;
+  }
+});
+
+// node_modules/multer/lib/multer-error.js
+var require_multer_error = __commonJS({
+  "node_modules/multer/lib/multer-error.js"(exports2, module2) {
+    var util2 = require("util");
+    var errorMessages = {
+      LIMIT_PART_COUNT: "Too many parts",
+      LIMIT_FILE_SIZE: "File too large",
+      LIMIT_FILE_COUNT: "Too many files",
+      LIMIT_FIELD_KEY: "Field name too long",
+      LIMIT_FIELD_VALUE: "Field value too long",
+      LIMIT_FIELD_COUNT: "Too many fields",
+      LIMIT_UNEXPECTED_FILE: "Unexpected field",
+      MISSING_FIELD_NAME: "Field name missing"
+    };
+    function MulterError(code, field) {
+      Error.captureStackTrace(this, this.constructor);
+      this.name = this.constructor.name;
+      this.message = errorMessages[code];
+      this.code = code;
+      if (field) this.field = field;
+    }
+    util2.inherits(MulterError, Error);
+    module2.exports = MulterError;
+  }
+});
+
+// node_modules/multer/lib/file-appender.js
+var require_file_appender = __commonJS({
+  "node_modules/multer/lib/file-appender.js"(exports2, module2) {
+    var objectAssign = require_object_assign();
+    function arrayRemove(arr, item) {
+      var idx = arr.indexOf(item);
+      if (~idx) arr.splice(idx, 1);
+    }
+    function FileAppender(strategy, req) {
+      this.strategy = strategy;
+      this.req = req;
+      switch (strategy) {
+        case "NONE":
+          break;
+        case "VALUE":
+          break;
+        case "ARRAY":
+          req.files = [];
+          break;
+        case "OBJECT":
+          req.files = /* @__PURE__ */ Object.create(null);
+          break;
+        default:
+          throw new Error("Unknown file strategy: " + strategy);
+      }
+    }
+    FileAppender.prototype.insertPlaceholder = function(file) {
+      var placeholder = {
+        fieldname: file.fieldname
+      };
+      switch (this.strategy) {
+        case "NONE":
+          break;
+        case "VALUE":
+          break;
+        case "ARRAY":
+          this.req.files.push(placeholder);
+          break;
+        case "OBJECT":
+          if (this.req.files[file.fieldname]) {
+            this.req.files[file.fieldname].push(placeholder);
+          } else {
+            this.req.files[file.fieldname] = [placeholder];
+          }
+          break;
+      }
+      return placeholder;
+    };
+    FileAppender.prototype.removePlaceholder = function(placeholder) {
+      switch (this.strategy) {
+        case "NONE":
+          break;
+        case "VALUE":
+          break;
+        case "ARRAY":
+          arrayRemove(this.req.files, placeholder);
+          break;
+        case "OBJECT":
+          if (this.req.files[placeholder.fieldname].length === 1) {
+            delete this.req.files[placeholder.fieldname];
+          } else {
+            arrayRemove(this.req.files[placeholder.fieldname], placeholder);
+          }
+          break;
+      }
+    };
+    FileAppender.prototype.replacePlaceholder = function(placeholder, file) {
+      if (this.strategy === "VALUE") {
+        this.req.file = file;
+        return;
+      }
+      delete placeholder.fieldname;
+      objectAssign(placeholder, file);
+    };
+    module2.exports = FileAppender;
+  }
+});
+
+// node_modules/multer/lib/remove-uploaded-files.js
+var require_remove_uploaded_files = __commonJS({
+  "node_modules/multer/lib/remove-uploaded-files.js"(exports2, module2) {
+    function removeUploadedFiles(uploadedFiles, remove, cb) {
+      var length = uploadedFiles.length;
+      var errors = [];
+      if (length === 0) return cb(null, errors);
+      function handleFile(idx) {
+        var file = uploadedFiles[idx];
+        remove(file, function(err) {
+          if (err) {
+            err.file = file;
+            err.field = file.fieldname;
+            errors.push(err);
+          }
+          if (idx < length - 1) {
+            handleFile(idx + 1);
+          } else {
+            cb(null, errors);
+          }
+        });
+      }
+      handleFile(0);
+    }
+    module2.exports = removeUploadedFiles;
+  }
+});
+
+// node_modules/multer/lib/make-middleware.js
+var require_make_middleware = __commonJS({
+  "node_modules/multer/lib/make-middleware.js"(exports2, module2) {
+    var is = require_type_is();
+    var Busboy = require_lib4();
+    var extend = require_immutable();
+    var appendField = require_append_field();
+    var Counter = require_counter();
+    var MulterError = require_multer_error();
+    var FileAppender = require_file_appender();
+    var removeUploadedFiles = require_remove_uploaded_files();
+    function makeMiddleware(setup) {
+      return function multerMiddleware(req, res, next) {
+        if (!is(req, ["multipart"])) return next();
+        var options = setup();
+        var limits = options.limits;
+        var storage = options.storage;
+        var fileFilter = options.fileFilter;
+        var fileStrategy = options.fileStrategy;
+        var preservePath = options.preservePath;
+        req.body = /* @__PURE__ */ Object.create(null);
+        var busboy;
+        try {
+          busboy = Busboy({ headers: req.headers, limits, preservePath });
+        } catch (err) {
+          return next(err);
+        }
+        var appender = new FileAppender(fileStrategy, req);
+        var isDone = false;
+        var readFinished = false;
+        var errorOccured = false;
+        var pendingWrites = new Counter();
+        var uploadedFiles = [];
+        function done(err) {
+          if (isDone) return;
+          isDone = true;
+          req.unpipe(busboy);
+          process.nextTick(() => {
+            busboy.removeAllListeners();
+          });
+          next(err);
+        }
+        function indicateDone() {
+          if (readFinished && pendingWrites.isZero() && !errorOccured) done();
+        }
+        function abortWithError(uploadError) {
+          if (errorOccured) return;
+          errorOccured = true;
+          pendingWrites.onceZero(function() {
+            function remove(file, cb) {
+              storage._removeFile(req, file, cb);
+            }
+            removeUploadedFiles(uploadedFiles, remove, function(err, storageErrors) {
+              if (err) return done(err);
+              uploadError.storageErrors = storageErrors;
+              done(uploadError);
+            });
+          });
+        }
+        function abortWithCode(code, optionalField) {
+          abortWithError(new MulterError(code, optionalField));
+        }
+        busboy.on("field", function(fieldname, value, { nameTruncated, valueTruncated }) {
+          if (fieldname == null) return abortWithCode("MISSING_FIELD_NAME");
+          if (nameTruncated) return abortWithCode("LIMIT_FIELD_KEY");
+          if (valueTruncated) return abortWithCode("LIMIT_FIELD_VALUE", fieldname);
+          if (limits && Object.prototype.hasOwnProperty.call(limits, "fieldNameSize")) {
+            if (fieldname.length > limits.fieldNameSize) return abortWithCode("LIMIT_FIELD_KEY");
+          }
+          appendField(req.body, fieldname, value);
+        });
+        busboy.on("file", function(fieldname, fileStream, { filename, encoding, mimeType }) {
+          if (!filename) return fileStream.resume();
+          if (limits && Object.prototype.hasOwnProperty.call(limits, "fieldNameSize")) {
+            if (fieldname.length > limits.fieldNameSize) return abortWithCode("LIMIT_FIELD_KEY");
+          }
+          var file = {
+            fieldname,
+            originalname: filename,
+            encoding,
+            mimetype: mimeType
+          };
+          var placeholder = appender.insertPlaceholder(file);
+          fileFilter(req, file, function(err, includeFile) {
+            if (err) {
+              appender.removePlaceholder(placeholder);
+              return abortWithError(err);
+            }
+            if (!includeFile) {
+              appender.removePlaceholder(placeholder);
+              return fileStream.resume();
+            }
+            var aborting = false;
+            pendingWrites.increment();
+            Object.defineProperty(file, "stream", {
+              configurable: true,
+              enumerable: false,
+              value: fileStream
+            });
+            fileStream.on("error", function(err2) {
+              pendingWrites.decrement();
+              abortWithError(err2);
+            });
+            fileStream.on("limit", function() {
+              aborting = true;
+              abortWithCode("LIMIT_FILE_SIZE", fieldname);
+            });
+            storage._handleFile(req, file, function(err2, info) {
+              if (aborting) {
+                appender.removePlaceholder(placeholder);
+                uploadedFiles.push(extend(file, info));
+                return pendingWrites.decrement();
+              }
+              if (err2) {
+                appender.removePlaceholder(placeholder);
+                pendingWrites.decrement();
+                return abortWithError(err2);
+              }
+              var fileInfo = extend(file, info);
+              appender.replacePlaceholder(placeholder, fileInfo);
+              uploadedFiles.push(fileInfo);
+              pendingWrites.decrement();
+              indicateDone();
+            });
+          });
+        });
+        busboy.on("error", function(err) {
+          abortWithError(err);
+        });
+        busboy.on("partsLimit", function() {
+          abortWithCode("LIMIT_PART_COUNT");
+        });
+        busboy.on("filesLimit", function() {
+          abortWithCode("LIMIT_FILE_COUNT");
+        });
+        busboy.on("fieldsLimit", function() {
+          abortWithCode("LIMIT_FIELD_COUNT");
+        });
+        busboy.on("close", function() {
+          readFinished = true;
+          indicateDone();
+        });
+        req.pipe(busboy);
+      };
+    }
+    module2.exports = makeMiddleware;
+  }
+});
+
+// node_modules/mkdirp/index.js
+var require_mkdirp = __commonJS({
+  "node_modules/mkdirp/index.js"(exports2, module2) {
+    var path2 = require("path");
+    var fs = require("fs");
+    var _0777 = parseInt("0777", 8);
+    module2.exports = mkdirP.mkdirp = mkdirP.mkdirP = mkdirP;
+    function mkdirP(p, opts, f, made) {
+      if (typeof opts === "function") {
+        f = opts;
+        opts = {};
+      } else if (!opts || typeof opts !== "object") {
+        opts = { mode: opts };
+      }
+      var mode = opts.mode;
+      var xfs = opts.fs || fs;
+      if (mode === void 0) {
+        mode = _0777;
+      }
+      if (!made) made = null;
+      var cb = f || /* istanbul ignore next */
+      function() {
+      };
+      p = path2.resolve(p);
+      xfs.mkdir(p, mode, function(er) {
+        if (!er) {
+          made = made || p;
+          return cb(null, made);
+        }
+        switch (er.code) {
+          case "ENOENT":
+            if (path2.dirname(p) === p) return cb(er);
+            mkdirP(path2.dirname(p), opts, function(er2, made2) {
+              if (er2) cb(er2, made2);
+              else mkdirP(p, opts, cb, made2);
+            });
+            break;
+          // In the case of any other error, just see if there's a dir
+          // there already.  If so, then hooray!  If not, then something
+          // is borked.
+          default:
+            xfs.stat(p, function(er2, stat) {
+              if (er2 || !stat.isDirectory()) cb(er, made);
+              else cb(null, made);
+            });
+            break;
+        }
+      });
+    }
+    mkdirP.sync = function sync(p, opts, made) {
+      if (!opts || typeof opts !== "object") {
+        opts = { mode: opts };
+      }
+      var mode = opts.mode;
+      var xfs = opts.fs || fs;
+      if (mode === void 0) {
+        mode = _0777;
+      }
+      if (!made) made = null;
+      p = path2.resolve(p);
+      try {
+        xfs.mkdirSync(p, mode);
+        made = made || p;
+      } catch (err0) {
+        switch (err0.code) {
+          case "ENOENT":
+            made = sync(path2.dirname(p), opts, made);
+            sync(p, opts, made);
+            break;
+          // In the case of any other error, just see if there's a dir
+          // there already.  If so, then hooray!  If not, then something
+          // is borked.
+          default:
+            var stat;
+            try {
+              stat = xfs.statSync(p);
+            } catch (err1) {
+              throw err0;
+            }
+            if (!stat.isDirectory()) throw err0;
+            break;
+        }
+      }
+      return made;
+    };
+  }
+});
+
+// node_modules/multer/storage/disk.js
+var require_disk = __commonJS({
+  "node_modules/multer/storage/disk.js"(exports2, module2) {
+    var fs = require("fs");
+    var os = require("os");
+    var path2 = require("path");
+    var crypto4 = require("crypto");
+    var mkdirp = require_mkdirp();
+    function getFilename(req, file, cb) {
+      crypto4.randomBytes(16, function(err, raw) {
+        cb(err, err ? void 0 : raw.toString("hex"));
+      });
+    }
+    function getDestination(req, file, cb) {
+      cb(null, os.tmpdir());
+    }
+    function DiskStorage(opts) {
+      this.getFilename = opts.filename || getFilename;
+      if (typeof opts.destination === "string") {
+        mkdirp.sync(opts.destination);
+        this.getDestination = function($0, $1, cb) {
+          cb(null, opts.destination);
+        };
+      } else {
+        this.getDestination = opts.destination || getDestination;
+      }
+    }
+    DiskStorage.prototype._handleFile = function _handleFile(req, file, cb) {
+      var that = this;
+      that.getDestination(req, file, function(err, destination) {
+        if (err) return cb(err);
+        that.getFilename(req, file, function(err2, filename) {
+          if (err2) return cb(err2);
+          var finalPath = path2.join(destination, filename);
+          var outStream = fs.createWriteStream(finalPath);
+          file.stream.pipe(outStream);
+          outStream.on("error", cb);
+          outStream.on("finish", function() {
+            cb(null, {
+              destination,
+              filename,
+              path: finalPath,
+              size: outStream.bytesWritten
+            });
+          });
+        });
+      });
+    };
+    DiskStorage.prototype._removeFile = function _removeFile(req, file, cb) {
+      var path3 = file.path;
+      delete file.destination;
+      delete file.filename;
+      delete file.path;
+      fs.unlink(path3, cb);
+    };
+    module2.exports = function(opts) {
+      return new DiskStorage(opts);
+    };
+  }
+});
+
+// node_modules/process-nextick-args/index.js
+var require_process_nextick_args = __commonJS({
+  "node_modules/process-nextick-args/index.js"(exports2, module2) {
+    "use strict";
+    if (typeof process === "undefined" || !process.version || process.version.indexOf("v0.") === 0 || process.version.indexOf("v1.") === 0 && process.version.indexOf("v1.8.") !== 0) {
+      module2.exports = { nextTick };
+    } else {
+      module2.exports = process;
+    }
+    function nextTick(fn, arg1, arg2, arg3) {
+      if (typeof fn !== "function") {
+        throw new TypeError('"callback" argument must be a function');
+      }
+      var len = arguments.length;
+      var args, i;
+      switch (len) {
+        case 0:
+        case 1:
+          return process.nextTick(fn);
+        case 2:
+          return process.nextTick(function afterTickOne() {
+            fn.call(null, arg1);
+          });
+        case 3:
+          return process.nextTick(function afterTickTwo() {
+            fn.call(null, arg1, arg2);
+          });
+        case 4:
+          return process.nextTick(function afterTickThree() {
+            fn.call(null, arg1, arg2, arg3);
+          });
+        default:
+          args = new Array(len - 1);
+          i = 0;
+          while (i < args.length) {
+            args[i++] = arguments[i];
+          }
+          return process.nextTick(function afterTick() {
+            fn.apply(null, args);
+          });
+      }
+    }
+  }
+});
+
+// node_modules/isarray/index.js
+var require_isarray = __commonJS({
+  "node_modules/isarray/index.js"(exports2, module2) {
+    var toString = {}.toString;
+    module2.exports = Array.isArray || function(arr) {
+      return toString.call(arr) == "[object Array]";
+    };
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/stream.js
+var require_stream = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/stream.js"(exports2, module2) {
+    module2.exports = require("stream");
+  }
+});
+
+// node_modules/readable-stream/node_modules/safe-buffer/index.js
+var require_safe_buffer2 = __commonJS({
+  "node_modules/readable-stream/node_modules/safe-buffer/index.js"(exports2, module2) {
+    var buffer = require("buffer");
+    var Buffer3 = buffer.Buffer;
+    function copyProps(src, dst) {
+      for (var key in src) {
+        dst[key] = src[key];
+      }
+    }
+    if (Buffer3.from && Buffer3.alloc && Buffer3.allocUnsafe && Buffer3.allocUnsafeSlow) {
+      module2.exports = buffer;
+    } else {
+      copyProps(buffer, exports2);
+      exports2.Buffer = SafeBuffer;
+    }
+    function SafeBuffer(arg, encodingOrOffset, length) {
+      return Buffer3(arg, encodingOrOffset, length);
+    }
+    copyProps(Buffer3, SafeBuffer);
+    SafeBuffer.from = function(arg, encodingOrOffset, length) {
+      if (typeof arg === "number") {
+        throw new TypeError("Argument must not be a number");
+      }
+      return Buffer3(arg, encodingOrOffset, length);
+    };
+    SafeBuffer.alloc = function(size, fill, encoding) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      var buf = Buffer3(size);
+      if (fill !== void 0) {
+        if (typeof encoding === "string") {
+          buf.fill(fill, encoding);
+        } else {
+          buf.fill(fill);
+        }
+      } else {
+        buf.fill(0);
+      }
+      return buf;
+    };
+    SafeBuffer.allocUnsafe = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return Buffer3(size);
+    };
+    SafeBuffer.allocUnsafeSlow = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return buffer.SlowBuffer(size);
+    };
+  }
+});
+
+// node_modules/core-util-is/lib/util.js
+var require_util = __commonJS({
+  "node_modules/core-util-is/lib/util.js"(exports2) {
+    function isArray(arg) {
+      if (Array.isArray) {
+        return Array.isArray(arg);
+      }
+      return objectToString(arg) === "[object Array]";
+    }
+    exports2.isArray = isArray;
+    function isBoolean(arg) {
+      return typeof arg === "boolean";
+    }
+    exports2.isBoolean = isBoolean;
+    function isNull(arg) {
+      return arg === null;
+    }
+    exports2.isNull = isNull;
+    function isNullOrUndefined(arg) {
+      return arg == null;
+    }
+    exports2.isNullOrUndefined = isNullOrUndefined;
+    function isNumber(arg) {
+      return typeof arg === "number";
+    }
+    exports2.isNumber = isNumber;
+    function isString(arg) {
+      return typeof arg === "string";
+    }
+    exports2.isString = isString;
+    function isSymbol(arg) {
+      return typeof arg === "symbol";
+    }
+    exports2.isSymbol = isSymbol;
+    function isUndefined(arg) {
+      return arg === void 0;
+    }
+    exports2.isUndefined = isUndefined;
+    function isRegExp(re) {
+      return objectToString(re) === "[object RegExp]";
+    }
+    exports2.isRegExp = isRegExp;
+    function isObject(arg) {
+      return typeof arg === "object" && arg !== null;
+    }
+    exports2.isObject = isObject;
+    function isDate(d) {
+      return objectToString(d) === "[object Date]";
+    }
+    exports2.isDate = isDate;
+    function isError(e) {
+      return objectToString(e) === "[object Error]" || e instanceof Error;
+    }
+    exports2.isError = isError;
+    function isFunction(arg) {
+      return typeof arg === "function";
+    }
+    exports2.isFunction = isFunction;
+    function isPrimitive(arg) {
+      return arg === null || typeof arg === "boolean" || typeof arg === "number" || typeof arg === "string" || typeof arg === "symbol" || // ES6 symbol
+      typeof arg === "undefined";
+    }
+    exports2.isPrimitive = isPrimitive;
+    exports2.isBuffer = require("buffer").Buffer.isBuffer;
+    function objectToString(o) {
+      return Object.prototype.toString.call(o);
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/BufferList.js
+var require_BufferList = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/BufferList.js"(exports2, module2) {
+    "use strict";
+    function _classCallCheck(instance, Constructor) {
+      if (!(instance instanceof Constructor)) {
+        throw new TypeError("Cannot call a class as a function");
+      }
+    }
+    var Buffer3 = require_safe_buffer2().Buffer;
+    var util2 = require("util");
+    function copyBuffer(src, target, offset) {
+      src.copy(target, offset);
+    }
+    module2.exports = (function() {
+      function BufferList() {
+        _classCallCheck(this, BufferList);
+        this.head = null;
+        this.tail = null;
+        this.length = 0;
+      }
+      BufferList.prototype.push = function push(v) {
+        var entry = { data: v, next: null };
+        if (this.length > 0) this.tail.next = entry;
+        else this.head = entry;
+        this.tail = entry;
+        ++this.length;
+      };
+      BufferList.prototype.unshift = function unshift(v) {
+        var entry = { data: v, next: this.head };
+        if (this.length === 0) this.tail = entry;
+        this.head = entry;
+        ++this.length;
+      };
+      BufferList.prototype.shift = function shift() {
+        if (this.length === 0) return;
+        var ret = this.head.data;
+        if (this.length === 1) this.head = this.tail = null;
+        else this.head = this.head.next;
+        --this.length;
+        return ret;
+      };
+      BufferList.prototype.clear = function clear() {
+        this.head = this.tail = null;
+        this.length = 0;
+      };
+      BufferList.prototype.join = function join(s) {
+        if (this.length === 0) return "";
+        var p = this.head;
+        var ret = "" + p.data;
+        while (p = p.next) {
+          ret += s + p.data;
+        }
+        return ret;
+      };
+      BufferList.prototype.concat = function concat(n) {
+        if (this.length === 0) return Buffer3.alloc(0);
+        var ret = Buffer3.allocUnsafe(n >>> 0);
+        var p = this.head;
+        var i = 0;
+        while (p) {
+          copyBuffer(p.data, ret, i);
+          i += p.data.length;
+          p = p.next;
+        }
+        return ret;
+      };
+      return BufferList;
+    })();
+    if (util2 && util2.inspect && util2.inspect.custom) {
+      module2.exports.prototype[util2.inspect.custom] = function() {
+        var obj = util2.inspect({ length: this.length });
+        return this.constructor.name + " " + obj;
+      };
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/internal/streams/destroy.js
+var require_destroy2 = __commonJS({
+  "node_modules/readable-stream/lib/internal/streams/destroy.js"(exports2, module2) {
+    "use strict";
+    var pna = require_process_nextick_args();
+    function destroy(err, cb) {
+      var _this = this;
+      var readableDestroyed = this._readableState && this._readableState.destroyed;
+      var writableDestroyed = this._writableState && this._writableState.destroyed;
+      if (readableDestroyed || writableDestroyed) {
+        if (cb) {
+          cb(err);
+        } else if (err) {
+          if (!this._writableState) {
+            pna.nextTick(emitErrorNT, this, err);
+          } else if (!this._writableState.errorEmitted) {
+            this._writableState.errorEmitted = true;
+            pna.nextTick(emitErrorNT, this, err);
+          }
+        }
+        return this;
+      }
+      if (this._readableState) {
+        this._readableState.destroyed = true;
+      }
+      if (this._writableState) {
+        this._writableState.destroyed = true;
+      }
+      this._destroy(err || null, function(err2) {
+        if (!cb && err2) {
+          if (!_this._writableState) {
+            pna.nextTick(emitErrorNT, _this, err2);
+          } else if (!_this._writableState.errorEmitted) {
+            _this._writableState.errorEmitted = true;
+            pna.nextTick(emitErrorNT, _this, err2);
+          }
+        } else if (cb) {
+          cb(err2);
+        }
+      });
+      return this;
+    }
+    function undestroy() {
+      if (this._readableState) {
+        this._readableState.destroyed = false;
+        this._readableState.reading = false;
+        this._readableState.ended = false;
+        this._readableState.endEmitted = false;
+      }
+      if (this._writableState) {
+        this._writableState.destroyed = false;
+        this._writableState.ended = false;
+        this._writableState.ending = false;
+        this._writableState.finalCalled = false;
+        this._writableState.prefinished = false;
+        this._writableState.finished = false;
+        this._writableState.errorEmitted = false;
+      }
+    }
+    function emitErrorNT(self2, err) {
+      self2.emit("error", err);
+    }
+    module2.exports = {
+      destroy,
+      undestroy
+    };
+  }
+});
+
+// node_modules/util-deprecate/node.js
+var require_node2 = __commonJS({
+  "node_modules/util-deprecate/node.js"(exports2, module2) {
+    module2.exports = require("util").deprecate;
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_writable.js
+var require_stream_writable = __commonJS({
+  "node_modules/readable-stream/lib/_stream_writable.js"(exports2, module2) {
+    "use strict";
+    var pna = require_process_nextick_args();
+    module2.exports = Writable;
+    function CorkedRequest(state) {
+      var _this = this;
+      this.next = null;
+      this.entry = null;
+      this.finish = function() {
+        onCorkedFinish(_this, state);
+      };
+    }
+    var asyncWrite = !process.browser && ["v0.10", "v0.9."].indexOf(process.version.slice(0, 5)) > -1 ? setImmediate : pna.nextTick;
+    var Duplex;
+    Writable.WritableState = WritableState;
+    var util2 = Object.create(require_util());
+    util2.inherits = require_inherits();
+    var internalUtil = {
+      deprecate: require_node2()
+    };
+    var Stream = require_stream();
+    var Buffer3 = require_safe_buffer2().Buffer;
+    var OurUint8Array = (typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : {}).Uint8Array || function() {
+    };
+    function _uint8ArrayToBuffer(chunk) {
+      return Buffer3.from(chunk);
+    }
+    function _isUint8Array(obj) {
+      return Buffer3.isBuffer(obj) || obj instanceof OurUint8Array;
+    }
+    var destroyImpl = require_destroy2();
+    util2.inherits(Writable, Stream);
+    function nop() {
+    }
+    function WritableState(options, stream) {
+      Duplex = Duplex || require_stream_duplex();
+      options = options || {};
+      var isDuplex = stream instanceof Duplex;
+      this.objectMode = !!options.objectMode;
+      if (isDuplex) this.objectMode = this.objectMode || !!options.writableObjectMode;
+      var hwm = options.highWaterMark;
+      var writableHwm = options.writableHighWaterMark;
+      var defaultHwm = this.objectMode ? 16 : 16 * 1024;
+      if (hwm || hwm === 0) this.highWaterMark = hwm;
+      else if (isDuplex && (writableHwm || writableHwm === 0)) this.highWaterMark = writableHwm;
+      else this.highWaterMark = defaultHwm;
+      this.highWaterMark = Math.floor(this.highWaterMark);
+      this.finalCalled = false;
+      this.needDrain = false;
+      this.ending = false;
+      this.ended = false;
+      this.finished = false;
+      this.destroyed = false;
+      var noDecode = options.decodeStrings === false;
+      this.decodeStrings = !noDecode;
+      this.defaultEncoding = options.defaultEncoding || "utf8";
+      this.length = 0;
+      this.writing = false;
+      this.corked = 0;
+      this.sync = true;
+      this.bufferProcessing = false;
+      this.onwrite = function(er) {
+        onwrite(stream, er);
+      };
+      this.writecb = null;
+      this.writelen = 0;
+      this.bufferedRequest = null;
+      this.lastBufferedRequest = null;
+      this.pendingcb = 0;
+      this.prefinished = false;
+      this.errorEmitted = false;
+      this.bufferedRequestCount = 0;
+      this.corkedRequestsFree = new CorkedRequest(this);
+    }
+    WritableState.prototype.getBuffer = function getBuffer() {
+      var current = this.bufferedRequest;
+      var out = [];
+      while (current) {
+        out.push(current);
+        current = current.next;
+      }
+      return out;
+    };
+    (function() {
+      try {
+        Object.defineProperty(WritableState.prototype, "buffer", {
+          get: internalUtil.deprecate(function() {
+            return this.getBuffer();
+          }, "_writableState.buffer is deprecated. Use _writableState.getBuffer instead.", "DEP0003")
+        });
+      } catch (_) {
+      }
+    })();
+    var realHasInstance;
+    if (typeof Symbol === "function" && Symbol.hasInstance && typeof Function.prototype[Symbol.hasInstance] === "function") {
+      realHasInstance = Function.prototype[Symbol.hasInstance];
+      Object.defineProperty(Writable, Symbol.hasInstance, {
+        value: function(object) {
+          if (realHasInstance.call(this, object)) return true;
+          if (this !== Writable) return false;
+          return object && object._writableState instanceof WritableState;
+        }
+      });
+    } else {
+      realHasInstance = function(object) {
+        return object instanceof this;
+      };
+    }
+    function Writable(options) {
+      Duplex = Duplex || require_stream_duplex();
+      if (!realHasInstance.call(Writable, this) && !(this instanceof Duplex)) {
+        return new Writable(options);
+      }
+      this._writableState = new WritableState(options, this);
+      this.writable = true;
+      if (options) {
+        if (typeof options.write === "function") this._write = options.write;
+        if (typeof options.writev === "function") this._writev = options.writev;
+        if (typeof options.destroy === "function") this._destroy = options.destroy;
+        if (typeof options.final === "function") this._final = options.final;
+      }
+      Stream.call(this);
+    }
+    Writable.prototype.pipe = function() {
+      this.emit("error", new Error("Cannot pipe, not readable"));
+    };
+    function writeAfterEnd(stream, cb) {
+      var er = new Error("write after end");
+      stream.emit("error", er);
+      pna.nextTick(cb, er);
+    }
+    function validChunk(stream, state, chunk, cb) {
+      var valid = true;
+      var er = false;
+      if (chunk === null) {
+        er = new TypeError("May not write null values to stream");
+      } else if (typeof chunk !== "string" && chunk !== void 0 && !state.objectMode) {
+        er = new TypeError("Invalid non-string/buffer chunk");
+      }
+      if (er) {
+        stream.emit("error", er);
+        pna.nextTick(cb, er);
+        valid = false;
+      }
+      return valid;
+    }
+    Writable.prototype.write = function(chunk, encoding, cb) {
+      var state = this._writableState;
+      var ret = false;
+      var isBuf = !state.objectMode && _isUint8Array(chunk);
+      if (isBuf && !Buffer3.isBuffer(chunk)) {
+        chunk = _uint8ArrayToBuffer(chunk);
+      }
+      if (typeof encoding === "function") {
+        cb = encoding;
+        encoding = null;
+      }
+      if (isBuf) encoding = "buffer";
+      else if (!encoding) encoding = state.defaultEncoding;
+      if (typeof cb !== "function") cb = nop;
+      if (state.ended) writeAfterEnd(this, cb);
+      else if (isBuf || validChunk(this, state, chunk, cb)) {
+        state.pendingcb++;
+        ret = writeOrBuffer(this, state, isBuf, chunk, encoding, cb);
+      }
+      return ret;
+    };
+    Writable.prototype.cork = function() {
+      var state = this._writableState;
+      state.corked++;
+    };
+    Writable.prototype.uncork = function() {
+      var state = this._writableState;
+      if (state.corked) {
+        state.corked--;
+        if (!state.writing && !state.corked && !state.bufferProcessing && state.bufferedRequest) clearBuffer(this, state);
+      }
+    };
+    Writable.prototype.setDefaultEncoding = function setDefaultEncoding(encoding) {
+      if (typeof encoding === "string") encoding = encoding.toLowerCase();
+      if (!(["hex", "utf8", "utf-8", "ascii", "binary", "base64", "ucs2", "ucs-2", "utf16le", "utf-16le", "raw"].indexOf((encoding + "").toLowerCase()) > -1)) throw new TypeError("Unknown encoding: " + encoding);
+      this._writableState.defaultEncoding = encoding;
+      return this;
+    };
+    function decodeChunk(state, chunk, encoding) {
+      if (!state.objectMode && state.decodeStrings !== false && typeof chunk === "string") {
+        chunk = Buffer3.from(chunk, encoding);
+      }
+      return chunk;
+    }
+    Object.defineProperty(Writable.prototype, "writableHighWaterMark", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function() {
+        return this._writableState.highWaterMark;
+      }
+    });
+    function writeOrBuffer(stream, state, isBuf, chunk, encoding, cb) {
+      if (!isBuf) {
+        var newChunk = decodeChunk(state, chunk, encoding);
+        if (chunk !== newChunk) {
+          isBuf = true;
+          encoding = "buffer";
+          chunk = newChunk;
+        }
+      }
+      var len = state.objectMode ? 1 : chunk.length;
+      state.length += len;
+      var ret = state.length < state.highWaterMark;
+      if (!ret) state.needDrain = true;
+      if (state.writing || state.corked) {
+        var last = state.lastBufferedRequest;
+        state.lastBufferedRequest = {
+          chunk,
+          encoding,
+          isBuf,
+          callback: cb,
+          next: null
+        };
+        if (last) {
+          last.next = state.lastBufferedRequest;
+        } else {
+          state.bufferedRequest = state.lastBufferedRequest;
+        }
+        state.bufferedRequestCount += 1;
+      } else {
+        doWrite(stream, state, false, len, chunk, encoding, cb);
+      }
+      return ret;
+    }
+    function doWrite(stream, state, writev, len, chunk, encoding, cb) {
+      state.writelen = len;
+      state.writecb = cb;
+      state.writing = true;
+      state.sync = true;
+      if (writev) stream._writev(chunk, state.onwrite);
+      else stream._write(chunk, encoding, state.onwrite);
+      state.sync = false;
+    }
+    function onwriteError(stream, state, sync, er, cb) {
+      --state.pendingcb;
+      if (sync) {
+        pna.nextTick(cb, er);
+        pna.nextTick(finishMaybe, stream, state);
+        stream._writableState.errorEmitted = true;
+        stream.emit("error", er);
+      } else {
+        cb(er);
+        stream._writableState.errorEmitted = true;
+        stream.emit("error", er);
+        finishMaybe(stream, state);
+      }
+    }
+    function onwriteStateUpdate(state) {
+      state.writing = false;
+      state.writecb = null;
+      state.length -= state.writelen;
+      state.writelen = 0;
+    }
+    function onwrite(stream, er) {
+      var state = stream._writableState;
+      var sync = state.sync;
+      var cb = state.writecb;
+      onwriteStateUpdate(state);
+      if (er) onwriteError(stream, state, sync, er, cb);
+      else {
+        var finished = needFinish(state);
+        if (!finished && !state.corked && !state.bufferProcessing && state.bufferedRequest) {
+          clearBuffer(stream, state);
+        }
+        if (sync) {
+          asyncWrite(afterWrite, stream, state, finished, cb);
+        } else {
+          afterWrite(stream, state, finished, cb);
+        }
+      }
+    }
+    function afterWrite(stream, state, finished, cb) {
+      if (!finished) onwriteDrain(stream, state);
+      state.pendingcb--;
+      cb();
+      finishMaybe(stream, state);
+    }
+    function onwriteDrain(stream, state) {
+      if (state.length === 0 && state.needDrain) {
+        state.needDrain = false;
+        stream.emit("drain");
+      }
+    }
+    function clearBuffer(stream, state) {
+      state.bufferProcessing = true;
+      var entry = state.bufferedRequest;
+      if (stream._writev && entry && entry.next) {
+        var l = state.bufferedRequestCount;
+        var buffer = new Array(l);
+        var holder = state.corkedRequestsFree;
+        holder.entry = entry;
+        var count = 0;
+        var allBuffers = true;
+        while (entry) {
+          buffer[count] = entry;
+          if (!entry.isBuf) allBuffers = false;
+          entry = entry.next;
+          count += 1;
+        }
+        buffer.allBuffers = allBuffers;
+        doWrite(stream, state, true, state.length, buffer, "", holder.finish);
+        state.pendingcb++;
+        state.lastBufferedRequest = null;
+        if (holder.next) {
+          state.corkedRequestsFree = holder.next;
+          holder.next = null;
+        } else {
+          state.corkedRequestsFree = new CorkedRequest(state);
+        }
+        state.bufferedRequestCount = 0;
+      } else {
+        while (entry) {
+          var chunk = entry.chunk;
+          var encoding = entry.encoding;
+          var cb = entry.callback;
+          var len = state.objectMode ? 1 : chunk.length;
+          doWrite(stream, state, false, len, chunk, encoding, cb);
+          entry = entry.next;
+          state.bufferedRequestCount--;
+          if (state.writing) {
+            break;
+          }
+        }
+        if (entry === null) state.lastBufferedRequest = null;
+      }
+      state.bufferedRequest = entry;
+      state.bufferProcessing = false;
+    }
+    Writable.prototype._write = function(chunk, encoding, cb) {
+      cb(new Error("_write() is not implemented"));
+    };
+    Writable.prototype._writev = null;
+    Writable.prototype.end = function(chunk, encoding, cb) {
+      var state = this._writableState;
+      if (typeof chunk === "function") {
+        cb = chunk;
+        chunk = null;
+        encoding = null;
+      } else if (typeof encoding === "function") {
+        cb = encoding;
+        encoding = null;
+      }
+      if (chunk !== null && chunk !== void 0) this.write(chunk, encoding);
+      if (state.corked) {
+        state.corked = 1;
+        this.uncork();
+      }
+      if (!state.ending) endWritable(this, state, cb);
+    };
+    function needFinish(state) {
+      return state.ending && state.length === 0 && state.bufferedRequest === null && !state.finished && !state.writing;
+    }
+    function callFinal(stream, state) {
+      stream._final(function(err) {
+        state.pendingcb--;
+        if (err) {
+          stream.emit("error", err);
+        }
+        state.prefinished = true;
+        stream.emit("prefinish");
+        finishMaybe(stream, state);
+      });
+    }
+    function prefinish(stream, state) {
+      if (!state.prefinished && !state.finalCalled) {
+        if (typeof stream._final === "function") {
+          state.pendingcb++;
+          state.finalCalled = true;
+          pna.nextTick(callFinal, stream, state);
+        } else {
+          state.prefinished = true;
+          stream.emit("prefinish");
+        }
+      }
+    }
+    function finishMaybe(stream, state) {
+      var need = needFinish(state);
+      if (need) {
+        prefinish(stream, state);
+        if (state.pendingcb === 0) {
+          state.finished = true;
+          stream.emit("finish");
+        }
+      }
+      return need;
+    }
+    function endWritable(stream, state, cb) {
+      state.ending = true;
+      finishMaybe(stream, state);
+      if (cb) {
+        if (state.finished) pna.nextTick(cb);
+        else stream.once("finish", cb);
+      }
+      state.ended = true;
+      stream.writable = false;
+    }
+    function onCorkedFinish(corkReq, state, err) {
+      var entry = corkReq.entry;
+      corkReq.entry = null;
+      while (entry) {
+        var cb = entry.callback;
+        state.pendingcb--;
+        cb(err);
+        entry = entry.next;
+      }
+      state.corkedRequestsFree.next = corkReq;
+    }
+    Object.defineProperty(Writable.prototype, "destroyed", {
+      get: function() {
+        if (this._writableState === void 0) {
+          return false;
+        }
+        return this._writableState.destroyed;
+      },
+      set: function(value) {
+        if (!this._writableState) {
+          return;
+        }
+        this._writableState.destroyed = value;
+      }
+    });
+    Writable.prototype.destroy = destroyImpl.destroy;
+    Writable.prototype._undestroy = destroyImpl.undestroy;
+    Writable.prototype._destroy = function(err, cb) {
+      this.end();
+      cb(err);
+    };
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_duplex.js
+var require_stream_duplex = __commonJS({
+  "node_modules/readable-stream/lib/_stream_duplex.js"(exports2, module2) {
+    "use strict";
+    var pna = require_process_nextick_args();
+    var objectKeys = Object.keys || function(obj) {
+      var keys2 = [];
+      for (var key in obj) {
+        keys2.push(key);
+      }
+      return keys2;
+    };
+    module2.exports = Duplex;
+    var util2 = Object.create(require_util());
+    util2.inherits = require_inherits();
+    var Readable = require_stream_readable();
+    var Writable = require_stream_writable();
+    util2.inherits(Duplex, Readable);
+    {
+      keys = objectKeys(Writable.prototype);
+      for (v = 0; v < keys.length; v++) {
+        method = keys[v];
+        if (!Duplex.prototype[method]) Duplex.prototype[method] = Writable.prototype[method];
+      }
+    }
+    var keys;
+    var method;
+    var v;
+    function Duplex(options) {
+      if (!(this instanceof Duplex)) return new Duplex(options);
+      Readable.call(this, options);
+      Writable.call(this, options);
+      if (options && options.readable === false) this.readable = false;
+      if (options && options.writable === false) this.writable = false;
+      this.allowHalfOpen = true;
+      if (options && options.allowHalfOpen === false) this.allowHalfOpen = false;
+      this.once("end", onend);
+    }
+    Object.defineProperty(Duplex.prototype, "writableHighWaterMark", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function() {
+        return this._writableState.highWaterMark;
+      }
+    });
+    function onend() {
+      if (this.allowHalfOpen || this._writableState.ended) return;
+      pna.nextTick(onEndNT, this);
+    }
+    function onEndNT(self2) {
+      self2.end();
+    }
+    Object.defineProperty(Duplex.prototype, "destroyed", {
+      get: function() {
+        if (this._readableState === void 0 || this._writableState === void 0) {
+          return false;
+        }
+        return this._readableState.destroyed && this._writableState.destroyed;
+      },
+      set: function(value) {
+        if (this._readableState === void 0 || this._writableState === void 0) {
+          return;
+        }
+        this._readableState.destroyed = value;
+        this._writableState.destroyed = value;
+      }
+    });
+    Duplex.prototype._destroy = function(err, cb) {
+      this.push(null);
+      this.end();
+      pna.nextTick(cb, err);
+    };
+  }
+});
+
+// node_modules/string_decoder/node_modules/safe-buffer/index.js
+var require_safe_buffer3 = __commonJS({
+  "node_modules/string_decoder/node_modules/safe-buffer/index.js"(exports2, module2) {
+    var buffer = require("buffer");
+    var Buffer3 = buffer.Buffer;
+    function copyProps(src, dst) {
+      for (var key in src) {
+        dst[key] = src[key];
+      }
+    }
+    if (Buffer3.from && Buffer3.alloc && Buffer3.allocUnsafe && Buffer3.allocUnsafeSlow) {
+      module2.exports = buffer;
+    } else {
+      copyProps(buffer, exports2);
+      exports2.Buffer = SafeBuffer;
+    }
+    function SafeBuffer(arg, encodingOrOffset, length) {
+      return Buffer3(arg, encodingOrOffset, length);
+    }
+    copyProps(Buffer3, SafeBuffer);
+    SafeBuffer.from = function(arg, encodingOrOffset, length) {
+      if (typeof arg === "number") {
+        throw new TypeError("Argument must not be a number");
+      }
+      return Buffer3(arg, encodingOrOffset, length);
+    };
+    SafeBuffer.alloc = function(size, fill, encoding) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      var buf = Buffer3(size);
+      if (fill !== void 0) {
+        if (typeof encoding === "string") {
+          buf.fill(fill, encoding);
+        } else {
+          buf.fill(fill);
+        }
+      } else {
+        buf.fill(0);
+      }
+      return buf;
+    };
+    SafeBuffer.allocUnsafe = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return Buffer3(size);
+    };
+    SafeBuffer.allocUnsafeSlow = function(size) {
+      if (typeof size !== "number") {
+        throw new TypeError("Argument must be a number");
+      }
+      return buffer.SlowBuffer(size);
+    };
+  }
+});
+
+// node_modules/string_decoder/lib/string_decoder.js
+var require_string_decoder = __commonJS({
+  "node_modules/string_decoder/lib/string_decoder.js"(exports2) {
+    "use strict";
+    var Buffer3 = require_safe_buffer3().Buffer;
+    var isEncoding = Buffer3.isEncoding || function(encoding) {
+      encoding = "" + encoding;
+      switch (encoding && encoding.toLowerCase()) {
+        case "hex":
+        case "utf8":
+        case "utf-8":
+        case "ascii":
+        case "binary":
+        case "base64":
+        case "ucs2":
+        case "ucs-2":
+        case "utf16le":
+        case "utf-16le":
+        case "raw":
+          return true;
+        default:
+          return false;
+      }
+    };
+    function _normalizeEncoding(enc) {
+      if (!enc) return "utf8";
+      var retried;
+      while (true) {
+        switch (enc) {
+          case "utf8":
+          case "utf-8":
+            return "utf8";
+          case "ucs2":
+          case "ucs-2":
+          case "utf16le":
+          case "utf-16le":
+            return "utf16le";
+          case "latin1":
+          case "binary":
+            return "latin1";
+          case "base64":
+          case "ascii":
+          case "hex":
+            return enc;
+          default:
+            if (retried) return;
+            enc = ("" + enc).toLowerCase();
+            retried = true;
+        }
+      }
+    }
+    function normalizeEncoding(enc) {
+      var nenc = _normalizeEncoding(enc);
+      if (typeof nenc !== "string" && (Buffer3.isEncoding === isEncoding || !isEncoding(enc))) throw new Error("Unknown encoding: " + enc);
+      return nenc || enc;
+    }
+    exports2.StringDecoder = StringDecoder;
+    function StringDecoder(encoding) {
+      this.encoding = normalizeEncoding(encoding);
+      var nb;
+      switch (this.encoding) {
+        case "utf16le":
+          this.text = utf16Text;
+          this.end = utf16End;
+          nb = 4;
+          break;
+        case "utf8":
+          this.fillLast = utf8FillLast;
+          nb = 4;
+          break;
+        case "base64":
+          this.text = base64Text;
+          this.end = base64End;
+          nb = 3;
+          break;
+        default:
+          this.write = simpleWrite;
+          this.end = simpleEnd;
+          return;
+      }
+      this.lastNeed = 0;
+      this.lastTotal = 0;
+      this.lastChar = Buffer3.allocUnsafe(nb);
+    }
+    StringDecoder.prototype.write = function(buf) {
+      if (buf.length === 0) return "";
+      var r;
+      var i;
+      if (this.lastNeed) {
+        r = this.fillLast(buf);
+        if (r === void 0) return "";
+        i = this.lastNeed;
+        this.lastNeed = 0;
+      } else {
+        i = 0;
+      }
+      if (i < buf.length) return r ? r + this.text(buf, i) : this.text(buf, i);
+      return r || "";
+    };
+    StringDecoder.prototype.end = utf8End;
+    StringDecoder.prototype.text = utf8Text;
+    StringDecoder.prototype.fillLast = function(buf) {
+      if (this.lastNeed <= buf.length) {
+        buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, this.lastNeed);
+        return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+      }
+      buf.copy(this.lastChar, this.lastTotal - this.lastNeed, 0, buf.length);
+      this.lastNeed -= buf.length;
+    };
+    function utf8CheckByte(byte) {
+      if (byte <= 127) return 0;
+      else if (byte >> 5 === 6) return 2;
+      else if (byte >> 4 === 14) return 3;
+      else if (byte >> 3 === 30) return 4;
+      return byte >> 6 === 2 ? -1 : -2;
+    }
+    function utf8CheckIncomplete(self2, buf, i) {
+      var j = buf.length - 1;
+      if (j < i) return 0;
+      var nb = utf8CheckByte(buf[j]);
+      if (nb >= 0) {
+        if (nb > 0) self2.lastNeed = nb - 1;
+        return nb;
+      }
+      if (--j < i || nb === -2) return 0;
+      nb = utf8CheckByte(buf[j]);
+      if (nb >= 0) {
+        if (nb > 0) self2.lastNeed = nb - 2;
+        return nb;
+      }
+      if (--j < i || nb === -2) return 0;
+      nb = utf8CheckByte(buf[j]);
+      if (nb >= 0) {
+        if (nb > 0) {
+          if (nb === 2) nb = 0;
+          else self2.lastNeed = nb - 3;
+        }
+        return nb;
+      }
+      return 0;
+    }
+    function utf8CheckExtraBytes(self2, buf, p) {
+      if ((buf[0] & 192) !== 128) {
+        self2.lastNeed = 0;
+        return "\uFFFD";
+      }
+      if (self2.lastNeed > 1 && buf.length > 1) {
+        if ((buf[1] & 192) !== 128) {
+          self2.lastNeed = 1;
+          return "\uFFFD";
+        }
+        if (self2.lastNeed > 2 && buf.length > 2) {
+          if ((buf[2] & 192) !== 128) {
+            self2.lastNeed = 2;
+            return "\uFFFD";
+          }
+        }
+      }
+    }
+    function utf8FillLast(buf) {
+      var p = this.lastTotal - this.lastNeed;
+      var r = utf8CheckExtraBytes(this, buf, p);
+      if (r !== void 0) return r;
+      if (this.lastNeed <= buf.length) {
+        buf.copy(this.lastChar, p, 0, this.lastNeed);
+        return this.lastChar.toString(this.encoding, 0, this.lastTotal);
+      }
+      buf.copy(this.lastChar, p, 0, buf.length);
+      this.lastNeed -= buf.length;
+    }
+    function utf8Text(buf, i) {
+      var total = utf8CheckIncomplete(this, buf, i);
+      if (!this.lastNeed) return buf.toString("utf8", i);
+      this.lastTotal = total;
+      var end = buf.length - (total - this.lastNeed);
+      buf.copy(this.lastChar, 0, end);
+      return buf.toString("utf8", i, end);
+    }
+    function utf8End(buf) {
+      var r = buf && buf.length ? this.write(buf) : "";
+      if (this.lastNeed) return r + "\uFFFD";
+      return r;
+    }
+    function utf16Text(buf, i) {
+      if ((buf.length - i) % 2 === 0) {
+        var r = buf.toString("utf16le", i);
+        if (r) {
+          var c = r.charCodeAt(r.length - 1);
+          if (c >= 55296 && c <= 56319) {
+            this.lastNeed = 2;
+            this.lastTotal = 4;
+            this.lastChar[0] = buf[buf.length - 2];
+            this.lastChar[1] = buf[buf.length - 1];
+            return r.slice(0, -1);
+          }
+        }
+        return r;
+      }
+      this.lastNeed = 1;
+      this.lastTotal = 2;
+      this.lastChar[0] = buf[buf.length - 1];
+      return buf.toString("utf16le", i, buf.length - 1);
+    }
+    function utf16End(buf) {
+      var r = buf && buf.length ? this.write(buf) : "";
+      if (this.lastNeed) {
+        var end = this.lastTotal - this.lastNeed;
+        return r + this.lastChar.toString("utf16le", 0, end);
+      }
+      return r;
+    }
+    function base64Text(buf, i) {
+      var n = (buf.length - i) % 3;
+      if (n === 0) return buf.toString("base64", i);
+      this.lastNeed = 3 - n;
+      this.lastTotal = 3;
+      if (n === 1) {
+        this.lastChar[0] = buf[buf.length - 1];
+      } else {
+        this.lastChar[0] = buf[buf.length - 2];
+        this.lastChar[1] = buf[buf.length - 1];
+      }
+      return buf.toString("base64", i, buf.length - n);
+    }
+    function base64End(buf) {
+      var r = buf && buf.length ? this.write(buf) : "";
+      if (this.lastNeed) return r + this.lastChar.toString("base64", 0, 3 - this.lastNeed);
+      return r;
+    }
+    function simpleWrite(buf) {
+      return buf.toString(this.encoding);
+    }
+    function simpleEnd(buf) {
+      return buf && buf.length ? this.write(buf) : "";
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_readable.js
+var require_stream_readable = __commonJS({
+  "node_modules/readable-stream/lib/_stream_readable.js"(exports2, module2) {
+    "use strict";
+    var pna = require_process_nextick_args();
+    module2.exports = Readable;
+    var isArray = require_isarray();
+    var Duplex;
+    Readable.ReadableState = ReadableState;
+    var EE = require("events").EventEmitter;
+    var EElistenerCount = function(emitter, type) {
+      return emitter.listeners(type).length;
+    };
+    var Stream = require_stream();
+    var Buffer3 = require_safe_buffer2().Buffer;
+    var OurUint8Array = (typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : typeof self !== "undefined" ? self : {}).Uint8Array || function() {
+    };
+    function _uint8ArrayToBuffer(chunk) {
+      return Buffer3.from(chunk);
+    }
+    function _isUint8Array(obj) {
+      return Buffer3.isBuffer(obj) || obj instanceof OurUint8Array;
+    }
+    var util2 = Object.create(require_util());
+    util2.inherits = require_inherits();
+    var debugUtil = require("util");
+    var debug = void 0;
+    if (debugUtil && debugUtil.debuglog) {
+      debug = debugUtil.debuglog("stream");
+    } else {
+      debug = function() {
+      };
+    }
+    var BufferList = require_BufferList();
+    var destroyImpl = require_destroy2();
+    var StringDecoder;
+    util2.inherits(Readable, Stream);
+    var kProxyEvents = ["error", "close", "destroy", "pause", "resume"];
+    function prependListener(emitter, event, fn) {
+      if (typeof emitter.prependListener === "function") return emitter.prependListener(event, fn);
+      if (!emitter._events || !emitter._events[event]) emitter.on(event, fn);
+      else if (isArray(emitter._events[event])) emitter._events[event].unshift(fn);
+      else emitter._events[event] = [fn, emitter._events[event]];
+    }
+    function ReadableState(options, stream) {
+      Duplex = Duplex || require_stream_duplex();
+      options = options || {};
+      var isDuplex = stream instanceof Duplex;
+      this.objectMode = !!options.objectMode;
+      if (isDuplex) this.objectMode = this.objectMode || !!options.readableObjectMode;
+      var hwm = options.highWaterMark;
+      var readableHwm = options.readableHighWaterMark;
+      var defaultHwm = this.objectMode ? 16 : 16 * 1024;
+      if (hwm || hwm === 0) this.highWaterMark = hwm;
+      else if (isDuplex && (readableHwm || readableHwm === 0)) this.highWaterMark = readableHwm;
+      else this.highWaterMark = defaultHwm;
+      this.highWaterMark = Math.floor(this.highWaterMark);
+      this.buffer = new BufferList();
+      this.length = 0;
+      this.pipes = null;
+      this.pipesCount = 0;
+      this.flowing = null;
+      this.ended = false;
+      this.endEmitted = false;
+      this.reading = false;
+      this.sync = true;
+      this.needReadable = false;
+      this.emittedReadable = false;
+      this.readableListening = false;
+      this.resumeScheduled = false;
+      this.destroyed = false;
+      this.defaultEncoding = options.defaultEncoding || "utf8";
+      this.awaitDrain = 0;
+      this.readingMore = false;
+      this.decoder = null;
+      this.encoding = null;
+      if (options.encoding) {
+        if (!StringDecoder) StringDecoder = require_string_decoder().StringDecoder;
+        this.decoder = new StringDecoder(options.encoding);
+        this.encoding = options.encoding;
+      }
+    }
+    function Readable(options) {
+      Duplex = Duplex || require_stream_duplex();
+      if (!(this instanceof Readable)) return new Readable(options);
+      this._readableState = new ReadableState(options, this);
+      this.readable = true;
+      if (options) {
+        if (typeof options.read === "function") this._read = options.read;
+        if (typeof options.destroy === "function") this._destroy = options.destroy;
+      }
+      Stream.call(this);
+    }
+    Object.defineProperty(Readable.prototype, "destroyed", {
+      get: function() {
+        if (this._readableState === void 0) {
+          return false;
+        }
+        return this._readableState.destroyed;
+      },
+      set: function(value) {
+        if (!this._readableState) {
+          return;
+        }
+        this._readableState.destroyed = value;
+      }
+    });
+    Readable.prototype.destroy = destroyImpl.destroy;
+    Readable.prototype._undestroy = destroyImpl.undestroy;
+    Readable.prototype._destroy = function(err, cb) {
+      this.push(null);
+      cb(err);
+    };
+    Readable.prototype.push = function(chunk, encoding) {
+      var state = this._readableState;
+      var skipChunkCheck;
+      if (!state.objectMode) {
+        if (typeof chunk === "string") {
+          encoding = encoding || state.defaultEncoding;
+          if (encoding !== state.encoding) {
+            chunk = Buffer3.from(chunk, encoding);
+            encoding = "";
+          }
+          skipChunkCheck = true;
+        }
+      } else {
+        skipChunkCheck = true;
+      }
+      return readableAddChunk(this, chunk, encoding, false, skipChunkCheck);
+    };
+    Readable.prototype.unshift = function(chunk) {
+      return readableAddChunk(this, chunk, null, true, false);
+    };
+    function readableAddChunk(stream, chunk, encoding, addToFront, skipChunkCheck) {
+      var state = stream._readableState;
+      if (chunk === null) {
+        state.reading = false;
+        onEofChunk(stream, state);
+      } else {
+        var er;
+        if (!skipChunkCheck) er = chunkInvalid(state, chunk);
+        if (er) {
+          stream.emit("error", er);
+        } else if (state.objectMode || chunk && chunk.length > 0) {
+          if (typeof chunk !== "string" && !state.objectMode && Object.getPrototypeOf(chunk) !== Buffer3.prototype) {
+            chunk = _uint8ArrayToBuffer(chunk);
+          }
+          if (addToFront) {
+            if (state.endEmitted) stream.emit("error", new Error("stream.unshift() after end event"));
+            else addChunk(stream, state, chunk, true);
+          } else if (state.ended) {
+            stream.emit("error", new Error("stream.push() after EOF"));
+          } else {
+            state.reading = false;
+            if (state.decoder && !encoding) {
+              chunk = state.decoder.write(chunk);
+              if (state.objectMode || chunk.length !== 0) addChunk(stream, state, chunk, false);
+              else maybeReadMore(stream, state);
+            } else {
+              addChunk(stream, state, chunk, false);
+            }
+          }
+        } else if (!addToFront) {
+          state.reading = false;
+        }
+      }
+      return needMoreData(state);
+    }
+    function addChunk(stream, state, chunk, addToFront) {
+      if (state.flowing && state.length === 0 && !state.sync) {
+        stream.emit("data", chunk);
+        stream.read(0);
+      } else {
+        state.length += state.objectMode ? 1 : chunk.length;
+        if (addToFront) state.buffer.unshift(chunk);
+        else state.buffer.push(chunk);
+        if (state.needReadable) emitReadable(stream);
+      }
+      maybeReadMore(stream, state);
+    }
+    function chunkInvalid(state, chunk) {
+      var er;
+      if (!_isUint8Array(chunk) && typeof chunk !== "string" && chunk !== void 0 && !state.objectMode) {
+        er = new TypeError("Invalid non-string/buffer chunk");
+      }
+      return er;
+    }
+    function needMoreData(state) {
+      return !state.ended && (state.needReadable || state.length < state.highWaterMark || state.length === 0);
+    }
+    Readable.prototype.isPaused = function() {
+      return this._readableState.flowing === false;
+    };
+    Readable.prototype.setEncoding = function(enc) {
+      if (!StringDecoder) StringDecoder = require_string_decoder().StringDecoder;
+      this._readableState.decoder = new StringDecoder(enc);
+      this._readableState.encoding = enc;
+      return this;
+    };
+    var MAX_HWM = 8388608;
+    function computeNewHighWaterMark(n) {
+      if (n >= MAX_HWM) {
+        n = MAX_HWM;
+      } else {
+        n--;
+        n |= n >>> 1;
+        n |= n >>> 2;
+        n |= n >>> 4;
+        n |= n >>> 8;
+        n |= n >>> 16;
+        n++;
+      }
+      return n;
+    }
+    function howMuchToRead(n, state) {
+      if (n <= 0 || state.length === 0 && state.ended) return 0;
+      if (state.objectMode) return 1;
+      if (n !== n) {
+        if (state.flowing && state.length) return state.buffer.head.data.length;
+        else return state.length;
+      }
+      if (n > state.highWaterMark) state.highWaterMark = computeNewHighWaterMark(n);
+      if (n <= state.length) return n;
+      if (!state.ended) {
+        state.needReadable = true;
+        return 0;
+      }
+      return state.length;
+    }
+    Readable.prototype.read = function(n) {
+      debug("read", n);
+      n = parseInt(n, 10);
+      var state = this._readableState;
+      var nOrig = n;
+      if (n !== 0) state.emittedReadable = false;
+      if (n === 0 && state.needReadable && (state.length >= state.highWaterMark || state.ended)) {
+        debug("read: emitReadable", state.length, state.ended);
+        if (state.length === 0 && state.ended) endReadable(this);
+        else emitReadable(this);
+        return null;
+      }
+      n = howMuchToRead(n, state);
+      if (n === 0 && state.ended) {
+        if (state.length === 0) endReadable(this);
+        return null;
+      }
+      var doRead = state.needReadable;
+      debug("need readable", doRead);
+      if (state.length === 0 || state.length - n < state.highWaterMark) {
+        doRead = true;
+        debug("length less than watermark", doRead);
+      }
+      if (state.ended || state.reading) {
+        doRead = false;
+        debug("reading or ended", doRead);
+      } else if (doRead) {
+        debug("do read");
+        state.reading = true;
+        state.sync = true;
+        if (state.length === 0) state.needReadable = true;
+        this._read(state.highWaterMark);
+        state.sync = false;
+        if (!state.reading) n = howMuchToRead(nOrig, state);
+      }
+      var ret;
+      if (n > 0) ret = fromList(n, state);
+      else ret = null;
+      if (ret === null) {
+        state.needReadable = true;
+        n = 0;
+      } else {
+        state.length -= n;
+      }
+      if (state.length === 0) {
+        if (!state.ended) state.needReadable = true;
+        if (nOrig !== n && state.ended) endReadable(this);
+      }
+      if (ret !== null) this.emit("data", ret);
+      return ret;
+    };
+    function onEofChunk(stream, state) {
+      if (state.ended) return;
+      if (state.decoder) {
+        var chunk = state.decoder.end();
+        if (chunk && chunk.length) {
+          state.buffer.push(chunk);
+          state.length += state.objectMode ? 1 : chunk.length;
+        }
+      }
+      state.ended = true;
+      emitReadable(stream);
+    }
+    function emitReadable(stream) {
+      var state = stream._readableState;
+      state.needReadable = false;
+      if (!state.emittedReadable) {
+        debug("emitReadable", state.flowing);
+        state.emittedReadable = true;
+        if (state.sync) pna.nextTick(emitReadable_, stream);
+        else emitReadable_(stream);
+      }
+    }
+    function emitReadable_(stream) {
+      debug("emit readable");
+      stream.emit("readable");
+      flow(stream);
+    }
+    function maybeReadMore(stream, state) {
+      if (!state.readingMore) {
+        state.readingMore = true;
+        pna.nextTick(maybeReadMore_, stream, state);
+      }
+    }
+    function maybeReadMore_(stream, state) {
+      var len = state.length;
+      while (!state.reading && !state.flowing && !state.ended && state.length < state.highWaterMark) {
+        debug("maybeReadMore read 0");
+        stream.read(0);
+        if (len === state.length)
+          break;
+        else len = state.length;
+      }
+      state.readingMore = false;
+    }
+    Readable.prototype._read = function(n) {
+      this.emit("error", new Error("_read() is not implemented"));
+    };
+    Readable.prototype.pipe = function(dest, pipeOpts) {
+      var src = this;
+      var state = this._readableState;
+      switch (state.pipesCount) {
+        case 0:
+          state.pipes = dest;
+          break;
+        case 1:
+          state.pipes = [state.pipes, dest];
+          break;
+        default:
+          state.pipes.push(dest);
+          break;
+      }
+      state.pipesCount += 1;
+      debug("pipe count=%d opts=%j", state.pipesCount, pipeOpts);
+      var doEnd = (!pipeOpts || pipeOpts.end !== false) && dest !== process.stdout && dest !== process.stderr;
+      var endFn = doEnd ? onend : unpipe;
+      if (state.endEmitted) pna.nextTick(endFn);
+      else src.once("end", endFn);
+      dest.on("unpipe", onunpipe);
+      function onunpipe(readable, unpipeInfo) {
+        debug("onunpipe");
+        if (readable === src) {
+          if (unpipeInfo && unpipeInfo.hasUnpiped === false) {
+            unpipeInfo.hasUnpiped = true;
+            cleanup();
+          }
+        }
+      }
+      function onend() {
+        debug("onend");
+        dest.end();
+      }
+      var ondrain = pipeOnDrain(src);
+      dest.on("drain", ondrain);
+      var cleanedUp = false;
+      function cleanup() {
+        debug("cleanup");
+        dest.removeListener("close", onclose);
+        dest.removeListener("finish", onfinish);
+        dest.removeListener("drain", ondrain);
+        dest.removeListener("error", onerror);
+        dest.removeListener("unpipe", onunpipe);
+        src.removeListener("end", onend);
+        src.removeListener("end", unpipe);
+        src.removeListener("data", ondata);
+        cleanedUp = true;
+        if (state.awaitDrain && (!dest._writableState || dest._writableState.needDrain)) ondrain();
+      }
+      var increasedAwaitDrain = false;
+      src.on("data", ondata);
+      function ondata(chunk) {
+        debug("ondata");
+        increasedAwaitDrain = false;
+        var ret = dest.write(chunk);
+        if (false === ret && !increasedAwaitDrain) {
+          if ((state.pipesCount === 1 && state.pipes === dest || state.pipesCount > 1 && indexOf(state.pipes, dest) !== -1) && !cleanedUp) {
+            debug("false write response, pause", state.awaitDrain);
+            state.awaitDrain++;
+            increasedAwaitDrain = true;
+          }
+          src.pause();
+        }
+      }
+      function onerror(er) {
+        debug("onerror", er);
+        unpipe();
+        dest.removeListener("error", onerror);
+        if (EElistenerCount(dest, "error") === 0) dest.emit("error", er);
+      }
+      prependListener(dest, "error", onerror);
+      function onclose() {
+        dest.removeListener("finish", onfinish);
+        unpipe();
+      }
+      dest.once("close", onclose);
+      function onfinish() {
+        debug("onfinish");
+        dest.removeListener("close", onclose);
+        unpipe();
+      }
+      dest.once("finish", onfinish);
+      function unpipe() {
+        debug("unpipe");
+        src.unpipe(dest);
+      }
+      dest.emit("pipe", src);
+      if (!state.flowing) {
+        debug("pipe resume");
+        src.resume();
+      }
+      return dest;
+    };
+    function pipeOnDrain(src) {
+      return function() {
+        var state = src._readableState;
+        debug("pipeOnDrain", state.awaitDrain);
+        if (state.awaitDrain) state.awaitDrain--;
+        if (state.awaitDrain === 0 && EElistenerCount(src, "data")) {
+          state.flowing = true;
+          flow(src);
+        }
+      };
+    }
+    Readable.prototype.unpipe = function(dest) {
+      var state = this._readableState;
+      var unpipeInfo = { hasUnpiped: false };
+      if (state.pipesCount === 0) return this;
+      if (state.pipesCount === 1) {
+        if (dest && dest !== state.pipes) return this;
+        if (!dest) dest = state.pipes;
+        state.pipes = null;
+        state.pipesCount = 0;
+        state.flowing = false;
+        if (dest) dest.emit("unpipe", this, unpipeInfo);
+        return this;
+      }
+      if (!dest) {
+        var dests = state.pipes;
+        var len = state.pipesCount;
+        state.pipes = null;
+        state.pipesCount = 0;
+        state.flowing = false;
+        for (var i = 0; i < len; i++) {
+          dests[i].emit("unpipe", this, { hasUnpiped: false });
+        }
+        return this;
+      }
+      var index = indexOf(state.pipes, dest);
+      if (index === -1) return this;
+      state.pipes.splice(index, 1);
+      state.pipesCount -= 1;
+      if (state.pipesCount === 1) state.pipes = state.pipes[0];
+      dest.emit("unpipe", this, unpipeInfo);
+      return this;
+    };
+    Readable.prototype.on = function(ev, fn) {
+      var res = Stream.prototype.on.call(this, ev, fn);
+      if (ev === "data") {
+        if (this._readableState.flowing !== false) this.resume();
+      } else if (ev === "readable") {
+        var state = this._readableState;
+        if (!state.endEmitted && !state.readableListening) {
+          state.readableListening = state.needReadable = true;
+          state.emittedReadable = false;
+          if (!state.reading) {
+            pna.nextTick(nReadingNextTick, this);
+          } else if (state.length) {
+            emitReadable(this);
+          }
+        }
+      }
+      return res;
+    };
+    Readable.prototype.addListener = Readable.prototype.on;
+    function nReadingNextTick(self2) {
+      debug("readable nexttick read 0");
+      self2.read(0);
+    }
+    Readable.prototype.resume = function() {
+      var state = this._readableState;
+      if (!state.flowing) {
+        debug("resume");
+        state.flowing = true;
+        resume(this, state);
+      }
+      return this;
+    };
+    function resume(stream, state) {
+      if (!state.resumeScheduled) {
+        state.resumeScheduled = true;
+        pna.nextTick(resume_, stream, state);
+      }
+    }
+    function resume_(stream, state) {
+      if (!state.reading) {
+        debug("resume read 0");
+        stream.read(0);
+      }
+      state.resumeScheduled = false;
+      state.awaitDrain = 0;
+      stream.emit("resume");
+      flow(stream);
+      if (state.flowing && !state.reading) stream.read(0);
+    }
+    Readable.prototype.pause = function() {
+      debug("call pause flowing=%j", this._readableState.flowing);
+      if (false !== this._readableState.flowing) {
+        debug("pause");
+        this._readableState.flowing = false;
+        this.emit("pause");
+      }
+      return this;
+    };
+    function flow(stream) {
+      var state = stream._readableState;
+      debug("flow", state.flowing);
+      while (state.flowing && stream.read() !== null) {
+      }
+    }
+    Readable.prototype.wrap = function(stream) {
+      var _this = this;
+      var state = this._readableState;
+      var paused = false;
+      stream.on("end", function() {
+        debug("wrapped end");
+        if (state.decoder && !state.ended) {
+          var chunk = state.decoder.end();
+          if (chunk && chunk.length) _this.push(chunk);
+        }
+        _this.push(null);
+      });
+      stream.on("data", function(chunk) {
+        debug("wrapped data");
+        if (state.decoder) chunk = state.decoder.write(chunk);
+        if (state.objectMode && (chunk === null || chunk === void 0)) return;
+        else if (!state.objectMode && (!chunk || !chunk.length)) return;
+        var ret = _this.push(chunk);
+        if (!ret) {
+          paused = true;
+          stream.pause();
+        }
+      });
+      for (var i in stream) {
+        if (this[i] === void 0 && typeof stream[i] === "function") {
+          this[i] = /* @__PURE__ */ (function(method) {
+            return function() {
+              return stream[method].apply(stream, arguments);
+            };
+          })(i);
+        }
+      }
+      for (var n = 0; n < kProxyEvents.length; n++) {
+        stream.on(kProxyEvents[n], this.emit.bind(this, kProxyEvents[n]));
+      }
+      this._read = function(n2) {
+        debug("wrapped _read", n2);
+        if (paused) {
+          paused = false;
+          stream.resume();
+        }
+      };
+      return this;
+    };
+    Object.defineProperty(Readable.prototype, "readableHighWaterMark", {
+      // making it explicit this property is not enumerable
+      // because otherwise some prototype manipulation in
+      // userland will fail
+      enumerable: false,
+      get: function() {
+        return this._readableState.highWaterMark;
+      }
+    });
+    Readable._fromList = fromList;
+    function fromList(n, state) {
+      if (state.length === 0) return null;
+      var ret;
+      if (state.objectMode) ret = state.buffer.shift();
+      else if (!n || n >= state.length) {
+        if (state.decoder) ret = state.buffer.join("");
+        else if (state.buffer.length === 1) ret = state.buffer.head.data;
+        else ret = state.buffer.concat(state.length);
+        state.buffer.clear();
+      } else {
+        ret = fromListPartial(n, state.buffer, state.decoder);
+      }
+      return ret;
+    }
+    function fromListPartial(n, list, hasStrings) {
+      var ret;
+      if (n < list.head.data.length) {
+        ret = list.head.data.slice(0, n);
+        list.head.data = list.head.data.slice(n);
+      } else if (n === list.head.data.length) {
+        ret = list.shift();
+      } else {
+        ret = hasStrings ? copyFromBufferString(n, list) : copyFromBuffer(n, list);
+      }
+      return ret;
+    }
+    function copyFromBufferString(n, list) {
+      var p = list.head;
+      var c = 1;
+      var ret = p.data;
+      n -= ret.length;
+      while (p = p.next) {
+        var str = p.data;
+        var nb = n > str.length ? str.length : n;
+        if (nb === str.length) ret += str;
+        else ret += str.slice(0, n);
+        n -= nb;
+        if (n === 0) {
+          if (nb === str.length) {
+            ++c;
+            if (p.next) list.head = p.next;
+            else list.head = list.tail = null;
+          } else {
+            list.head = p;
+            p.data = str.slice(nb);
+          }
+          break;
+        }
+        ++c;
+      }
+      list.length -= c;
+      return ret;
+    }
+    function copyFromBuffer(n, list) {
+      var ret = Buffer3.allocUnsafe(n);
+      var p = list.head;
+      var c = 1;
+      p.data.copy(ret);
+      n -= p.data.length;
+      while (p = p.next) {
+        var buf = p.data;
+        var nb = n > buf.length ? buf.length : n;
+        buf.copy(ret, ret.length - n, 0, nb);
+        n -= nb;
+        if (n === 0) {
+          if (nb === buf.length) {
+            ++c;
+            if (p.next) list.head = p.next;
+            else list.head = list.tail = null;
+          } else {
+            list.head = p;
+            p.data = buf.slice(nb);
+          }
+          break;
+        }
+        ++c;
+      }
+      list.length -= c;
+      return ret;
+    }
+    function endReadable(stream) {
+      var state = stream._readableState;
+      if (state.length > 0) throw new Error('"endReadable()" called on non-empty stream');
+      if (!state.endEmitted) {
+        state.ended = true;
+        pna.nextTick(endReadableNT, state, stream);
+      }
+    }
+    function endReadableNT(state, stream) {
+      if (!state.endEmitted && state.length === 0) {
+        state.endEmitted = true;
+        stream.readable = false;
+        stream.emit("end");
+      }
+    }
+    function indexOf(xs, x) {
+      for (var i = 0, l = xs.length; i < l; i++) {
+        if (xs[i] === x) return i;
+      }
+      return -1;
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_transform.js
+var require_stream_transform = __commonJS({
+  "node_modules/readable-stream/lib/_stream_transform.js"(exports2, module2) {
+    "use strict";
+    module2.exports = Transform;
+    var Duplex = require_stream_duplex();
+    var util2 = Object.create(require_util());
+    util2.inherits = require_inherits();
+    util2.inherits(Transform, Duplex);
+    function afterTransform(er, data) {
+      var ts = this._transformState;
+      ts.transforming = false;
+      var cb = ts.writecb;
+      if (!cb) {
+        return this.emit("error", new Error("write callback called multiple times"));
+      }
+      ts.writechunk = null;
+      ts.writecb = null;
+      if (data != null)
+        this.push(data);
+      cb(er);
+      var rs = this._readableState;
+      rs.reading = false;
+      if (rs.needReadable || rs.length < rs.highWaterMark) {
+        this._read(rs.highWaterMark);
+      }
+    }
+    function Transform(options) {
+      if (!(this instanceof Transform)) return new Transform(options);
+      Duplex.call(this, options);
+      this._transformState = {
+        afterTransform: afterTransform.bind(this),
+        needTransform: false,
+        transforming: false,
+        writecb: null,
+        writechunk: null,
+        writeencoding: null
+      };
+      this._readableState.needReadable = true;
+      this._readableState.sync = false;
+      if (options) {
+        if (typeof options.transform === "function") this._transform = options.transform;
+        if (typeof options.flush === "function") this._flush = options.flush;
+      }
+      this.on("prefinish", prefinish);
+    }
+    function prefinish() {
+      var _this = this;
+      if (typeof this._flush === "function") {
+        this._flush(function(er, data) {
+          done(_this, er, data);
+        });
+      } else {
+        done(this, null, null);
+      }
+    }
+    Transform.prototype.push = function(chunk, encoding) {
+      this._transformState.needTransform = false;
+      return Duplex.prototype.push.call(this, chunk, encoding);
+    };
+    Transform.prototype._transform = function(chunk, encoding, cb) {
+      throw new Error("_transform() is not implemented");
+    };
+    Transform.prototype._write = function(chunk, encoding, cb) {
+      var ts = this._transformState;
+      ts.writecb = cb;
+      ts.writechunk = chunk;
+      ts.writeencoding = encoding;
+      if (!ts.transforming) {
+        var rs = this._readableState;
+        if (ts.needTransform || rs.needReadable || rs.length < rs.highWaterMark) this._read(rs.highWaterMark);
+      }
+    };
+    Transform.prototype._read = function(n) {
+      var ts = this._transformState;
+      if (ts.writechunk !== null && ts.writecb && !ts.transforming) {
+        ts.transforming = true;
+        this._transform(ts.writechunk, ts.writeencoding, ts.afterTransform);
+      } else {
+        ts.needTransform = true;
+      }
+    };
+    Transform.prototype._destroy = function(err, cb) {
+      var _this2 = this;
+      Duplex.prototype._destroy.call(this, err, function(err2) {
+        cb(err2);
+        _this2.emit("close");
+      });
+    };
+    function done(stream, er, data) {
+      if (er) return stream.emit("error", er);
+      if (data != null)
+        stream.push(data);
+      if (stream._writableState.length) throw new Error("Calling transform done when ws.length != 0");
+      if (stream._transformState.transforming) throw new Error("Calling transform done when still transforming");
+      return stream.push(null);
+    }
+  }
+});
+
+// node_modules/readable-stream/lib/_stream_passthrough.js
+var require_stream_passthrough = __commonJS({
+  "node_modules/readable-stream/lib/_stream_passthrough.js"(exports2, module2) {
+    "use strict";
+    module2.exports = PassThrough;
+    var Transform = require_stream_transform();
+    var util2 = Object.create(require_util());
+    util2.inherits = require_inherits();
+    util2.inherits(PassThrough, Transform);
+    function PassThrough(options) {
+      if (!(this instanceof PassThrough)) return new PassThrough(options);
+      Transform.call(this, options);
+    }
+    PassThrough.prototype._transform = function(chunk, encoding, cb) {
+      cb(null, chunk);
+    };
+  }
+});
+
+// node_modules/readable-stream/readable.js
+var require_readable = __commonJS({
+  "node_modules/readable-stream/readable.js"(exports2, module2) {
+    var Stream = require("stream");
+    if (process.env.READABLE_STREAM === "disable" && Stream) {
+      module2.exports = Stream;
+      exports2 = module2.exports = Stream.Readable;
+      exports2.Readable = Stream.Readable;
+      exports2.Writable = Stream.Writable;
+      exports2.Duplex = Stream.Duplex;
+      exports2.Transform = Stream.Transform;
+      exports2.PassThrough = Stream.PassThrough;
+      exports2.Stream = Stream;
+    } else {
+      exports2 = module2.exports = require_stream_readable();
+      exports2.Stream = Stream || exports2;
+      exports2.Readable = exports2;
+      exports2.Writable = require_stream_writable();
+      exports2.Duplex = require_stream_duplex();
+      exports2.Transform = require_stream_transform();
+      exports2.PassThrough = require_stream_passthrough();
+    }
+  }
+});
+
+// node_modules/buffer-from/index.js
+var require_buffer_from = __commonJS({
+  "node_modules/buffer-from/index.js"(exports2, module2) {
+    var toString = Object.prototype.toString;
+    var isModern = typeof Buffer !== "undefined" && typeof Buffer.alloc === "function" && typeof Buffer.allocUnsafe === "function" && typeof Buffer.from === "function";
+    function isArrayBuffer(input) {
+      return toString.call(input).slice(8, -1) === "ArrayBuffer";
+    }
+    function fromArrayBuffer(obj, byteOffset, length) {
+      byteOffset >>>= 0;
+      var maxLength = obj.byteLength - byteOffset;
+      if (maxLength < 0) {
+        throw new RangeError("'offset' is out of bounds");
+      }
+      if (length === void 0) {
+        length = maxLength;
+      } else {
+        length >>>= 0;
+        if (length > maxLength) {
+          throw new RangeError("'length' is out of bounds");
+        }
+      }
+      return isModern ? Buffer.from(obj.slice(byteOffset, byteOffset + length)) : new Buffer(new Uint8Array(obj.slice(byteOffset, byteOffset + length)));
+    }
+    function fromString(string, encoding) {
+      if (typeof encoding !== "string" || encoding === "") {
+        encoding = "utf8";
+      }
+      if (!Buffer.isEncoding(encoding)) {
+        throw new TypeError('"encoding" must be a valid string encoding');
+      }
+      return isModern ? Buffer.from(string, encoding) : new Buffer(string, encoding);
+    }
+    function bufferFrom(value, encodingOrOffset, length) {
+      if (typeof value === "number") {
+        throw new TypeError('"value" argument must not be a number');
+      }
+      if (isArrayBuffer(value)) {
+        return fromArrayBuffer(value, encodingOrOffset, length);
+      }
+      if (typeof value === "string") {
+        return fromString(value, encodingOrOffset);
+      }
+      return isModern ? Buffer.from(value) : new Buffer(value);
+    }
+    module2.exports = bufferFrom;
+  }
+});
+
+// node_modules/typedarray/index.js
+var require_typedarray = __commonJS({
+  "node_modules/typedarray/index.js"(exports2) {
+    var undefined2 = void 0;
+    var MAX_ARRAY_LENGTH = 1e5;
+    var ECMAScript = /* @__PURE__ */ (function() {
+      var opts = Object.prototype.toString, ophop = Object.prototype.hasOwnProperty;
+      return {
+        // Class returns internal [[Class]] property, used to avoid cross-frame instanceof issues:
+        Class: function(v) {
+          return opts.call(v).replace(/^\[object *|\]$/g, "");
+        },
+        HasProperty: function(o, p) {
+          return p in o;
+        },
+        HasOwnProperty: function(o, p) {
+          return ophop.call(o, p);
+        },
+        IsCallable: function(o) {
+          return typeof o === "function";
+        },
+        ToInt32: function(v) {
+          return v >> 0;
+        },
+        ToUint32: function(v) {
+          return v >>> 0;
+        }
+      };
+    })();
+    var LN2 = Math.LN2;
+    var abs = Math.abs;
+    var floor = Math.floor;
+    var log = Math.log;
+    var min = Math.min;
+    var pow = Math.pow;
+    var round = Math.round;
+    function configureProperties(obj) {
+      if (getOwnPropNames && defineProp) {
+        var props = getOwnPropNames(obj), i;
+        for (i = 0; i < props.length; i += 1) {
+          defineProp(obj, props[i], {
+            value: obj[props[i]],
+            writable: false,
+            enumerable: false,
+            configurable: false
+          });
+        }
+      }
+    }
+    var defineProp;
+    if (Object.defineProperty && (function() {
+      try {
+        Object.defineProperty({}, "x", {});
+        return true;
+      } catch (e) {
+        return false;
+      }
+    })()) {
+      defineProp = Object.defineProperty;
+    } else {
+      defineProp = function(o, p, desc) {
+        if (!o === Object(o)) throw new TypeError("Object.defineProperty called on non-object");
+        if (ECMAScript.HasProperty(desc, "get") && Object.prototype.__defineGetter__) {
+          Object.prototype.__defineGetter__.call(o, p, desc.get);
+        }
+        if (ECMAScript.HasProperty(desc, "set") && Object.prototype.__defineSetter__) {
+          Object.prototype.__defineSetter__.call(o, p, desc.set);
+        }
+        if (ECMAScript.HasProperty(desc, "value")) {
+          o[p] = desc.value;
+        }
+        return o;
+      };
+    }
+    var getOwnPropNames = Object.getOwnPropertyNames || function(o) {
+      if (o !== Object(o)) throw new TypeError("Object.getOwnPropertyNames called on non-object");
+      var props = [], p;
+      for (p in o) {
+        if (ECMAScript.HasOwnProperty(o, p)) {
+          props.push(p);
+        }
+      }
+      return props;
+    };
+    function makeArrayAccessors(obj) {
+      if (!defineProp) {
+        return;
+      }
+      if (obj.length > MAX_ARRAY_LENGTH) throw new RangeError("Array too large for polyfill");
+      function makeArrayAccessor(index) {
+        defineProp(obj, index, {
+          "get": function() {
+            return obj._getter(index);
+          },
+          "set": function(v) {
+            obj._setter(index, v);
+          },
+          enumerable: true,
+          configurable: false
+        });
+      }
+      var i;
+      for (i = 0; i < obj.length; i += 1) {
+        makeArrayAccessor(i);
+      }
+    }
+    function as_signed(value, bits) {
+      var s = 32 - bits;
+      return value << s >> s;
+    }
+    function as_unsigned(value, bits) {
+      var s = 32 - bits;
+      return value << s >>> s;
+    }
+    function packI8(n) {
+      return [n & 255];
+    }
+    function unpackI8(bytes) {
+      return as_signed(bytes[0], 8);
+    }
+    function packU8(n) {
+      return [n & 255];
+    }
+    function unpackU8(bytes) {
+      return as_unsigned(bytes[0], 8);
+    }
+    function packU8Clamped(n) {
+      n = round(Number(n));
+      return [n < 0 ? 0 : n > 255 ? 255 : n & 255];
+    }
+    function packI16(n) {
+      return [n >> 8 & 255, n & 255];
+    }
+    function unpackI16(bytes) {
+      return as_signed(bytes[0] << 8 | bytes[1], 16);
+    }
+    function packU16(n) {
+      return [n >> 8 & 255, n & 255];
+    }
+    function unpackU16(bytes) {
+      return as_unsigned(bytes[0] << 8 | bytes[1], 16);
+    }
+    function packI32(n) {
+      return [n >> 24 & 255, n >> 16 & 255, n >> 8 & 255, n & 255];
+    }
+    function unpackI32(bytes) {
+      return as_signed(bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3], 32);
+    }
+    function packU32(n) {
+      return [n >> 24 & 255, n >> 16 & 255, n >> 8 & 255, n & 255];
+    }
+    function unpackU32(bytes) {
+      return as_unsigned(bytes[0] << 24 | bytes[1] << 16 | bytes[2] << 8 | bytes[3], 32);
+    }
+    function packIEEE754(v, ebits, fbits) {
+      var bias = (1 << ebits - 1) - 1, s, e, f, ln, i, bits, str, bytes;
+      function roundToEven(n) {
+        var w = floor(n), f2 = n - w;
+        if (f2 < 0.5)
+          return w;
+        if (f2 > 0.5)
+          return w + 1;
+        return w % 2 ? w + 1 : w;
+      }
+      if (v !== v) {
+        e = (1 << ebits) - 1;
+        f = pow(2, fbits - 1);
+        s = 0;
+      } else if (v === Infinity || v === -Infinity) {
+        e = (1 << ebits) - 1;
+        f = 0;
+        s = v < 0 ? 1 : 0;
+      } else if (v === 0) {
+        e = 0;
+        f = 0;
+        s = 1 / v === -Infinity ? 1 : 0;
+      } else {
+        s = v < 0;
+        v = abs(v);
+        if (v >= pow(2, 1 - bias)) {
+          e = min(floor(log(v) / LN2), 1023);
+          f = roundToEven(v / pow(2, e) * pow(2, fbits));
+          if (f / pow(2, fbits) >= 2) {
+            e = e + 1;
+            f = 1;
+          }
+          if (e > bias) {
+            e = (1 << ebits) - 1;
+            f = 0;
+          } else {
+            e = e + bias;
+            f = f - pow(2, fbits);
+          }
+        } else {
+          e = 0;
+          f = roundToEven(v / pow(2, 1 - bias - fbits));
+        }
+      }
+      bits = [];
+      for (i = fbits; i; i -= 1) {
+        bits.push(f % 2 ? 1 : 0);
+        f = floor(f / 2);
+      }
+      for (i = ebits; i; i -= 1) {
+        bits.push(e % 2 ? 1 : 0);
+        e = floor(e / 2);
+      }
+      bits.push(s ? 1 : 0);
+      bits.reverse();
+      str = bits.join("");
+      bytes = [];
+      while (str.length) {
+        bytes.push(parseInt(str.substring(0, 8), 2));
+        str = str.substring(8);
+      }
+      return bytes;
+    }
+    function unpackIEEE754(bytes, ebits, fbits) {
+      var bits = [], i, j, b, str, bias, s, e, f;
+      for (i = bytes.length; i; i -= 1) {
+        b = bytes[i - 1];
+        for (j = 8; j; j -= 1) {
+          bits.push(b % 2 ? 1 : 0);
+          b = b >> 1;
+        }
+      }
+      bits.reverse();
+      str = bits.join("");
+      bias = (1 << ebits - 1) - 1;
+      s = parseInt(str.substring(0, 1), 2) ? -1 : 1;
+      e = parseInt(str.substring(1, 1 + ebits), 2);
+      f = parseInt(str.substring(1 + ebits), 2);
+      if (e === (1 << ebits) - 1) {
+        return f !== 0 ? NaN : s * Infinity;
+      } else if (e > 0) {
+        return s * pow(2, e - bias) * (1 + f / pow(2, fbits));
+      } else if (f !== 0) {
+        return s * pow(2, -(bias - 1)) * (f / pow(2, fbits));
+      } else {
+        return s < 0 ? -0 : 0;
+      }
+    }
+    function unpackF64(b) {
+      return unpackIEEE754(b, 11, 52);
+    }
+    function packF64(v) {
+      return packIEEE754(v, 11, 52);
+    }
+    function unpackF32(b) {
+      return unpackIEEE754(b, 8, 23);
+    }
+    function packF32(v) {
+      return packIEEE754(v, 8, 23);
+    }
+    (function() {
+      var ArrayBuffer2 = function ArrayBuffer3(length) {
+        length = ECMAScript.ToInt32(length);
+        if (length < 0) throw new RangeError("ArrayBuffer size is not a small enough positive integer");
+        this.byteLength = length;
+        this._bytes = [];
+        this._bytes.length = length;
+        var i;
+        for (i = 0; i < this.byteLength; i += 1) {
+          this._bytes[i] = 0;
+        }
+        configureProperties(this);
+      };
+      exports2.ArrayBuffer = exports2.ArrayBuffer || ArrayBuffer2;
+      var ArrayBufferView = function ArrayBufferView2() {
+      };
+      function makeConstructor(bytesPerElement, pack, unpack) {
+        var ctor;
+        ctor = function(buffer, byteOffset, length) {
+          var array, sequence, i, s;
+          if (!arguments.length || typeof arguments[0] === "number") {
+            this.length = ECMAScript.ToInt32(arguments[0]);
+            if (length < 0) throw new RangeError("ArrayBufferView size is not a small enough positive integer");
+            this.byteLength = this.length * this.BYTES_PER_ELEMENT;
+            this.buffer = new ArrayBuffer2(this.byteLength);
+            this.byteOffset = 0;
+          } else if (typeof arguments[0] === "object" && arguments[0].constructor === ctor) {
+            array = arguments[0];
+            this.length = array.length;
+            this.byteLength = this.length * this.BYTES_PER_ELEMENT;
+            this.buffer = new ArrayBuffer2(this.byteLength);
+            this.byteOffset = 0;
+            for (i = 0; i < this.length; i += 1) {
+              this._setter(i, array._getter(i));
+            }
+          } else if (typeof arguments[0] === "object" && !(arguments[0] instanceof ArrayBuffer2 || ECMAScript.Class(arguments[0]) === "ArrayBuffer")) {
+            sequence = arguments[0];
+            this.length = ECMAScript.ToUint32(sequence.length);
+            this.byteLength = this.length * this.BYTES_PER_ELEMENT;
+            this.buffer = new ArrayBuffer2(this.byteLength);
+            this.byteOffset = 0;
+            for (i = 0; i < this.length; i += 1) {
+              s = sequence[i];
+              this._setter(i, Number(s));
+            }
+          } else if (typeof arguments[0] === "object" && (arguments[0] instanceof ArrayBuffer2 || ECMAScript.Class(arguments[0]) === "ArrayBuffer")) {
+            this.buffer = buffer;
+            this.byteOffset = ECMAScript.ToUint32(byteOffset);
+            if (this.byteOffset > this.buffer.byteLength) {
+              throw new RangeError("byteOffset out of range");
+            }
+            if (this.byteOffset % this.BYTES_PER_ELEMENT) {
+              throw new RangeError("ArrayBuffer length minus the byteOffset is not a multiple of the element size.");
+            }
+            if (arguments.length < 3) {
+              this.byteLength = this.buffer.byteLength - this.byteOffset;
+              if (this.byteLength % this.BYTES_PER_ELEMENT) {
+                throw new RangeError("length of buffer minus byteOffset not a multiple of the element size");
+              }
+              this.length = this.byteLength / this.BYTES_PER_ELEMENT;
+            } else {
+              this.length = ECMAScript.ToUint32(length);
+              this.byteLength = this.length * this.BYTES_PER_ELEMENT;
+            }
+            if (this.byteOffset + this.byteLength > this.buffer.byteLength) {
+              throw new RangeError("byteOffset and length reference an area beyond the end of the buffer");
+            }
+          } else {
+            throw new TypeError("Unexpected argument type(s)");
+          }
+          this.constructor = ctor;
+          configureProperties(this);
+          makeArrayAccessors(this);
+        };
+        ctor.prototype = new ArrayBufferView();
+        ctor.prototype.BYTES_PER_ELEMENT = bytesPerElement;
+        ctor.prototype._pack = pack;
+        ctor.prototype._unpack = unpack;
+        ctor.BYTES_PER_ELEMENT = bytesPerElement;
+        ctor.prototype._getter = function(index) {
+          if (arguments.length < 1) throw new SyntaxError("Not enough arguments");
+          index = ECMAScript.ToUint32(index);
+          if (index >= this.length) {
+            return undefined2;
+          }
+          var bytes = [], i, o;
+          for (i = 0, o = this.byteOffset + index * this.BYTES_PER_ELEMENT; i < this.BYTES_PER_ELEMENT; i += 1, o += 1) {
+            bytes.push(this.buffer._bytes[o]);
+          }
+          return this._unpack(bytes);
+        };
+        ctor.prototype.get = ctor.prototype._getter;
+        ctor.prototype._setter = function(index, value) {
+          if (arguments.length < 2) throw new SyntaxError("Not enough arguments");
+          index = ECMAScript.ToUint32(index);
+          if (index >= this.length) {
+            return undefined2;
+          }
+          var bytes = this._pack(value), i, o;
+          for (i = 0, o = this.byteOffset + index * this.BYTES_PER_ELEMENT; i < this.BYTES_PER_ELEMENT; i += 1, o += 1) {
+            this.buffer._bytes[o] = bytes[i];
+          }
+        };
+        ctor.prototype.set = function(index, value) {
+          if (arguments.length < 1) throw new SyntaxError("Not enough arguments");
+          var array, sequence, offset, len, i, s, d, byteOffset, byteLength, tmp;
+          if (typeof arguments[0] === "object" && arguments[0].constructor === this.constructor) {
+            array = arguments[0];
+            offset = ECMAScript.ToUint32(arguments[1]);
+            if (offset + array.length > this.length) {
+              throw new RangeError("Offset plus length of array is out of range");
+            }
+            byteOffset = this.byteOffset + offset * this.BYTES_PER_ELEMENT;
+            byteLength = array.length * this.BYTES_PER_ELEMENT;
+            if (array.buffer === this.buffer) {
+              tmp = [];
+              for (i = 0, s = array.byteOffset; i < byteLength; i += 1, s += 1) {
+                tmp[i] = array.buffer._bytes[s];
+              }
+              for (i = 0, d = byteOffset; i < byteLength; i += 1, d += 1) {
+                this.buffer._bytes[d] = tmp[i];
+              }
+            } else {
+              for (i = 0, s = array.byteOffset, d = byteOffset; i < byteLength; i += 1, s += 1, d += 1) {
+                this.buffer._bytes[d] = array.buffer._bytes[s];
+              }
+            }
+          } else if (typeof arguments[0] === "object" && typeof arguments[0].length !== "undefined") {
+            sequence = arguments[0];
+            len = ECMAScript.ToUint32(sequence.length);
+            offset = ECMAScript.ToUint32(arguments[1]);
+            if (offset + len > this.length) {
+              throw new RangeError("Offset plus length of array is out of range");
+            }
+            for (i = 0; i < len; i += 1) {
+              s = sequence[i];
+              this._setter(offset + i, Number(s));
+            }
+          } else {
+            throw new TypeError("Unexpected argument type(s)");
+          }
+        };
+        ctor.prototype.subarray = function(start, end) {
+          function clamp(v, min2, max) {
+            return v < min2 ? min2 : v > max ? max : v;
+          }
+          start = ECMAScript.ToInt32(start);
+          end = ECMAScript.ToInt32(end);
+          if (arguments.length < 1) {
+            start = 0;
+          }
+          if (arguments.length < 2) {
+            end = this.length;
+          }
+          if (start < 0) {
+            start = this.length + start;
+          }
+          if (end < 0) {
+            end = this.length + end;
+          }
+          start = clamp(start, 0, this.length);
+          end = clamp(end, 0, this.length);
+          var len = end - start;
+          if (len < 0) {
+            len = 0;
+          }
+          return new this.constructor(
+            this.buffer,
+            this.byteOffset + start * this.BYTES_PER_ELEMENT,
+            len
+          );
+        };
+        return ctor;
+      }
+      var Int8Array2 = makeConstructor(1, packI8, unpackI8);
+      var Uint8Array2 = makeConstructor(1, packU8, unpackU8);
+      var Uint8ClampedArray2 = makeConstructor(1, packU8Clamped, unpackU8);
+      var Int16Array2 = makeConstructor(2, packI16, unpackI16);
+      var Uint16Array2 = makeConstructor(2, packU16, unpackU16);
+      var Int32Array2 = makeConstructor(4, packI32, unpackI32);
+      var Uint32Array2 = makeConstructor(4, packU32, unpackU32);
+      var Float32Array2 = makeConstructor(4, packF32, unpackF32);
+      var Float64Array2 = makeConstructor(8, packF64, unpackF64);
+      exports2.Int8Array = exports2.Int8Array || Int8Array2;
+      exports2.Uint8Array = exports2.Uint8Array || Uint8Array2;
+      exports2.Uint8ClampedArray = exports2.Uint8ClampedArray || Uint8ClampedArray2;
+      exports2.Int16Array = exports2.Int16Array || Int16Array2;
+      exports2.Uint16Array = exports2.Uint16Array || Uint16Array2;
+      exports2.Int32Array = exports2.Int32Array || Int32Array2;
+      exports2.Uint32Array = exports2.Uint32Array || Uint32Array2;
+      exports2.Float32Array = exports2.Float32Array || Float32Array2;
+      exports2.Float64Array = exports2.Float64Array || Float64Array2;
+    })();
+    (function() {
+      function r(array, index) {
+        return ECMAScript.IsCallable(array.get) ? array.get(index) : array[index];
+      }
+      var IS_BIG_ENDIAN = (function() {
+        var u16array = new exports2.Uint16Array([4660]), u8array = new exports2.Uint8Array(u16array.buffer);
+        return r(u8array, 0) === 18;
+      })();
+      var DataView2 = function DataView3(buffer, byteOffset, byteLength) {
+        if (arguments.length === 0) {
+          buffer = new exports2.ArrayBuffer(0);
+        } else if (!(buffer instanceof exports2.ArrayBuffer || ECMAScript.Class(buffer) === "ArrayBuffer")) {
+          throw new TypeError("TypeError");
+        }
+        this.buffer = buffer || new exports2.ArrayBuffer(0);
+        this.byteOffset = ECMAScript.ToUint32(byteOffset);
+        if (this.byteOffset > this.buffer.byteLength) {
+          throw new RangeError("byteOffset out of range");
+        }
+        if (arguments.length < 3) {
+          this.byteLength = this.buffer.byteLength - this.byteOffset;
+        } else {
+          this.byteLength = ECMAScript.ToUint32(byteLength);
+        }
+        if (this.byteOffset + this.byteLength > this.buffer.byteLength) {
+          throw new RangeError("byteOffset and length reference an area beyond the end of the buffer");
+        }
+        configureProperties(this);
+      };
+      function makeGetter(arrayType2) {
+        return function(byteOffset, littleEndian) {
+          byteOffset = ECMAScript.ToUint32(byteOffset);
+          if (byteOffset + arrayType2.BYTES_PER_ELEMENT > this.byteLength) {
+            throw new RangeError("Array index out of range");
+          }
+          byteOffset += this.byteOffset;
+          var uint8Array = new exports2.Uint8Array(this.buffer, byteOffset, arrayType2.BYTES_PER_ELEMENT), bytes = [], i;
+          for (i = 0; i < arrayType2.BYTES_PER_ELEMENT; i += 1) {
+            bytes.push(r(uint8Array, i));
+          }
+          if (Boolean(littleEndian) === Boolean(IS_BIG_ENDIAN)) {
+            bytes.reverse();
+          }
+          return r(new arrayType2(new exports2.Uint8Array(bytes).buffer), 0);
+        };
+      }
+      DataView2.prototype.getUint8 = makeGetter(exports2.Uint8Array);
+      DataView2.prototype.getInt8 = makeGetter(exports2.Int8Array);
+      DataView2.prototype.getUint16 = makeGetter(exports2.Uint16Array);
+      DataView2.prototype.getInt16 = makeGetter(exports2.Int16Array);
+      DataView2.prototype.getUint32 = makeGetter(exports2.Uint32Array);
+      DataView2.prototype.getInt32 = makeGetter(exports2.Int32Array);
+      DataView2.prototype.getFloat32 = makeGetter(exports2.Float32Array);
+      DataView2.prototype.getFloat64 = makeGetter(exports2.Float64Array);
+      function makeSetter(arrayType2) {
+        return function(byteOffset, value, littleEndian) {
+          byteOffset = ECMAScript.ToUint32(byteOffset);
+          if (byteOffset + arrayType2.BYTES_PER_ELEMENT > this.byteLength) {
+            throw new RangeError("Array index out of range");
+          }
+          var typeArray = new arrayType2([value]), byteArray = new exports2.Uint8Array(typeArray.buffer), bytes = [], i, byteView;
+          for (i = 0; i < arrayType2.BYTES_PER_ELEMENT; i += 1) {
+            bytes.push(r(byteArray, i));
+          }
+          if (Boolean(littleEndian) === Boolean(IS_BIG_ENDIAN)) {
+            bytes.reverse();
+          }
+          byteView = new exports2.Uint8Array(this.buffer, byteOffset, arrayType2.BYTES_PER_ELEMENT);
+          byteView.set(bytes);
+        };
+      }
+      DataView2.prototype.setUint8 = makeSetter(exports2.Uint8Array);
+      DataView2.prototype.setInt8 = makeSetter(exports2.Int8Array);
+      DataView2.prototype.setUint16 = makeSetter(exports2.Uint16Array);
+      DataView2.prototype.setInt16 = makeSetter(exports2.Int16Array);
+      DataView2.prototype.setUint32 = makeSetter(exports2.Uint32Array);
+      DataView2.prototype.setInt32 = makeSetter(exports2.Int32Array);
+      DataView2.prototype.setFloat32 = makeSetter(exports2.Float32Array);
+      DataView2.prototype.setFloat64 = makeSetter(exports2.Float64Array);
+      exports2.DataView = exports2.DataView || DataView2;
+    })();
+  }
+});
+
+// node_modules/concat-stream/index.js
+var require_concat_stream = __commonJS({
+  "node_modules/concat-stream/index.js"(exports2, module2) {
+    var Writable = require_readable().Writable;
+    var inherits = require_inherits();
+    var bufferFrom = require_buffer_from();
+    if (typeof Uint8Array === "undefined") {
+      U8 = require_typedarray().Uint8Array;
+    } else {
+      U8 = Uint8Array;
+    }
+    var U8;
+    function ConcatStream(opts, cb) {
+      if (!(this instanceof ConcatStream)) return new ConcatStream(opts, cb);
+      if (typeof opts === "function") {
+        cb = opts;
+        opts = {};
+      }
+      if (!opts) opts = {};
+      var encoding = opts.encoding;
+      var shouldInferEncoding = false;
+      if (!encoding) {
+        shouldInferEncoding = true;
+      } else {
+        encoding = String(encoding).toLowerCase();
+        if (encoding === "u8" || encoding === "uint8") {
+          encoding = "uint8array";
+        }
+      }
+      Writable.call(this, { objectMode: true });
+      this.encoding = encoding;
+      this.shouldInferEncoding = shouldInferEncoding;
+      if (cb) this.on("finish", function() {
+        cb(this.getBody());
+      });
+      this.body = [];
+    }
+    module2.exports = ConcatStream;
+    inherits(ConcatStream, Writable);
+    ConcatStream.prototype._write = function(chunk, enc, next) {
+      this.body.push(chunk);
+      next();
+    };
+    ConcatStream.prototype.inferEncoding = function(buff) {
+      var firstBuffer = buff === void 0 ? this.body[0] : buff;
+      if (Buffer.isBuffer(firstBuffer)) return "buffer";
+      if (typeof Uint8Array !== "undefined" && firstBuffer instanceof Uint8Array) return "uint8array";
+      if (Array.isArray(firstBuffer)) return "array";
+      if (typeof firstBuffer === "string") return "string";
+      if (Object.prototype.toString.call(firstBuffer) === "[object Object]") return "object";
+      return "buffer";
+    };
+    ConcatStream.prototype.getBody = function() {
+      if (!this.encoding && this.body.length === 0) return [];
+      if (this.shouldInferEncoding) this.encoding = this.inferEncoding();
+      if (this.encoding === "array") return arrayConcat(this.body);
+      if (this.encoding === "string") return stringConcat(this.body);
+      if (this.encoding === "buffer") return bufferConcat(this.body);
+      if (this.encoding === "uint8array") return u8Concat(this.body);
+      return this.body;
+    };
+    function isArrayish(arr) {
+      return /Array\]$/.test(Object.prototype.toString.call(arr));
+    }
+    function isBufferish(p) {
+      return typeof p === "string" || isArrayish(p) || p && typeof p.subarray === "function";
+    }
+    function stringConcat(parts) {
+      var strings = [];
+      var needsToString = false;
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        if (typeof p === "string") {
+          strings.push(p);
+        } else if (Buffer.isBuffer(p)) {
+          strings.push(p);
+        } else if (isBufferish(p)) {
+          strings.push(bufferFrom(p));
+        } else {
+          strings.push(bufferFrom(String(p)));
+        }
+      }
+      if (Buffer.isBuffer(parts[0])) {
+        strings = Buffer.concat(strings);
+        strings = strings.toString("utf8");
+      } else {
+        strings = strings.join("");
+      }
+      return strings;
+    }
+    function bufferConcat(parts) {
+      var bufs = [];
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        if (Buffer.isBuffer(p)) {
+          bufs.push(p);
+        } else if (isBufferish(p)) {
+          bufs.push(bufferFrom(p));
+        } else {
+          bufs.push(bufferFrom(String(p)));
+        }
+      }
+      return Buffer.concat(bufs);
+    }
+    function arrayConcat(parts) {
+      var res = [];
+      for (var i = 0; i < parts.length; i++) {
+        res.push.apply(res, parts[i]);
+      }
+      return res;
+    }
+    function u8Concat(parts) {
+      var len = 0;
+      for (var i = 0; i < parts.length; i++) {
+        if (typeof parts[i] === "string") {
+          parts[i] = bufferFrom(parts[i]);
+        }
+        len += parts[i].length;
+      }
+      var u8 = new U8(len);
+      for (var i = 0, offset = 0; i < parts.length; i++) {
+        var part = parts[i];
+        for (var j = 0; j < part.length; j++) {
+          u8[offset++] = part[j];
+        }
+      }
+      return u8;
+    }
+  }
+});
+
+// node_modules/multer/storage/memory.js
+var require_memory = __commonJS({
+  "node_modules/multer/storage/memory.js"(exports2, module2) {
+    var concat = require_concat_stream();
+    function MemoryStorage(opts) {
+    }
+    MemoryStorage.prototype._handleFile = function _handleFile(req, file, cb) {
+      file.stream.pipe(concat({ encoding: "buffer" }, function(data) {
+        cb(null, {
+          buffer: data,
+          size: data.length
+        });
+      }));
+    };
+    MemoryStorage.prototype._removeFile = function _removeFile(req, file, cb) {
+      delete file.buffer;
+      cb(null);
+    };
+    module2.exports = function(opts) {
+      return new MemoryStorage(opts);
+    };
+  }
+});
+
+// node_modules/multer/index.js
+var require_multer = __commonJS({
+  "node_modules/multer/index.js"(exports2, module2) {
+    var makeMiddleware = require_make_middleware();
+    var diskStorage = require_disk();
+    var memoryStorage = require_memory();
+    var MulterError = require_multer_error();
+    function allowAll(req, file, cb) {
+      cb(null, true);
+    }
+    function Multer(options) {
+      if (options.storage) {
+        this.storage = options.storage;
+      } else if (options.dest) {
+        this.storage = diskStorage({ destination: options.dest });
+      } else {
+        this.storage = memoryStorage();
+      }
+      this.limits = options.limits;
+      this.preservePath = options.preservePath;
+      this.fileFilter = options.fileFilter || allowAll;
+    }
+    Multer.prototype._makeMiddleware = function(fields, fileStrategy) {
+      function setup() {
+        var fileFilter = this.fileFilter;
+        var filesLeft = /* @__PURE__ */ Object.create(null);
+        fields.forEach(function(field) {
+          if (typeof field.maxCount === "number") {
+            filesLeft[field.name] = field.maxCount;
+          } else {
+            filesLeft[field.name] = Infinity;
+          }
+        });
+        function wrappedFileFilter(req, file, cb) {
+          if ((filesLeft[file.fieldname] || 0) <= 0) {
+            return cb(new MulterError("LIMIT_UNEXPECTED_FILE", file.fieldname));
+          }
+          filesLeft[file.fieldname] -= 1;
+          fileFilter(req, file, cb);
+        }
+        return {
+          limits: this.limits,
+          preservePath: this.preservePath,
+          storage: this.storage,
+          fileFilter: wrappedFileFilter,
+          fileStrategy
+        };
+      }
+      return makeMiddleware(setup.bind(this));
+    };
+    Multer.prototype.single = function(name) {
+      return this._makeMiddleware([{ name, maxCount: 1 }], "VALUE");
+    };
+    Multer.prototype.array = function(name, maxCount) {
+      return this._makeMiddleware([{ name, maxCount }], "ARRAY");
+    };
+    Multer.prototype.fields = function(fields) {
+      return this._makeMiddleware(fields, "OBJECT");
+    };
+    Multer.prototype.none = function() {
+      return this._makeMiddleware([], "NONE");
+    };
+    Multer.prototype.any = function() {
+      function setup() {
+        return {
+          limits: this.limits,
+          preservePath: this.preservePath,
+          storage: this.storage,
+          fileFilter: this.fileFilter,
+          fileStrategy: "ARRAY"
+        };
+      }
+      return makeMiddleware(setup.bind(this));
+    };
+    function multer3(options) {
+      if (options === void 0) {
+        return new Multer({});
+      }
+      if (typeof options === "object" && options !== null) {
+        return new Multer(options);
+      }
+      throw new TypeError("Expected object for argument options");
+    }
+    module2.exports = multer3;
+    module2.exports.diskStorage = diskStorage;
+    module2.exports.memoryStorage = memoryStorage;
+    module2.exports.MulterError = MulterError;
+  }
+});
+
 // node_modules/delayed-stream/lib/delayed_stream.js
 var require_delayed_stream = __commonJS({
   "node_modules/delayed-stream/lib/delayed_stream.js"(exports2, module2) {
@@ -41624,7 +48767,7 @@ var require_browser2 = __commonJS({
 });
 
 // node_modules/https-proxy-agent/node_modules/debug/src/node.js
-var require_node2 = __commonJS({
+var require_node3 = __commonJS({
   "node_modules/https-proxy-agent/node_modules/debug/src/node.js"(exports2, module2) {
     var tty = require("tty");
     var util2 = require("util");
@@ -41803,7 +48946,7 @@ var require_src2 = __commonJS({
     if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
       module2.exports = require_browser2();
     } else {
-      module2.exports = require_node2();
+      module2.exports = require_node3();
     }
   }
 });
@@ -42272,7 +49415,7 @@ var require_browser3 = __commonJS({
 });
 
 // node_modules/agent-base/node_modules/debug/src/node.js
-var require_node3 = __commonJS({
+var require_node4 = __commonJS({
   "node_modules/agent-base/node_modules/debug/src/node.js"(exports2, module2) {
     var tty = require("tty");
     var util2 = require("util");
@@ -42451,7 +49594,7 @@ var require_src3 = __commonJS({
     if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
       module2.exports = require_browser3();
     } else {
-      module2.exports = require_node3();
+      module2.exports = require_node4();
     }
   }
 });
@@ -52280,17 +59423,34 @@ var import_cookie_parser = __toESM(require_cookie_parser());
 var import_dotenv = __toESM(require_main());
 var import_path = __toESM(require("path"));
 import_dotenv.default.config({ path: import_path.default.resolve(process.cwd(), ".env") });
+var nodeEnv = process.env.NODE_ENV || "development";
+var isDev = nodeEnv === "development";
+var jwtSecret = process.env.JWT_SECRET || "development-only-jwt-secret-change-before-production";
+var jwtRefreshSecret = process.env.JWT_REFRESH_SECRET || "development-only-refresh-secret-change-before-production";
+if (nodeEnv === "production") {
+  const missingSecrets = [
+    !process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32 ? "JWT_SECRET (at least 32 characters)" : "",
+    !process.env.JWT_REFRESH_SECRET || process.env.JWT_REFRESH_SECRET.length < 32 ? "JWT_REFRESH_SECRET (at least 32 characters)" : "",
+    !process.env.DOCUMENT_ENCRYPTION_KEY || !/^[a-fA-F0-9]{64}$/.test(process.env.DOCUMENT_ENCRYPTION_KEY) ? "DOCUMENT_ENCRYPTION_KEY (64 hexadecimal characters)" : ""
+  ].filter(Boolean);
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET === process.env.JWT_REFRESH_SECRET) {
+    missingSecrets.push("distinct JWT_SECRET and JWT_REFRESH_SECRET values");
+  }
+  if (missingSecrets.length > 0) {
+    throw new Error(`Production secrets are missing or invalid: ${missingSecrets.join(", ")}.`);
+  }
+}
 var config = {
   port: parseInt(process.env.PORT || "5000", 10),
-  nodeEnv: process.env.NODE_ENV || "development",
-  isDev: (process.env.NODE_ENV || "development") === "development",
+  nodeEnv,
+  isDev,
   frontendUrl: process.env.FRONTEND_URL || "http://localhost:5173",
   database: {
     url: process.env.DATABASE_URL || "file:./dev.db"
   },
   jwt: {
-    secret: process.env.JWT_SECRET || "super-secret-jwt-key-ds-shinde-gas-agency-2025",
-    refreshSecret: process.env.JWT_REFRESH_SECRET || "super-secret-jwt-refresh-key-ds-shinde-gas-agency-2025",
+    secret: jwtSecret,
+    refreshSecret: jwtRefreshSecret,
     expiresIn: process.env.JWT_EXPIRES_IN || "1d",
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d"
   },
@@ -52305,15 +59465,16 @@ var config = {
     secure: process.env.SMTP_SECURE === "true",
     user: process.env.SMTP_USER || "",
     pass: process.env.SMTP_PASS || "",
-    from: process.env.SMTP_FROM || "D.S. Shinde Gas Agency <noreply@dsshinde.com>"
+    from: process.env.SMTP_FROM || "DS Shinde Gas <noreply@dsshinde.com>"
   },
   sms: {
     provider: process.env.SMS_PROVIDER || "mock",
     apiKey: process.env.SMS_API_KEY || "",
     senderId: process.env.SMS_SENDER_ID || "DSSGAS"
   },
+  cronSecret: process.env.CRON_SECRET || "",
   otp: {
-    devMode: process.env.OTP_DEV_MODE !== "false",
+    devMode: isDev && process.env.OTP_DEV_MODE === "true",
     expiryMinutes: parseInt(process.env.OTP_EXPIRY_MINUTES || "10", 10),
     maxAttempts: 5
   },
@@ -56392,9 +63553,9 @@ var import_bcryptjs = __toESM(require_bcryptjs());
 function generateOtp(length = 6) {
   const digits = "0123456789";
   let otp = "";
-  const randomBytes = import_crypto.default.randomBytes(length);
+  const randomBytes2 = import_crypto.default.randomBytes(length);
   for (let i = 0; i < length; i++) {
-    otp += digits[randomBytes[i] % 10];
+    otp += digits[randomBytes2[i] % 10];
   }
   return otp;
 }
@@ -56476,7 +63637,7 @@ ${text || html}`);
 // src/utils/sms.ts
 async function sendSms(options) {
   const { phone, message } = options;
-  if (config_default.isDev || config_default.sms.provider === "mock") {
+  if (config_default.isDev && config_default.sms.provider === "mock") {
     console.log("----------------------------------------------------");
     console.log(`[DEV SMS] Sender: ${config_default.sms.senderId}`);
     console.log(`[DEV SMS] To: ${phone}`);
@@ -56484,13 +63645,10 @@ async function sendSms(options) {
     console.log("----------------------------------------------------");
     return true;
   }
-  try {
-    console.log(`[PROD SMS] Dispatched SMS to ${phone}`);
-    return true;
-  } catch (error) {
-    console.error("Failed to send SMS:", error);
-    return false;
-  }
+  console.error(
+    `SMS delivery is unavailable for provider "${config_default.sms.provider}". Configure a real SMS gateway before enabling SMS notifications.`
+  );
+  return false;
 }
 
 // src/utils/errors.ts
@@ -56613,6 +63771,9 @@ var AuthService = class {
     if (!user.isActive) {
       throw new UnauthorizedError("Account is deactivated. Please contact support.");
     }
+    if (user.role !== "ADMIN" /* ADMIN */ || !user.passwordHash) {
+      throw new UnauthorizedError("Use one-time-code sign-in for customer or rider accounts.");
+    }
     const isMatch = await import_bcryptjs2.default.compare(password, user.passwordHash);
     if (!isMatch) {
       throw new UnauthorizedError("Invalid credentials");
@@ -56642,17 +63803,22 @@ var AuthService = class {
    */
   static async sendAuthOtp(dto) {
     const { identifier, purpose } = dto;
+    const role = dto.role || "CUSTOMER" /* CUSTOMER */;
     const isEmail = identifier.includes("@");
-    if (purpose === "LOGIN" /* LOGIN */ || purpose === "FORGOT_PASSWORD" /* FORGOT_PASSWORD */) {
-      const existingUser = await database_default.user.findFirst({
-        where: isEmail ? { email: identifier } : { phone: identifier }
-      });
-      if (!existingUser) {
-        throw new NotFoundError("No user found with the provided identifier");
-      }
-      if (!existingUser.isActive) {
-        throw new BadRequestError("Account is deactivated. Please contact support.");
-      }
+    if (purpose === "FORGOT_PASSWORD" /* FORGOT_PASSWORD */) {
+      throw new BadRequestError("Password recovery is only available to administrator accounts.");
+    }
+    const existingUser = await database_default.user.findFirst({
+      where: isEmail ? { email: identifier } : { phone: identifier }
+    });
+    if (!existingUser && purpose === "LOGIN" /* LOGIN */) {
+      throw new NotFoundError("No account found with the provided identifier. Create an account to continue.");
+    }
+    if (existingUser && (existingUser.role !== role || !existingUser.isActive)) {
+      throw new BadRequestError("This contact belongs to an account that cannot use this sign-in portal.");
+    }
+    if (purpose === "REGISTER" /* REGISTER */ && existingUser) {
+      throw new ConflictError("An account with this contact already exists. Please sign in.");
     }
     await database_default.authOtp.updateMany({
       where: {
@@ -56665,7 +63831,7 @@ var AuthService = class {
     const plainOtp = generateOtp(6);
     const otpHash = await hashOtp(plainOtp);
     const expiresAt = new Date(Date.now() + config_default.otp.expiryMinutes * 60 * 1e3);
-    await database_default.authOtp.create({
+    const otpRecord = await database_default.authOtp.create({
       data: {
         identifier,
         otpHash,
@@ -56676,25 +63842,37 @@ var AuthService = class {
         isUsed: false
       }
     });
-    const message = `Your D.S SHINDE GAS verification code is: ${plainOtp}. Valid for ${config_default.otp.expiryMinutes} minutes. Never share this with anyone.`;
-    if (isEmail) {
-      await sendEmail({
+    const message = `Your DS Shinde Gas verification code is: ${plainOtp}. Valid for ${config_default.otp.expiryMinutes} minutes. Never share this with anyone.`;
+    let delivered;
+    try {
+      delivered = isEmail ? await sendEmail({
         to: identifier,
-        subject: `D.S SHINDE GAS - Verification Code (${purpose})`,
+        subject: `DS Shinde Gas - Verification Code (${purpose})`,
         text: message,
         html: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-          <h2 style="color: #ea580c;">D.S SHINDE GAS AGENCY</h2>
+          <h2 style="color: #ea580c;">DS Shinde Gas</h2>
           <p>Your one-time verification code is:</p>
           <h1 style="letter-spacing: 5px; color: #1e293b; background: #f1f5f9; padding: 10px 20px; display: inline-block;">${plainOtp}</h1>
           <p>This code will expire in ${config_default.otp.expiryMinutes} minutes.</p>
           <p>If you did not request this, please ignore this email.</p>
         </div>`
-      });
-    } else {
-      await sendSms({
+      }) : await sendSms({
         phone: identifier,
         message
       });
+    } catch (error) {
+      await database_default.authOtp.update({
+        where: { id: otpRecord.id },
+        data: { isUsed: true }
+      });
+      throw error;
+    }
+    if (!delivered) {
+      await database_default.authOtp.update({
+        where: { id: otpRecord.id },
+        data: { isUsed: true }
+      });
+      throw new AppError("OTP delivery is not configured. Please contact the agency.", 503);
     }
     if (config_default.otp.devMode) {
       console.log(`[AUTH OTP DEV MODE] Identifier: ${identifier} | Purpose: ${purpose} | OTP: ${plainOtp}`);
@@ -56708,6 +63886,7 @@ var AuthService = class {
    */
   static async verifyAuthOtp(dto) {
     const { identifier, otp, purpose, name } = dto;
+    const role = dto.role || "CUSTOMER" /* CUSTOMER */;
     const otpRecord = await database_default.authOtp.findFirst({
       where: {
         identifier,
@@ -56748,24 +63927,29 @@ var AuthService = class {
     const isEmail = identifier.includes("@");
     let user = await database_default.user.findFirst({
       where: isEmail ? { email: identifier } : { phone: identifier },
-      include: { customerProfile: true, riderProfile: true }
+      include: { customerProfile: true, riderProfile: true, riderApplication: true }
     });
-    if (!user && (purpose === "REGISTER" /* REGISTER */ || purpose === "LOGIN" /* LOGIN */)) {
-      const randomPassword = await import_bcryptjs2.default.hash(generateOtp(12), 10);
+    if (user && (user.role !== role || !user.isActive)) {
+      throw new UnauthorizedError("This account cannot sign in through this portal.");
+    }
+    if (!user && purpose === "LOGIN" /* LOGIN */) {
+      throw new NotFoundError("No account found with the provided identifier. Create an account to continue.");
+    }
+    if (!user && purpose === "REGISTER" /* REGISTER */) {
       user = await database_default.user.create({
         data: {
-          name: name || (isEmail ? identifier.split("@")[0] : `Customer ${identifier.slice(-4)}`),
+          name: name || (role === "RIDER" /* RIDER */ ? `Rider ${identifier.slice(-4)}` : isEmail ? identifier.split("@")[0] : `Customer ${identifier.slice(-4)}`),
           email: isEmail ? identifier : null,
           phone: !isEmail ? identifier : null,
-          passwordHash: randomPassword,
-          role: "CUSTOMER" /* CUSTOMER */,
+          passwordHash: null,
+          role,
           isActive: true,
           isVerified: true,
-          customerProfile: {
+          ...role === "CUSTOMER" /* CUSTOMER */ && { customerProfile: {
             create: {}
-          }
+          } }
         },
-        include: { customerProfile: true, riderProfile: true }
+        include: { customerProfile: true, riderProfile: true, riderApplication: true }
       });
     }
     if (!user) {
@@ -56795,7 +63979,8 @@ var AuthService = class {
         isActive: user.isActive,
         isVerified: user.isVerified,
         customerProfile: user.customerProfile,
-        riderProfile: user.riderProfile
+        riderProfile: user.riderProfile,
+        riderApplication: user.riderApplication
       },
       accessToken,
       refreshToken
@@ -57111,25 +64296,6 @@ async function authenticateToken(req, res, next) {
     if (!token) {
       throw new UnauthorizedError("Authentication required. No token provided.");
     }
-    if (token.startsWith("demo-token-")) {
-      const roleName = token.replace("demo-token-", "").toUpperCase();
-      const demoUser = await database_default.user.findFirst({
-        where: { role: roleName },
-        select: {
-          id: true,
-          email: true,
-          phone: true,
-          name: true,
-          role: true,
-          isActive: true,
-          isVerified: true
-        }
-      });
-      if (demoUser) {
-        req.user = demoUser;
-        return next();
-      }
-    }
     const decoded = verifyToken(token);
     const user = await database_default.user.findUnique({
       where: { id: decoded.id },
@@ -57169,39 +64335,6 @@ function requireRole(...roles) {
     }
     next();
   };
-}
-async function optionalAuth(req, res, next) {
-  try {
-    let token;
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.split(" ")[1];
-    } else if (req.cookies && req.cookies.accessToken) {
-      token = req.cookies.accessToken;
-    }
-    if (!token) {
-      return next();
-    }
-    const decoded = verifyToken(token);
-    const user = await database_default.user.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        email: true,
-        phone: true,
-        name: true,
-        role: true,
-        isActive: true,
-        isVerified: true
-      }
-    });
-    if (user && user.isActive) {
-      req.user = user;
-    }
-    next();
-  } catch {
-    next();
-  }
 }
 
 // src/middleware/validate.ts
@@ -58044,40 +65177,25 @@ var otpLimiter = lib_default({
 
 // src/routes/auth.routes.ts
 var router = (0, import_express.Router)();
-var registerSchema = external_exports.object({
-  name: external_exports.string().min(2, "Name must be at least 2 characters"),
-  email: external_exports.string().email("Invalid email address").optional(),
-  phone: external_exports.string().regex(/^[0-9]{10}$/, "Phone number must be exactly 10 digits").optional(),
-  password: external_exports.string().min(6, "Password must be at least 6 characters")
-});
 var loginSchema = external_exports.object({
   identifier: external_exports.string().min(3, "Identifier is required"),
   password: external_exports.string().min(1, "Password is required")
 });
 var sendOtpSchema = external_exports.object({
-  identifier: external_exports.string().min(3, "Identifier (phone or email) is required"),
-  purpose: external_exports.enum(["LOGIN", "REGISTER", "FORGOT_PASSWORD"])
+  identifier: external_exports.string().trim().min(3, "Identifier (phone or email) is required").max(254).transform((identifier) => identifier.includes("@") ? identifier.toLowerCase() : identifier),
+  purpose: external_exports.enum(["LOGIN", "REGISTER", "FORGOT_PASSWORD"]),
+  role: external_exports.enum(["CUSTOMER", "RIDER"]).optional()
 });
 var verifyOtpSchema = external_exports.object({
-  identifier: external_exports.string().min(3, "Identifier is required"),
+  identifier: external_exports.string().trim().min(3, "Identifier is required").max(254).transform((identifier) => identifier.includes("@") ? identifier.toLowerCase() : identifier),
   otp: external_exports.string().length(6, "OTP must be 6 digits"),
   purpose: external_exports.enum(["LOGIN", "REGISTER", "FORGOT_PASSWORD"]),
-  name: external_exports.string().optional()
+  role: external_exports.enum(["CUSTOMER", "RIDER"]).optional(),
+  name: external_exports.string().trim().min(2).max(100).optional()
 });
-var forgotPasswordSchema = external_exports.object({
-  identifier: external_exports.string().min(3, "Identifier is required")
-});
-var resetPasswordSchema = external_exports.object({
-  identifier: external_exports.string().min(3, "Identifier is required"),
-  otp: external_exports.string().length(6, "OTP must be 6 digits"),
-  newPassword: external_exports.string().min(6, "New password must be at least 6 characters")
-});
-router.post("/register", authLimiter, validate(registerSchema), AuthController.register);
 router.post("/login", authLimiter, validate(loginSchema), AuthController.login);
 router.post("/send-otp", otpLimiter, validate(sendOtpSchema), AuthController.sendOtp);
 router.post("/verify-otp", authLimiter, validate(verifyOtpSchema), AuthController.verifyOtp);
-router.post("/forgot-password", otpLimiter, validate(forgotPasswordSchema), AuthController.forgotPassword);
-router.post("/reset-password", authLimiter, validate(resetPasswordSchema), AuthController.resetPassword);
 router.post("/logout", AuthController.logout);
 router.post("/refresh", AuthController.refresh);
 router.get("/me", authenticateToken, AuthController.me);
@@ -58085,6 +65203,7 @@ var auth_routes_default = router;
 
 // src/routes/customer.routes.ts
 var import_express2 = __toESM(require_express2());
+var import_multer = __toESM(require_multer());
 
 // src/controllers/customer.controller.ts
 var CustomerController = class {
@@ -58103,7 +65222,10 @@ var CustomerController = class {
           phone: true,
           role: true,
           customerProfile: {
-            include: {
+            select: {
+              id: true,
+              alternatePhone: true,
+              fsiNumber: true,
               addresses: {
                 orderBy: { isDefault: "desc" }
               }
@@ -58125,14 +65247,22 @@ var CustomerController = class {
   static async updateProfile(req, res, next) {
     try {
       const userId = req.user.id;
-      const { name, email, phone, alternatePhone } = req.body;
+      const { name, email, phone, alternatePhone, fsiNumber } = req.body;
       const updatedUser = await database_default.$transaction(async (tx) => {
+        const existingUser = await tx.user.findUnique({
+          where: { id: userId },
+          select: { email: true, phone: true }
+        });
+        if (!existingUser) {
+          throw new NotFoundError("Customer not found");
+        }
+        if (email && email !== existingUser.email || phone && phone !== existingUser.phone) {
+          throw new BadRequestError("Changing your phone or email requires OTP verification. Please contact the agency for assistance.");
+        }
         const user = await tx.user.update({
           where: { id: userId },
           data: {
-            ...name && { name },
-            ...email && { email },
-            ...phone && { phone }
+            ...name && { name }
           },
           select: {
             id: true,
@@ -58142,11 +65272,14 @@ var CustomerController = class {
             role: true
           }
         });
-        if (alternatePhone !== void 0) {
+        if (alternatePhone !== void 0 || fsiNumber !== void 0) {
           await tx.customerProfile.upsert({
             where: { userId },
-            update: { alternatePhone },
-            create: { userId, alternatePhone }
+            update: {
+              ...alternatePhone !== void 0 && { alternatePhone },
+              ...fsiNumber !== void 0 && { fsiNumber }
+            },
+            create: { userId, alternatePhone, fsiNumber }
           });
         }
         return user;
@@ -58329,140 +65462,6 @@ var CustomerController = class {
   }
 };
 
-// src/routes/customer.routes.ts
-var router2 = (0, import_express2.Router)();
-router2.use(authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */, "ADMIN" /* ADMIN */));
-var updateProfileSchema = external_exports.object({
-  name: external_exports.string().min(2).optional(),
-  email: external_exports.string().email().optional(),
-  phone: external_exports.string().regex(/^[0-9]{10}$/).optional(),
-  alternatePhone: external_exports.string().optional()
-});
-var addressSchema = external_exports.object({
-  fullName: external_exports.string().min(2, "Full name is required"),
-  phone: external_exports.string().regex(/^[0-9]{10}$/, "10-digit phone number is required"),
-  addressLine1: external_exports.string().min(3, "Address line 1 is required"),
-  addressLine2: external_exports.string().optional(),
-  area: external_exports.string().min(2, "Area is required"),
-  city: external_exports.string().min(2, "City is required"),
-  state: external_exports.string().optional(),
-  pinCode: external_exports.string().regex(/^[0-9]{6}$/, "Valid 6-digit pin code is required"),
-  landmark: external_exports.string().optional(),
-  mapLink: external_exports.string().optional(),
-  isDefault: external_exports.boolean().optional()
-});
-router2.get("/profile", CustomerController.getProfile);
-router2.put("/profile", validate(updateProfileSchema), CustomerController.updateProfile);
-router2.get("/addresses", CustomerController.getAddresses);
-router2.post("/addresses", validate(addressSchema), CustomerController.createAddress);
-router2.put("/addresses/:id", validate(addressSchema.partial()), CustomerController.updateAddress);
-router2.delete("/addresses/:id", CustomerController.deleteAddress);
-var customer_routes_default = router2;
-
-// src/routes/product.routes.ts
-var import_express3 = __toESM(require_express2());
-
-// src/controllers/product.controller.ts
-var ProductController = class {
-  /**
-   * Get all active cylinder products (Public)
-   */
-  static async listProducts(req, res, next) {
-    try {
-      const { commercial } = req.query;
-      const where = { isActive: true };
-      if (commercial !== void 0) {
-        where.isCommercial = commercial === "true";
-      }
-      const products = await database_default.product.findMany({
-        where,
-        orderBy: { sizeKg: "asc" }
-      });
-      ApiResponse.success(res, products, "Products retrieved successfully");
-    } catch (error) {
-      next(error);
-    }
-  }
-  /**
-   * Get product by ID (Public)
-   */
-  static async getProductById(req, res, next) {
-    try {
-      const { id } = req.params;
-      const product = await database_default.product.findUnique({
-        where: { id }
-      });
-      if (!product || !product.isActive) {
-        throw new NotFoundError("Product not found or currently unavailable");
-      }
-      ApiResponse.success(res, product, "Product details retrieved successfully");
-    } catch (error) {
-      next(error);
-    }
-  }
-};
-
-// src/routes/product.routes.ts
-var router3 = (0, import_express3.Router)();
-router3.get("/", ProductController.listProducts);
-router3.get("/:id", ProductController.getProductById);
-var product_routes_default = router3;
-
-// src/routes/order.routes.ts
-var import_express4 = __toESM(require_express2());
-
-// src/services/order.service.ts
-var import_client2 = require("@prisma/client");
-var import_bcryptjs3 = __toESM(require_bcryptjs());
-
-// src/utils/orderNumber.ts
-var import_crypto2 = __toESM(require("crypto"));
-function generateOrderNumber() {
-  const now = /* @__PURE__ */ new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  const dateStr = `${year}${month}${day}`;
-  const randomPart = import_crypto2.default.randomBytes(3).toString("hex").toUpperCase().slice(0, 5);
-  return `DSG-${dateStr}-${randomPart}`;
-}
-
-// src/utils/payment.ts
-var import_crypto3 = __toESM(require("crypto"));
-var import_razorpay = __toESM(require_razorpay());
-var razorpayInstance = null;
-function getRazorpayClient() {
-  if (!razorpayInstance) {
-    razorpayInstance = new import_razorpay.default({
-      key_id: config_default.razorpay.keyId,
-      key_secret: config_default.razorpay.keySecret
-    });
-  }
-  return razorpayInstance;
-}
-async function createRazorpayOrder(params) {
-  const razorpay = getRazorpayClient();
-  const amountInPaise = Math.round(params.amountInRupees * 100);
-  const options = {
-    amount: amountInPaise,
-    currency: "INR",
-    receipt: params.receipt,
-    notes: params.notes || {}
-  };
-  const order = await razorpay.orders.create(options);
-  return order;
-}
-function verifyRazorpayPaymentSignature(params) {
-  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = params;
-  const body = `${razorpayOrderId}|${razorpayPaymentId}`;
-  const expectedSignature = import_crypto3.default.createHmac("sha256", config_default.razorpay.keySecret).update(body.toString()).digest("hex");
-  return expectedSignature === razorpaySignature;
-}
-function verifyRazorpayWebhookSignature(webhookBody, webhookSignature) {
-  const expectedSignature = import_crypto3.default.createHmac("sha256", config_default.razorpay.webhookSecret).update(webhookBody).digest("hex");
-  return expectedSignature === webhookSignature;
-}
-
 // src/services/notification.service.ts
 var NotificationService = class {
   /**
@@ -58547,6 +65546,589 @@ var NotificationService = class {
   }
 };
 
+// src/utils/secureDocuments.ts
+var import_crypto2 = require("crypto");
+var FORMAT = Buffer.from("DSD1");
+var NONCE_LENGTH = 12;
+var TAG_LENGTH = 16;
+function getEncryptionKey() {
+  const configuredKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!configuredKey || !/^[a-fA-F0-9]{64}$/.test(configuredKey)) {
+    throw new AppError(
+      "Document storage is not configured. Set DOCUMENT_ENCRYPTION_KEY to a random 32-byte hexadecimal key before uploading documents.",
+      503
+    );
+  }
+  return Buffer.from(configuredKey, "hex");
+}
+function encryptDocument(document2) {
+  const nonce = (0, import_crypto2.randomBytes)(NONCE_LENGTH);
+  const cipher = (0, import_crypto2.createCipheriv)("aes-256-gcm", getEncryptionKey(), nonce);
+  const ciphertext = Buffer.concat([cipher.update(document2), cipher.final()]);
+  return Buffer.concat([FORMAT, nonce, cipher.getAuthTag(), ciphertext]);
+}
+function decryptDocument(encryptedDocument) {
+  const payload = Buffer.from(encryptedDocument);
+  const headerLength = FORMAT.length + NONCE_LENGTH + TAG_LENGTH;
+  if (payload.length <= headerLength || !payload.subarray(0, FORMAT.length).equals(FORMAT)) {
+    throw new BadRequestError("Document encryption format is invalid.");
+  }
+  const nonceStart = FORMAT.length;
+  const tagStart = nonceStart + NONCE_LENGTH;
+  const ciphertextStart = tagStart + TAG_LENGTH;
+  const decipher = (0, import_crypto2.createDecipheriv)(
+    "aes-256-gcm",
+    getEncryptionKey(),
+    payload.subarray(nonceStart, tagStart)
+  );
+  decipher.setAuthTag(payload.subarray(tagStart, ciphertextStart));
+  return Buffer.concat([
+    decipher.update(payload.subarray(ciphertextStart)),
+    decipher.final()
+  ]);
+}
+
+// src/services/audit.service.ts
+function recordAuditLog(store, entry) {
+  return store.auditLog.create({
+    data: {
+      ...entry,
+      ipAddress: entry.ipAddress || null,
+      details: entry.details || null
+    }
+  });
+}
+
+// src/controllers/application.controller.ts
+var riderApplicationSelect = {
+  id: true,
+  userId: true,
+  fullName: true,
+  phone: true,
+  email: true,
+  address: true,
+  vehicleNumber: true,
+  status: true,
+  rejectionReason: true,
+  reviewedAt: true,
+  createdAt: true,
+  updatedAt: true,
+  consentAt: true
+};
+function isValidImage(buffer) {
+  if (buffer.length < 12) return false;
+  const isJpeg = buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255;
+  const isPng = buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const isWebp = buffer.toString("ascii", 0, 4) === "RIFF" && buffer.toString("ascii", 8, 12) === "WEBP";
+  return isJpeg || isPng || isWebp;
+}
+function isValidPdf(buffer) {
+  return buffer.subarray(0, 5).toString("ascii") === "%PDF-";
+}
+var ApplicationController = class {
+  static async saveCustomerDetails(req, res, next) {
+    try {
+      const file = req.file;
+      if (file && req.body.udyamConsent !== "true") {
+        throw new BadRequestError("Consent is required before uploading a Udyam certificate.");
+      }
+      let encryptedDocument;
+      if (file) {
+        const validImage = file.mimetype.startsWith("image/") && isValidImage(file.buffer);
+        const validPdf = file.mimetype === "application/pdf" && isValidPdf(file.buffer);
+        if (!validImage && !validPdf) {
+          throw new BadRequestError("Upload a genuine PDF, JPEG, PNG, or WebP Udyam certificate.");
+        }
+        encryptedDocument = encryptDocument(file.buffer);
+      }
+      const profile = await database_default.customerProfile.upsert({
+        where: { userId: req.user.id },
+        update: {
+          ...req.body.fsiNumber !== void 0 && { fsiNumber: req.body.fsiNumber.trim() || null },
+          ...encryptedDocument && {
+            udyamDocument: encryptedDocument,
+            udyamMimeType: file.mimetype,
+            udyamConsentAt: /* @__PURE__ */ new Date()
+          }
+        },
+        create: {
+          userId: req.user.id,
+          fsiNumber: req.body.fsiNumber?.trim() || null,
+          ...encryptedDocument && {
+            udyamDocument: encryptedDocument,
+            udyamMimeType: file.mimetype,
+            udyamConsentAt: /* @__PURE__ */ new Date()
+          }
+        },
+        select: { fsiNumber: true, udyamMimeType: true }
+      });
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "CUSTOMER_PROFILE_UPDATE",
+        entity: "CustomerProfile",
+        entityId: req.user.id,
+        details: `Business details updated; Udyam document ${encryptedDocument ? "uploaded" : "not changed"}.`,
+        ipAddress: req.ip
+      });
+      ApiResponse.success(res, profile, "Optional business details saved securely.");
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async getCustomerUdyamDocument(req, res, next) {
+    try {
+      const profile = await database_default.customerProfile.findUnique({
+        where: { userId: req.params.customerId },
+        select: { udyamDocument: true, udyamMimeType: true }
+      });
+      if (!profile?.udyamDocument || !profile.udyamMimeType) {
+        throw new NotFoundError("No Udyam certificate is available.");
+      }
+      const bytes = decryptDocument(profile.udyamDocument);
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "DOCUMENT_VIEW",
+        entity: "CustomerProfile",
+        entityId: req.params.customerId,
+        details: "Viewed Udyam certificate.",
+        ipAddress: req.ip
+      });
+      res.setHeader("Content-Type", profile.udyamMimeType);
+      res.setHeader("Content-Length", bytes.length);
+      res.setHeader("Content-Disposition", 'inline; filename="udyam-certificate"');
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.status(200).send(bytes);
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async deleteCustomerDocuments(req, res, next) {
+    try {
+      const profile = await database_default.customerProfile.updateMany({
+        where: { userId: req.params.customerId },
+        data: { udyamDocument: null, udyamMimeType: null }
+      });
+      if (profile.count === 0) throw new NotFoundError("Customer profile not found.");
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "DOCUMENT_DELETE",
+        entity: "CustomerProfile",
+        entityId: req.params.customerId,
+        details: "Deleted stored Udyam certificate.",
+        ipAddress: req.ip
+      });
+      ApiResponse.success(res, null, "Customer documents securely deleted.");
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async getRiderApplication(req, res, next) {
+    try {
+      const application = await database_default.riderApplication.findUnique({
+        where: { userId: req.user.id },
+        select: riderApplicationSelect
+      });
+      ApiResponse.success(res, application, "Rider application status retrieved.");
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async submitRiderApplication(req, res, next) {
+    try {
+      const user = await database_default.user.findUnique({ where: { id: req.user.id } });
+      if (!user || user.role !== "RIDER" /* RIDER */) {
+        throw new NotFoundError("Rider account not found.");
+      }
+      if (!user.phone && !user.email) {
+        throw new BadRequestError("Verify your phone number or email address before applying.");
+      }
+      if (req.body.consent !== "true") {
+        throw new BadRequestError("Consent is required before storing rider application documents.");
+      }
+      const files = req.files;
+      const document2 = (field) => {
+        const file = files?.[field]?.[0];
+        if (!file) throw new BadRequestError(`The ${field} document is required.`);
+        if (!file.buffer || file.buffer.length === 0) {
+          throw new BadRequestError(`The ${field} document is empty.`);
+        }
+        return file;
+      };
+      const rc = document2("rcDocument");
+      const front = document2("frontPhoto");
+      const back = document2("backPhoto");
+      const selfie = document2("selfie");
+      const isImage = (file) => file.mimetype.startsWith("image/") && isValidImage(file.buffer);
+      if (!(rc.mimetype === "application/pdf" && isValidPdf(rc.buffer) || isImage(rc)) || !isImage(front) || !isImage(back) || !isImage(selfie)) {
+        throw new BadRequestError("Upload genuine PDF or image files: RC book as PDF/image; all photos as images.");
+      }
+      const current = await database_default.riderApplication.findUnique({ where: { userId: user.id } });
+      if (current?.status === "APPROVED") {
+        throw new ConflictError("Your rider application is already approved.");
+      }
+      const application = await database_default.riderApplication.upsert({
+        where: { userId: user.id },
+        update: {
+          fullName: req.body.fullName.trim(),
+          phone: user.phone || "",
+          email: user.email,
+          address: req.body.address.trim(),
+          vehicleNumber: req.body.vehicleNumber.trim().toUpperCase(),
+          rcDocument: encryptDocument(rc.buffer),
+          rcMimeType: rc.mimetype,
+          frontPhoto: encryptDocument(front.buffer),
+          frontPhotoMimeType: front.mimetype,
+          backPhoto: encryptDocument(back.buffer),
+          backPhotoMimeType: back.mimetype,
+          selfie: encryptDocument(selfie.buffer),
+          selfieMimeType: selfie.mimetype,
+          status: "PENDING",
+          consentAt: /* @__PURE__ */ new Date(),
+          rejectionReason: null,
+          reviewedAt: null,
+          reviewedById: null
+        },
+        create: {
+          userId: user.id,
+          consentAt: /* @__PURE__ */ new Date(),
+          fullName: req.body.fullName.trim(),
+          phone: user.phone || "",
+          email: user.email,
+          address: req.body.address.trim(),
+          vehicleNumber: req.body.vehicleNumber.trim().toUpperCase(),
+          rcDocument: encryptDocument(rc.buffer),
+          rcMimeType: rc.mimetype,
+          frontPhoto: encryptDocument(front.buffer),
+          frontPhotoMimeType: front.mimetype,
+          backPhoto: encryptDocument(back.buffer),
+          backPhotoMimeType: back.mimetype,
+          selfie: encryptDocument(selfie.buffer),
+          selfieMimeType: selfie.mimetype
+        },
+        select: riderApplicationSelect
+      });
+      await recordAuditLog(database_default, {
+        userId: user.id,
+        action: "RIDER_APPLICATION_SUBMIT",
+        entity: "RiderApplication",
+        entityId: application.id,
+        details: "Rider application submitted or updated with encrypted documents.",
+        ipAddress: req.ip
+      });
+      await database_default.user.update({
+        where: { id: user.id },
+        data: { name: application.fullName }
+      });
+      await NotificationService.notifyAdmins({
+        title: "New rider application",
+        message: `${application.fullName} submitted a rider application for ${application.vehicleNumber}.`
+      });
+      await NotificationService.createNotification({
+        userId: user.id,
+        title: "Application submitted",
+        message: "Your rider application is pending administrator review.",
+        type: "SYSTEM" /* SYSTEM */
+      });
+      ApiResponse.created(res, application, "Rider application submitted for administrator review.");
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async listRiderApplications(req, res, next) {
+    try {
+      const status = typeof req.query.status === "string" ? req.query.status.toUpperCase() : void 0;
+      if (status && !["PENDING", "APPROVED", "REJECTED"].includes(status)) {
+        throw new BadRequestError("Filter status must be PENDING, APPROVED, or REJECTED.");
+      }
+      const applications = await database_default.riderApplication.findMany({
+        where: status ? { status } : void 0,
+        select: {
+          ...riderApplicationSelect,
+          user: { select: { isActive: true } }
+        },
+        orderBy: [{ status: "asc" }, { createdAt: "asc" }],
+        take: 100
+      });
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "RIDER_APPLICATION_LIST",
+        entity: "RiderApplication",
+        entityId: "list",
+        details: `Listed rider applications${status ? ` with status ${status}` : ""}.`,
+        ipAddress: req.ip
+      });
+      ApiResponse.success(res, applications, "Rider applications retrieved.");
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async reviewRiderApplication(req, res, next) {
+    try {
+      const { status, reason } = req.body;
+      const application = await database_default.riderApplication.findUnique({ where: { id: req.params.id } });
+      if (!application) throw new NotFoundError("Rider application not found.");
+      if (application.status === "APPROVED") {
+        throw new ConflictError("An approved rider application cannot be changed.");
+      }
+      const reviewedAt = /* @__PURE__ */ new Date();
+      const result = await database_default.$transaction(async (tx) => {
+        const reviewed = await tx.riderApplication.update({
+          where: { id: application.id },
+          data: {
+            status,
+            rejectionReason: status === "REJECTED" ? reason.trim() : null,
+            reviewedAt,
+            reviewedById: req.user.id
+          },
+          select: riderApplicationSelect
+        });
+        if (status === "APPROVED") {
+          await tx.rider.upsert({
+            where: { userId: application.userId },
+            update: { vehicleNumber: application.vehicleNumber, isAvailable: true },
+            create: {
+              userId: application.userId,
+              vehicleNumber: application.vehicleNumber,
+              isAvailable: true
+            }
+          });
+        } else {
+          await tx.rider.deleteMany({ where: { userId: application.userId } });
+        }
+        await recordAuditLog(tx, {
+          userId: req.user.id,
+          action: `RIDER_APPLICATION_${status}`,
+          entity: "RiderApplication",
+          entityId: application.id,
+          details: status === "REJECTED" ? `Rejection reason: ${reason.trim()}` : "Application approved.",
+          ipAddress: req.ip
+        });
+        return reviewed;
+      });
+      const message = status === "APPROVED" ? "Your rider application has been approved. You can now access rider deliveries." : `Your rider application was not approved. Reason: ${reason.trim()}`;
+      await NotificationService.createNotification({
+        userId: application.userId,
+        title: `Rider application ${status === "APPROVED" ? "approved" : "reviewed"}`,
+        message,
+        type: "SYSTEM" /* SYSTEM */
+      });
+      const contact = await database_default.user.findUnique({
+        where: { id: application.userId },
+        select: { phone: true, email: true }
+      });
+      if (contact?.phone) {
+        await sendSms({ phone: contact.phone, message });
+      }
+      if (contact?.email) {
+        await sendEmail({
+          to: contact.email,
+          subject: `DS Shinde Gas rider application ${status.toLowerCase()}`,
+          text: message,
+          html: `<p>${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`
+        });
+      }
+      ApiResponse.success(res, result, `Rider application ${status.toLowerCase()}.`);
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async getRiderDocument(req, res, next) {
+    try {
+      const documentFields = {
+        rcDocument: { bytes: "rcDocument", mime: "rcMimeType" },
+        frontPhoto: { bytes: "frontPhoto", mime: "frontPhotoMimeType" },
+        backPhoto: { bytes: "backPhoto", mime: "backPhotoMimeType" },
+        selfie: { bytes: "selfie", mime: "selfieMimeType" }
+      };
+      const selected = documentFields[req.params.document];
+      if (!selected) throw new BadRequestError("Unknown rider document.");
+      const application = await database_default.riderApplication.findUnique({
+        where: { id: req.params.id },
+        select: {
+          [selected.bytes]: true,
+          [selected.mime]: true
+        }
+      });
+      if (!application) throw new NotFoundError("Rider application not found.");
+      const encryptedBytes = application[selected.bytes];
+      const mimeType = application[selected.mime];
+      if (!encryptedBytes || !mimeType) throw new NotFoundError("Rider document not found.");
+      const bytes = decryptDocument(encryptedBytes);
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "DOCUMENT_VIEW",
+        entity: "RiderApplication",
+        entityId: req.params.id,
+        details: `Viewed ${req.params.document}.`,
+        ipAddress: req.ip
+      });
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Length", bytes.length);
+      res.setHeader("Content-Disposition", `inline; filename="${req.params.document}"`);
+      res.setHeader("Cache-Control", "private, no-store, max-age=0");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.status(200).send(Buffer.from(bytes));
+    } catch (error) {
+      next(error);
+    }
+  }
+  static async deleteRiderDocuments(req, res, next) {
+    try {
+      const deleted = await database_default.riderApplication.updateMany({
+        where: { id: req.params.id },
+        data: {
+          rcDocument: null,
+          frontPhoto: null,
+          backPhoto: null,
+          selfie: null
+        }
+      });
+      if (deleted.count === 0) throw new NotFoundError("Rider application not found.");
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "DOCUMENT_DELETE",
+        entity: "RiderApplication",
+        entityId: req.params.id,
+        details: "Deleted stored rider application documents.",
+        ipAddress: req.ip
+      });
+      ApiResponse.success(res, null, "Rider application documents securely deleted.");
+    } catch (error) {
+      next(error);
+    }
+  }
+};
+
+// src/routes/customer.routes.ts
+var router2 = (0, import_express2.Router)();
+router2.use(authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */, "ADMIN" /* ADMIN */));
+var udyamUpload = (0, import_multer.default)({
+  storage: import_multer.default.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => {
+    if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      callback(new BadRequestError("Udyam certificate must be a PDF, JPEG, PNG, or WebP file."));
+      return;
+    }
+    callback(null, true);
+  }
+});
+var udyamDetailsSchema = external_exports.object({
+  fsiNumber: external_exports.string().trim().max(40).optional(),
+  udyamConsent: external_exports.literal("true").optional()
+});
+var handleUploadError = (error, _req, _res, next) => {
+  if (error instanceof import_multer.default.MulterError) {
+    next(new BadRequestError(
+      error.code === "LIMIT_FILE_SIZE" ? "Udyam certificate must be 5 MB or smaller." : "Upload one Udyam certificate at a time."
+    ));
+    return;
+  }
+  next(error);
+};
+router2.put(
+  "/business-details",
+  udyamUpload.single("udyamDocument"),
+  handleUploadError,
+  validate(udyamDetailsSchema),
+  ApplicationController.saveCustomerDetails
+);
+var updateProfileSchema = external_exports.object({
+  name: external_exports.string().min(2).optional(),
+  email: external_exports.string().email().optional(),
+  phone: external_exports.string().regex(/^[0-9]{10}$/).optional(),
+  alternatePhone: external_exports.string().optional(),
+  fsiNumber: external_exports.string().trim().max(40).optional()
+});
+var addressSchema = external_exports.object({
+  fullName: external_exports.string().min(2, "Full name is required"),
+  phone: external_exports.string().regex(/^[0-9]{10}$/, "10-digit phone number is required"),
+  addressLine1: external_exports.string().min(3, "Address line 1 is required"),
+  addressLine2: external_exports.string().optional(),
+  area: external_exports.string().min(2, "Area is required"),
+  city: external_exports.string().min(2, "City is required"),
+  state: external_exports.string().optional(),
+  pinCode: external_exports.string().regex(/^[0-9]{6}$/, "Valid 6-digit pin code is required"),
+  landmark: external_exports.string().optional(),
+  mapLink: external_exports.string().optional(),
+  isDefault: external_exports.boolean().optional()
+});
+router2.get("/profile", CustomerController.getProfile);
+router2.put("/profile", validate(updateProfileSchema), CustomerController.updateProfile);
+router2.get("/addresses", CustomerController.getAddresses);
+router2.post("/addresses", validate(addressSchema), CustomerController.createAddress);
+router2.put("/addresses/:id", validate(addressSchema.partial()), CustomerController.updateAddress);
+router2.delete("/addresses/:id", CustomerController.deleteAddress);
+var customer_routes_default = router2;
+
+// src/routes/product.routes.ts
+var import_express3 = __toESM(require_express2());
+
+// src/controllers/product.controller.ts
+var ProductController = class {
+  /**
+   * Get all active cylinder products (Public)
+   */
+  static async listProducts(req, res, next) {
+    try {
+      const { commercial } = req.query;
+      const where = { isActive: true };
+      if (commercial !== void 0) {
+        where.isCommercial = commercial === "true";
+      }
+      const products = await database_default.product.findMany({
+        where,
+        orderBy: { sizeKg: "asc" }
+      });
+      ApiResponse.success(res, products, "Products retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+  /**
+   * Get product by ID (Public)
+   */
+  static async getProductById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const product = await database_default.product.findUnique({
+        where: { id }
+      });
+      if (!product || !product.isActive) {
+        throw new NotFoundError("Product not found or currently unavailable");
+      }
+      ApiResponse.success(res, product, "Product details retrieved successfully");
+    } catch (error) {
+      next(error);
+    }
+  }
+};
+
+// src/routes/product.routes.ts
+var router3 = (0, import_express3.Router)();
+router3.get("/", ProductController.listProducts);
+router3.get("/:id", ProductController.getProductById);
+var product_routes_default = router3;
+
+// src/routes/order.routes.ts
+var import_express4 = __toESM(require_express2());
+
+// src/services/order.service.ts
+var import_client2 = require("@prisma/client");
+
+// src/utils/orderNumber.ts
+var import_crypto3 = __toESM(require("crypto"));
+function generateOrderNumber() {
+  const now = /* @__PURE__ */ new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  const dateStr = `${year}${month}${day}`;
+  const randomPart = import_crypto3.default.randomBytes(3).toString("hex").toUpperCase().slice(0, 5);
+  return `DSG-${dateStr}-${randomPart}`;
+}
+
 // src/services/order.service.ts
 var OrderService = class {
   /**
@@ -58570,14 +66152,21 @@ var OrderService = class {
     const settings = await database_default.agencySetting.findMany({
       where: {
         key: {
-          in: ["delivery_charge_default", "tax_percentage", "online_payment_fee_percent"]
+          in: ["delivery_charge_default", "tax_percentage", "welcome_offer_enabled", "welcome_offer_amount"]
         }
       }
     });
     const settingMap = new Map(settings.map((s) => [s.key, s.value]));
     const defaultDeliveryFee = parseFloat(settingMap.get("delivery_charge_default") || "50.00");
-    const taxRatePercent = parseFloat(settingMap.get("tax_percentage") || "5.0");
-    const onlineFeePercent = parseFloat(settingMap.get("online_payment_fee_percent") || "0");
+    const taxRatePercent = parseFloat(settingMap.get("tax_percentage") || "0");
+    const welcomeOfferEnabled = settingMap.get("welcome_offer_enabled") === "true";
+    const welcomeOfferAmount = Number(settingMap.get("welcome_offer_amount") || 0);
+    if (!Number.isFinite(taxRatePercent) || taxRatePercent < 0 || taxRatePercent > 100) {
+      throw new BadRequestError("Configured tax rate is invalid. Please contact the agency.");
+    }
+    if (!Number.isFinite(welcomeOfferAmount) || welcomeOfferAmount < 0) {
+      throw new BadRequestError("Configured welcome offer is invalid. Please contact the agency.");
+    }
     let subtotal = 0;
     let totalDeliveryCharge = 0;
     let hasCommercialItem = false;
@@ -58611,30 +66200,39 @@ var OrderService = class {
       };
     });
     const taxes = hasCommercialItem ? subtotal * taxRatePercent / 100 : 0;
-    const paymentFee = dto.paymentMethod === "ONLINE" /* ONLINE */ ? subtotal * onlineFeePercent / 100 : 0;
-    const totalAmount = subtotal + totalDeliveryCharge + taxes + paymentFee;
+    const paymentFee = 0;
+    const baseTotal = subtotal + totalDeliveryCharge + taxes + paymentFee;
     const orderNumber = generateOrderNumber();
-    let razorpayOrderData = null;
-    if (dto.paymentMethod === "ONLINE" /* ONLINE */ || dto.paymentMethod === "CARD" /* CARD */) {
-      try {
-        razorpayOrderData = await createRazorpayOrder({
-          amountInRupees: totalAmount,
-          receipt: orderNumber,
-          notes: {
-            orderNumber,
-            deliveryPhone: dto.deliveryPhone
-          }
-        });
-      } catch (err) {
-        console.error("Error creating Razorpay order:", err);
-      }
-    }
+    let welcomeOfferDiscount = 0;
+    let totalAmount = baseTotal;
     const createdOrder = await database_default.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: customerId },
+        data: { name: dto.deliveryName }
+      });
+      await tx.customerProfile.upsert({
+        where: { userId: customerId },
+        update: { ...dto.fsiNumber !== void 0 && { fsiNumber: dto.fsiNumber.trim() || null } },
+        create: { userId: customerId, fsiNumber: dto.fsiNumber?.trim() || null }
+      });
+      if (welcomeOfferEnabled && welcomeOfferAmount > 0) {
+        const existingOrderCount = await tx.order.count({ where: { customerId } });
+        if (existingOrderCount === 0) {
+          const claim = await tx.customerProfile.updateMany({
+            where: { userId: customerId, welcomeOfferUsedAt: null },
+            data: { welcomeOfferUsedAt: /* @__PURE__ */ new Date() }
+          });
+          if (claim.count === 1) {
+            welcomeOfferDiscount = Math.min(welcomeOfferAmount, baseTotal);
+          }
+        }
+      }
+      totalAmount = Math.max(0, baseTotal - welcomeOfferDiscount);
       const order = await tx.order.create({
         data: {
           orderNumber,
           customerId,
-          status: "ORDER_PLACED" /* ORDER_PLACED */,
+          status: "AWAITING_REVIEW" /* AWAITING_REVIEW */,
           deliveryName: dto.deliveryName,
           deliveryPhone: dto.deliveryPhone,
           deliveryAltPhone: dto.deliveryAltPhone,
@@ -58651,6 +66249,10 @@ var OrderService = class {
           paymentFee: new import_client2.Prisma.Decimal(paymentFee),
           totalAmount: new import_client2.Prisma.Decimal(totalAmount),
           paymentMethod: dto.paymentMethod,
+          bookingDurationDays: dto.bookingDurationDays,
+          remindersEnabled: dto.remindersEnabled,
+          fsiNumber: dto.fsiNumber?.trim() || null,
+          welcomeOfferDiscount: new import_client2.Prisma.Decimal(welcomeOfferDiscount),
           paymentStatus: "PENDING" /* PENDING */,
           notes: dto.notes,
           items: {
@@ -58658,8 +66260,8 @@ var OrderService = class {
           },
           statusHistory: {
             create: {
-              status: "ORDER_PLACED" /* ORDER_PLACED */,
-              note: "Order placed by customer via web platform",
+              status: "AWAITING_REVIEW" /* AWAITING_REVIEW */,
+              note: "Booking submitted by customer and awaiting admin review",
               changedById: customerId
             }
           },
@@ -58667,8 +66269,7 @@ var OrderService = class {
             create: {
               method: dto.paymentMethod,
               amount: new import_client2.Prisma.Decimal(totalAmount),
-              status: "PENDING" /* PENDING */,
-              razorpayOrderId: razorpayOrderData?.id || null
+              status: "PENDING" /* PENDING */
             }
           }
         },
@@ -58678,24 +66279,30 @@ var OrderService = class {
           statusHistory: true
         }
       });
+      await recordAuditLog(tx, {
+        userId: customerId,
+        action: "ORDER_CREATE",
+        entity: "Order",
+        entityId: order.id,
+        details: `Created booking ${order.orderNumber}; first-order discount \u20B9${welcomeOfferDiscount}.`
+      });
       return order;
     });
     await NotificationService.notifyAdmins({
       title: "New Cylinder Order Placed",
-      message: `New order ${createdOrder.orderNumber} placed for \u20B9${totalAmount} by ${dto.deliveryName}.`,
+      message: `New booking ${createdOrder.orderNumber} is awaiting review for \u20B9${totalAmount} by ${dto.deliveryName}.`,
       type: "ORDER_UPDATE" /* ORDER_UPDATE */,
       orderId: createdOrder.id
     });
     await NotificationService.createNotification({
       userId: customerId,
-      title: "Order Confirmed",
-      message: `Your LPG cylinder order ${createdOrder.orderNumber} has been placed successfully.`,
+      title: "Booking submitted",
+      message: `Your ${createdOrder.items.map((item) => `${item.sizeKg} kg`).join(", ")} cylinder booking (${dto.bookingDurationDays} days) is awaiting admin review. Payment is available after approval.`,
       type: "ORDER_UPDATE" /* ORDER_UPDATE */,
       orderId: createdOrder.id
     });
     return {
-      order: createdOrder,
-      razorpayOrder: razorpayOrderData
+      order: createdOrder
     };
   }
   /**
@@ -58766,6 +66373,56 @@ var OrderService = class {
       throw new NotFoundError("Order not found");
     }
     return order;
+  }
+  static async updateReminderPreference(orderId, customerId, enabled) {
+    const order = await database_default.order.findFirst({
+      where: { id: orderId, customerId },
+      select: {
+        id: true,
+        status: true,
+        deliveredAt: true,
+        bookingDurationDays: true,
+        remindersEndAt: true
+      }
+    });
+    if (!order) throw new NotFoundError("Order not found");
+    if (order.status === "CANCELLED" /* CANCELLED */ || order.status === "REJECTED" /* REJECTED */) {
+      throw new BadRequestError("Reminders cannot be changed for a cancelled or rejected booking.");
+    }
+    let nextReminderAt = null;
+    let remindersEndAt = order.remindersEndAt;
+    if (enabled && order.status === "DELIVERED" /* DELIVERED */) {
+      if (!order.deliveredAt) {
+        throw new BadRequestError("Delivery date is unavailable; reminders cannot be scheduled.");
+      }
+      remindersEndAt ??= new Date(
+        order.deliveredAt.getTime() + order.bookingDurationDays * 24 * 60 * 60 * 1e3
+      );
+      if (remindersEndAt <= /* @__PURE__ */ new Date()) {
+        throw new BadRequestError("The reminder period for this booking has ended.");
+      }
+      nextReminderAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1e3);
+      if (nextReminderAt >= remindersEndAt) nextReminderAt = null;
+    }
+    const updated = await database_default.$transaction(async (tx) => {
+      const result = await tx.order.update({
+        where: { id: order.id },
+        data: {
+          remindersEnabled: enabled,
+          nextReminderAt: enabled ? nextReminderAt : null,
+          ...order.status === "DELIVERED" /* DELIVERED */ && { remindersEndAt }
+        }
+      });
+      await recordAuditLog(tx, {
+        userId: customerId,
+        action: enabled ? "REMINDERS_ENABLED" : "REMINDERS_DISABLED",
+        entity: "Order",
+        entityId: order.id,
+        details: `Customer ${enabled ? "enabled" : "disabled"} in-app reminders.`
+      });
+      return result;
+    });
+    return updated;
   }
   /**
    * Order Tracking Timeline
@@ -58886,125 +66543,6 @@ var OrderService = class {
     }
     return cancelledOrder;
   }
-  /**
-   * Quick Booking directly from website (Phone & Email supported, no login required)
-   */
-  static async quickBookOrder(dto) {
-    if (!dto.customerName || !dto.phone || !dto.deliveryAddress) {
-      throw new BadRequestError("Customer name, phone number, and delivery address are required");
-    }
-    const cleanPhone = dto.phone.replace(/\D/g, "").slice(-10);
-    if (cleanPhone.length < 10) {
-      throw new BadRequestError("A valid 10-digit mobile number is required");
-    }
-    let product = null;
-    if (dto.productId) {
-      product = await database_default.product.findUnique({ where: { id: dto.productId } });
-    }
-    if (!product && dto.sizeKg) {
-      product = await database_default.product.findFirst({
-        where: { sizeKg: Number(dto.sizeKg), isActive: true }
-      });
-    }
-    if (!product) {
-      product = await database_default.product.findFirst({
-        where: { isActive: true },
-        orderBy: { sizeKg: "asc" }
-      });
-    }
-    if (!product) {
-      product = await database_default.product.create({
-        data: {
-          name: `${dto.sizeKg || 15} KG LPG Cylinder`,
-          sizeKg: Number(dto.sizeKg || 15),
-          price: new import_client2.Prisma.Decimal(1080),
-          deliveryCharge: new import_client2.Prisma.Decimal(50),
-          isActive: true
-        }
-      });
-    }
-    const safeEmail = dto.email?.trim() || `customer_${cleanPhone}@dsshindegas.com`;
-    let user = await database_default.user.findFirst({
-      where: {
-        OR: [
-          { phone: cleanPhone },
-          ...dto.email ? [{ email: dto.email.trim() }] : []
-        ]
-      }
-    });
-    if (!user) {
-      const passwordHash = await import_bcryptjs3.default.hash("Customer@123", 10);
-      user = await database_default.user.create({
-        data: {
-          name: dto.customerName.trim(),
-          phone: cleanPhone,
-          email: safeEmail,
-          passwordHash,
-          role: "CUSTOMER" /* CUSTOMER */,
-          isActive: true,
-          isVerified: true,
-          customerProfile: {
-            create: {
-              addresses: {
-                create: {
-                  fullName: dto.customerName.trim(),
-                  phone: cleanPhone,
-                  addressLine1: dto.deliveryAddress.trim(),
-                  area: dto.deliveryArea || "City",
-                  city: dto.deliveryCity || "Karad",
-                  state: "Maharashtra",
-                  pinCode: dto.deliveryPinCode || "415110",
-                  landmark: dto.deliveryLandmark || null,
-                  isDefault: true
-                }
-              }
-            }
-          }
-        }
-      });
-    }
-    const orderData = {
-      items: [
-        {
-          productId: product.id,
-          quantity: Number(dto.quantity) || 1
-        }
-      ],
-      deliveryName: dto.customerName.trim(),
-      deliveryPhone: cleanPhone,
-      deliveryAddress: dto.deliveryAddress.trim(),
-      deliveryArea: dto.deliveryArea || "Main Road",
-      deliveryCity: dto.deliveryCity || "Karad",
-      deliveryState: "Maharashtra",
-      deliveryPinCode: dto.deliveryPinCode || "415110",
-      deliveryLandmark: dto.deliveryLandmark || void 0,
-      paymentMethod: dto.paymentMethod || "COD" /* COD */,
-      notes: dto.notes || "Direct booking from website"
-    };
-    const createdResult = await this.createOrder(user.id, orderData);
-    const createdOrder = createdResult.order;
-    try {
-      await NotificationService.notifyAdmins({
-        title: "New Cylinder Order Placed",
-        message: `New booking ${createdOrder.orderNumber} placed by ${dto.customerName} (${cleanPhone}) for ${product.name}`,
-        type: "ORDER_UPDATE" /* ORDER_UPDATE */,
-        orderId: createdOrder.id
-      });
-    } catch (err) {
-      console.warn("Failed to dispatch admin notification:", err);
-    }
-    return {
-      order: createdOrder,
-      orderNumber: createdOrder.orderNumber,
-      orderId: createdOrder.id,
-      productName: product.name,
-      sizeKg: product.sizeKg,
-      totalAmount: Number(createdOrder.totalAmount),
-      trackingUrl: `/dashboard/orders/${createdOrder.id}/track`,
-      customerPhone: cleanPhone,
-      customerEmail: safeEmail
-    };
-  }
 };
 
 // src/controllers/order.controller.ts
@@ -59017,17 +66555,6 @@ var OrderController = class {
       const customerId = req.user.id;
       const result = await OrderService.createOrder(customerId, req.body);
       ApiResponse.created(res, result, "Order placed successfully");
-    } catch (error) {
-      next(error);
-    }
-  }
-  /**
-   * Quick cylinder booking directly from website (Phone & Email supported, no login required)
-   */
-  static async quickBookOrder(req, res, next) {
-    try {
-      const result = await OrderService.quickBookOrder(req.body);
-      ApiResponse.created(res, result, "Cylinder booked successfully");
     } catch (error) {
       next(error);
     }
@@ -59094,6 +66621,18 @@ var OrderController = class {
       next(error);
     }
   }
+  static async updateReminderPreference(req, res, next) {
+    try {
+      const order = await OrderService.updateReminderPreference(
+        req.params.id,
+        req.user.id,
+        req.body.enabled
+      );
+      ApiResponse.success(res, order, "Reminder preference updated successfully.");
+    } catch (error) {
+      next(error);
+    }
+  }
 };
 
 // src/routes/order.routes.ts
@@ -59116,21 +66655,63 @@ var createOrderSchema = external_exports.object({
   deliveryLandmark: external_exports.string().optional(),
   deliveryMapLink: external_exports.string().optional(),
   paymentMethod: external_exports.enum(["ONLINE", "COD", "CARD"]),
+  bookingDurationDays: external_exports.number().int().min(1).max(31),
+  remindersEnabled: external_exports.boolean(),
+  fsiNumber: external_exports.string().trim().max(40).optional(),
   notes: external_exports.string().optional()
 });
 var cancelOrderSchema = external_exports.object({
   reason: external_exports.string().min(3, "Cancellation reason is required")
 });
-router4.post("/quick-book", OrderController.quickBookOrder);
-router4.post("/", authenticateToken, validate(createOrderSchema), OrderController.createOrder);
-router4.get("/", authenticateToken, OrderController.listCustomerOrders);
-router4.get("/:id/track", optionalAuth, OrderController.trackOrder);
-router4.get("/:id", authenticateToken, OrderController.getOrderDetail);
-router4.post("/:id/cancel", authenticateToken, validate(cancelOrderSchema), OrderController.cancelOrder);
+var reminderPreferenceSchema = external_exports.object({
+  enabled: external_exports.boolean()
+});
+router4.post("/", authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */), validate(createOrderSchema), OrderController.createOrder);
+router4.get("/", authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */), OrderController.listCustomerOrders);
+router4.get("/:id/track", authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */), OrderController.trackOrder);
+router4.get("/:id", authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */), OrderController.getOrderDetail);
+router4.post("/:id/cancel", authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */), validate(cancelOrderSchema), OrderController.cancelOrder);
+router4.patch("/:id/reminders", authenticateToken, requireRole("CUSTOMER" /* CUSTOMER */), validate(reminderPreferenceSchema), OrderController.updateReminderPreference);
 var order_routes_default = router4;
 
 // src/routes/payment.routes.ts
 var import_express5 = __toESM(require_express2());
+
+// src/utils/payment.ts
+var import_crypto4 = __toESM(require("crypto"));
+var import_razorpay = __toESM(require_razorpay());
+var razorpayInstance = null;
+function getRazorpayClient() {
+  if (!razorpayInstance) {
+    razorpayInstance = new import_razorpay.default({
+      key_id: config_default.razorpay.keyId,
+      key_secret: config_default.razorpay.keySecret
+    });
+  }
+  return razorpayInstance;
+}
+async function createRazorpayOrder(params) {
+  const razorpay = getRazorpayClient();
+  const amountInPaise = Math.round(params.amountInRupees * 100);
+  const options = {
+    amount: amountInPaise,
+    currency: "INR",
+    receipt: params.receipt,
+    notes: params.notes || {}
+  };
+  const order = await razorpay.orders.create(options);
+  return order;
+}
+function verifyRazorpayPaymentSignature(params) {
+  const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = params;
+  const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+  const expectedSignature = import_crypto4.default.createHmac("sha256", config_default.razorpay.keySecret).update(body.toString()).digest("hex");
+  return expectedSignature === razorpaySignature;
+}
+function verifyRazorpayWebhookSignature(webhookBody, webhookSignature) {
+  const expectedSignature = import_crypto4.default.createHmac("sha256", config_default.razorpay.webhookSecret).update(webhookBody).digest("hex");
+  return expectedSignature === webhookSignature;
+}
 
 // src/services/payment.service.ts
 var PaymentService = class {
@@ -59146,10 +66727,23 @@ var PaymentService = class {
       throw new NotFoundError("Order not found");
     }
     if (customerId && order.customerId !== customerId) {
-      throw new BadRequestError("Unauthorized to create payment for this order");
+      throw new ForbiddenError("You cannot create payment for another customer\u2019s order.");
+    }
+    const payableStatuses = [
+      "ACCEPTED" /* ACCEPTED */,
+      "RIDER_ASSIGNED" /* RIDER_ASSIGNED */,
+      "OUT_FOR_DELIVERY" /* OUT_FOR_DELIVERY */,
+      "ARRIVED" /* ARRIVED */,
+      "OTP_PENDING" /* OTP_PENDING */
+    ];
+    if (!payableStatuses.some((status) => status === order.status)) {
+      throw new BadRequestError("Payment is available only after the booking is approved by the agency.");
     }
     if (order.paymentStatus === "PAID" /* PAID */) {
       throw new BadRequestError("This order is already marked as paid");
+    }
+    if (config_default.razorpay.keyId.includes("placeholder") || config_default.razorpay.keySecret.includes("placeholder")) {
+      throw new BadRequestError("Online payments are not configured. Please contact the agency for payment options.");
     }
     const amountInRupees = Number(order.totalAmount);
     const receipt = `RCP-${order.orderNumber.replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -59171,7 +66765,8 @@ var PaymentService = class {
         data: {
           razorpayOrderId: razorpayOrder.id,
           amount: order.totalAmount,
-          method: "ONLINE" /* ONLINE */
+          method: "ONLINE" /* ONLINE */,
+          status: "PENDING" /* PENDING */
         }
       });
     } else {
@@ -59185,13 +66780,20 @@ var PaymentService = class {
         }
       });
     }
+    await database_default.order.update({
+      where: { id: order.id },
+      data: {
+        paymentMethod: "ONLINE" /* ONLINE */,
+        paymentStatus: "PENDING" /* PENDING */
+      }
+    });
     return {
       orderId: order.id,
       orderNumber: order.orderNumber,
       razorpayOrderId: razorpayOrder.id,
-      amount: amountInRupees,
+      amount: Math.round(amountInRupees * 100),
       currency: "INR",
-      keyId: process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder",
+      keyId: config_default.razorpay.keyId,
       customerName: order.deliveryName,
       customerPhone: order.deliveryPhone
     };
@@ -59216,34 +66818,25 @@ var PaymentService = class {
     if (!order) {
       throw new NotFoundError("Order not found");
     }
+    if (order.customerId !== userId) {
+      throw new ForbiddenError("You cannot confirm payment for another customer\u2019s order.");
+    }
+    const pendingPayment = await database_default.payment.findFirst({
+      where: { orderId: order.id, razorpayOrderId, status: "PENDING" /* PENDING */ }
+    });
+    if (!pendingPayment) {
+      throw new BadRequestError("This payment order is not pending for this booking.");
+    }
     const result = await database_default.$transaction(async (tx) => {
-      let payment = await tx.payment.findFirst({
-        where: { orderId, razorpayOrderId }
+      const payment = await tx.payment.update({
+        where: { id: pendingPayment.id },
+        data: {
+          status: "PAID" /* PAID */,
+          razorpayPaymentId,
+          razorpaySignature,
+          verifiedAt: /* @__PURE__ */ new Date()
+        }
       });
-      if (payment) {
-        payment = await tx.payment.update({
-          where: { id: payment.id },
-          data: {
-            status: "PAID" /* PAID */,
-            razorpayPaymentId,
-            razorpaySignature,
-            verifiedAt: /* @__PURE__ */ new Date()
-          }
-        });
-      } else {
-        payment = await tx.payment.create({
-          data: {
-            orderId,
-            amount: order.totalAmount,
-            method: "ONLINE" /* ONLINE */,
-            status: "PAID" /* PAID */,
-            razorpayOrderId,
-            razorpayPaymentId,
-            razorpaySignature,
-            verifiedAt: /* @__PURE__ */ new Date()
-          }
-        });
-      }
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
@@ -59258,6 +66851,13 @@ var PaymentService = class {
           note: `Online payment received via Razorpay (Txn ID: ${razorpayPaymentId})`,
           changedById: userId
         }
+      });
+      await recordAuditLog(tx, {
+        userId,
+        action: "PAYMENT_SUCCESS",
+        entity: "Order",
+        entityId: order.id,
+        details: `Verified online payment for ${order.orderNumber}.`
       });
       return { payment, order: updatedOrder };
     });
@@ -59275,6 +66875,42 @@ var PaymentService = class {
       orderId: order.id
     });
     return result;
+  }
+  static async markPaymentFailed(orderId, razorpayOrderId, userId) {
+    const order = await database_default.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundError("Order not found.");
+    if (order.customerId !== userId) {
+      throw new ForbiddenError("You cannot update payment for another customer\u2019s order.");
+    }
+    const payment = await database_default.payment.findFirst({
+      where: { orderId, razorpayOrderId, status: "PENDING" /* PENDING */ }
+    });
+    if (!payment) throw new BadRequestError("This payment attempt is not pending.");
+    await database_default.$transaction(async (tx) => {
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: "FAILED" /* FAILED */ }
+      });
+      await tx.order.update({
+        where: { id: orderId },
+        data: { paymentStatus: "FAILED" /* FAILED */ }
+      });
+      await recordAuditLog(tx, {
+        userId,
+        action: "PAYMENT_FAILED",
+        entity: "Order",
+        entityId: order.id,
+        details: `Online payment failed for ${order.orderNumber}.`
+      });
+    });
+    await NotificationService.createNotification({
+      userId,
+      title: "Payment not completed",
+      message: `Payment for booking ${order.orderNumber} was not completed. You can retry through your dashboard.`,
+      type: "PAYMENT" /* PAYMENT */,
+      orderId
+    });
+    return { status: "FAILED" /* FAILED */ };
   }
   /**
    * Handle incoming Razorpay Webhook
@@ -59332,6 +66968,9 @@ var PaymentService = class {
       throw new BadRequestError("This order is already marked as paid");
     }
     const collectedAmount = params.amount !== void 0 ? params.amount : Number(order.totalAmount);
+    if (Math.abs(collectedAmount - Number(order.totalAmount)) > 0.01) {
+      throw new BadRequestError("The collected amount must match the order total.");
+    }
     const payment = await database_default.$transaction(async (tx) => {
       const createdPayment = await tx.payment.create({
         data: {
@@ -59347,7 +66986,8 @@ var PaymentService = class {
       await tx.order.update({
         where: { id: order.id },
         data: {
-          paymentStatus: "PAID" /* PAID */
+          paymentStatus: "PAID" /* PAID */,
+          paymentMethod: "COD" /* COD */
         }
       });
       await tx.orderStatusHistory.create({
@@ -59401,6 +67041,18 @@ var PaymentController = class {
       next(error);
     }
   }
+  static async markPaymentFailed(req, res, next) {
+    try {
+      const result = await PaymentService.markPaymentFailed(
+        req.body.orderId,
+        req.body.razorpayOrderId,
+        req.user.id
+      );
+      ApiResponse.success(res, result, "Payment attempt recorded as failed.");
+    } catch (error) {
+      next(error);
+    }
+  }
   /**
    * Razorpay Webhook listener
    */
@@ -59430,17 +67082,30 @@ var verifyPaymentSchema = external_exports.object({
   razorpayPaymentId: external_exports.string().min(1, "razorpayPaymentId is required"),
   razorpaySignature: external_exports.string().min(1, "razorpaySignature is required")
 });
+var failedPaymentSchema = external_exports.object({
+  orderId: external_exports.string().uuid("Valid order ID is required"),
+  razorpayOrderId: external_exports.string().min(1, "razorpayOrderId is required")
+});
 router5.post(
   "/create-razorpay-order",
   authenticateToken,
+  requireRole("CUSTOMER" /* CUSTOMER */),
   validate(createOrderSchema2),
   PaymentController.createRazorpayOrder
 );
 router5.post(
   "/verify",
   authenticateToken,
+  requireRole("CUSTOMER" /* CUSTOMER */),
   validate(verifyPaymentSchema),
   PaymentController.verifyPayment
+);
+router5.post(
+  "/failed",
+  authenticateToken,
+  requireRole("CUSTOMER" /* CUSTOMER */),
+  validate(failedPaymentSchema),
+  PaymentController.markPaymentFailed
 );
 router5.post("/webhook", PaymentController.webhook);
 var payment_routes_default = router5;
@@ -59449,7 +67114,6 @@ var payment_routes_default = router5;
 var import_express6 = __toESM(require_express2());
 
 // src/controllers/admin.controller.ts
-var import_bcryptjs4 = __toESM(require_bcryptjs());
 var import_client3 = require("@prisma/client");
 var AdminController = class {
   /**
@@ -59629,6 +67293,11 @@ var AdminController = class {
       if (existing.status === "CANCELLED" /* CANCELLED */ || existing.status === "REJECTED" /* REJECTED */) {
         throw new BadRequestError(`Cannot accept order with status: ${existing.status}`);
       }
+      if (existing.status !== "ORDER_PLACED" /* ORDER_PLACED */ && existing.status !== "AWAITING_REVIEW" /* AWAITING_REVIEW */) {
+        throw new BadRequestError(
+          `Only bookings awaiting review can be accepted (current status: ${existing.status}).`
+        );
+      }
       const order = await database_default.$transaction(async (tx) => {
         const ord = await tx.order.update({
           where: { id },
@@ -59641,6 +67310,14 @@ var AdminController = class {
             note: "Order reviewed and accepted by administration",
             changedById: adminId
           }
+        });
+        await recordAuditLog(tx, {
+          userId: adminId,
+          action: "ORDER_APPROVE",
+          entity: "Order",
+          entityId: id,
+          details: `Approved order ${existing.orderNumber}.`,
+          ipAddress: req.ip
         });
         return ord;
       });
@@ -59671,6 +67348,14 @@ var AdminController = class {
       if (!existing) {
         throw new NotFoundError("Order not found");
       }
+      if (existing.status !== "ORDER_PLACED" /* ORDER_PLACED */ && existing.status !== "AWAITING_REVIEW" /* AWAITING_REVIEW */) {
+        throw new BadRequestError(
+          `Only bookings awaiting review can be rejected (current status: ${existing.status}).`
+        );
+      }
+      if (existing.paymentStatus === "PAID" /* PAID */) {
+        throw new BadRequestError("A paid order cannot be rejected before its payment has been refunded.");
+      }
       const order = await database_default.$transaction(async (tx) => {
         const ord = await tx.order.update({
           where: { id },
@@ -59686,6 +67371,14 @@ var AdminController = class {
             note: `Order rejected by admin. Reason: ${reason}`,
             changedById: adminId
           }
+        });
+        await recordAuditLog(tx, {
+          userId: adminId,
+          action: "ORDER_REJECT",
+          entity: "Order",
+          entityId: id,
+          details: `Rejected order ${existing.orderNumber}: ${reason}`,
+          ipAddress: req.ip
         });
         return ord;
       });
@@ -59898,59 +67591,6 @@ var AdminController = class {
     }
   }
   /**
-   * Create new rider (Creates User + Rider)
-   */
-  static async createRider(req, res, next) {
-    try {
-      const { name, email, phone, password, vehicleNumber } = req.body;
-      if (!name || !phone || !password) {
-        throw new BadRequestError("Name, phone number, and password are required");
-      }
-      if (email) {
-        const existingEmail = await database_default.user.findUnique({ where: { email } });
-        if (existingEmail) throw new ConflictError("A user with this email already exists");
-      }
-      const existingPhone = await database_default.user.findUnique({ where: { phone } });
-      if (existingPhone) throw new ConflictError("A user with this phone already exists");
-      const passwordHash = await import_bcryptjs4.default.hash(password, 10);
-      const rider = await database_default.user.create({
-        data: {
-          name,
-          email: email || null,
-          phone,
-          passwordHash,
-          role: "RIDER" /* RIDER */,
-          isActive: true,
-          isVerified: true,
-          riderProfile: {
-            create: {
-              vehicleNumber: vehicleNumber || null,
-              isAvailable: true
-            }
-          }
-        },
-        include: {
-          riderProfile: true
-        }
-      });
-      ApiResponse.created(
-        res,
-        {
-          id: rider.riderProfile?.id,
-          userId: rider.id,
-          name: rider.name,
-          phone: rider.phone,
-          email: rider.email,
-          vehicleNumber: rider.riderProfile?.vehicleNumber,
-          isAvailable: rider.riderProfile?.isAvailable
-        },
-        "Rider created successfully"
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-  /**
    * Update rider profile
    */
   static async updateRider(req, res, next) {
@@ -60055,6 +67695,14 @@ var AdminController = class {
         }),
         database_default.user.count({ where })
       ]);
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "CUSTOMER_LIST",
+        entity: "Customer",
+        entityId: "list",
+        details: `Listed customer accounts; page ${page}.`,
+        ipAddress: req.ip
+      });
       ApiResponse.paginated(res, customers, total, page, limit, "Customers retrieved");
     } catch (error) {
       next(error);
@@ -60093,6 +67741,14 @@ var AdminController = class {
       if (!customer) {
         throw new NotFoundError("Customer not found");
       }
+      await recordAuditLog(database_default, {
+        userId: req.user.id,
+        action: "CUSTOMER_PROFILE_VIEW",
+        entity: "Customer",
+        entityId: customer.id,
+        details: "Viewed customer profile, saved addresses, and booking history.",
+        ipAddress: req.ip
+      });
       ApiResponse.success(res, customer, "Customer detail retrieved");
     } catch (error) {
       next(error);
@@ -60383,17 +68039,16 @@ var AdminController = class {
       });
       const map = new Map(settingsList.map((s) => [s.key, s.value]));
       const structured = {
-        agencyName: map.get("agency_name") || "D.S SHINDE GAS AGENCY",
+        agencyName: "DS Shinde Gas",
         primaryPhone: map.get("contact_phone_1") || "9511760208",
         secondaryPhone: map.get("contact_phone_2") || "9975300929",
         email: map.get("agency_email") || "contact@dsshinde.com",
         address: map.get("agency_address") || "Main Road, Opp. Market Yard, Karad, Maharashtra 415110",
         deliveryAreas: (map.get("service_areas") || "Karad, Malkapur, Ogalewadi, Saidapur, Vidyanagar, Wathar").split(",").map((s) => s.trim()).filter(Boolean),
         deliveryCharges: Number(map.get("delivery_charge_default") || 50),
-        taxPercentage: Number(map.get("tax_percentage") || 5),
-        onlinePaymentFee: Number(map.get("online_payment_fee_percent") || 0),
-        cardPaymentFee: 15,
-        codPaymentFee: 0,
+        taxPercentage: Number(map.get("tax_percentage") || 0),
+        welcomeOfferEnabled: map.get("welcome_offer_enabled") === "true",
+        welcomeOfferAmount: Number(map.get("welcome_offer_amount") || 0),
         isOrderingEnabled: true,
         businessHours: map.get("support_hours") || "8:00 AM - 8:00 PM (Monday to Saturday)",
         heroHeadline: map.get("hero_headline") || "Your Trusted LPG Gas Partner",
@@ -60423,17 +68078,51 @@ var AdminController = class {
     try {
       if (req.body.key && req.body.value !== void 0) {
         const { key, value, description } = req.body;
-        const setting = await database_default.agencySetting.upsert({
-          where: { key },
-          update: {
-            value: String(value),
-            ...description !== void 0 && { description }
-          },
-          create: {
-            key,
-            value: String(value),
-            description
+        let settingValue = String(value);
+        if (["tax_percentage", "welcome_offer_amount", "delivery_charge_default"].includes(key)) {
+          if (typeof value !== "number" && typeof value !== "string") {
+            throw new BadRequestError("This setting must be a valid non-negative number.");
           }
+          if (typeof value === "string" && !value.trim()) {
+            throw new BadRequestError("This setting must be a valid non-negative number.");
+          }
+          const parsedValue = typeof value === "string" ? Number(value.trim()) : value;
+          const max = key === "tax_percentage" ? 100 : Number.POSITIVE_INFINITY;
+          if (!Number.isFinite(parsedValue) || parsedValue < 0 || parsedValue > max) {
+            throw new BadRequestError(
+              key === "tax_percentage" ? "Tax percentage must be between 0 and 100." : "This setting must be a valid non-negative number."
+            );
+          }
+          settingValue = String(parsedValue);
+        }
+        if (key === "welcome_offer_enabled") {
+          if (value !== true && value !== false && value !== "true" && value !== "false") {
+            throw new BadRequestError("Welcome offer enabled must be true or false.");
+          }
+          settingValue = String(value);
+        }
+        const setting = await database_default.$transaction(async (tx) => {
+          const updated = await tx.agencySetting.upsert({
+            where: { key },
+            update: {
+              value: settingValue,
+              ...description !== void 0 && { description }
+            },
+            create: {
+              key,
+              value: settingValue,
+              description
+            }
+          });
+          await recordAuditLog(tx, {
+            userId: req.user.id,
+            action: "AGENCY_SETTING_UPDATE",
+            entity: "AgencySetting",
+            entityId: updated.id,
+            details: `Updated setting "${key}".`,
+            ipAddress: req.ip
+          });
+          return updated;
         });
         ApiResponse.success(res, setting, "Setting updated successfully");
         return;
@@ -60449,9 +68138,33 @@ var AdminController = class {
         const areasStr = Array.isArray(b.deliveryAreas) ? b.deliveryAreas.join(", ") : String(b.deliveryAreas);
         updates.push({ key: "service_areas", value: areasStr });
       }
-      if (b.deliveryCharges !== void 0) updates.push({ key: "delivery_charge_default", value: String(b.deliveryCharges) });
-      if (b.taxPercentage !== void 0) updates.push({ key: "tax_percentage", value: String(b.taxPercentage) });
-      if (b.onlinePaymentFee !== void 0) updates.push({ key: "online_payment_fee_percent", value: String(b.onlinePaymentFee) });
+      if (b.deliveryCharges !== void 0) {
+        const deliveryCharges = Number(b.deliveryCharges);
+        if (!Number.isFinite(deliveryCharges) || deliveryCharges < 0) {
+          throw new BadRequestError("Delivery charge must be a non-negative number.");
+        }
+        updates.push({ key: "delivery_charge_default", value: String(deliveryCharges) });
+      }
+      if (b.taxPercentage !== void 0) {
+        const taxPercentage = Number(b.taxPercentage);
+        if (!Number.isFinite(taxPercentage) || taxPercentage < 0 || taxPercentage > 100) {
+          throw new BadRequestError("Tax percentage must be between 0 and 100.");
+        }
+        updates.push({ key: "tax_percentage", value: String(taxPercentage) });
+      }
+      if (b.welcomeOfferEnabled !== void 0 && typeof b.welcomeOfferEnabled !== "boolean") {
+        throw new BadRequestError("Welcome offer enabled must be true or false.");
+      }
+      if (b.welcomeOfferEnabled !== void 0) {
+        updates.push({ key: "welcome_offer_enabled", value: String(Boolean(b.welcomeOfferEnabled)) });
+      }
+      if (b.welcomeOfferAmount !== void 0) {
+        const amount = Number(b.welcomeOfferAmount);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new BadRequestError("Welcome offer amount must be a non-negative number.");
+        }
+        updates.push({ key: "welcome_offer_amount", value: String(amount) });
+      }
       if (b.businessHours !== void 0) updates.push({ key: "support_hours", value: String(b.businessHours) });
       if (b.heroHeadline !== void 0) updates.push({ key: "hero_headline", value: String(b.heroHeadline) });
       if (b.heroSubheadline !== void 0) updates.push({ key: "hero_subheadline", value: String(b.heroSubheadline) });
@@ -60466,13 +68179,23 @@ var AdminController = class {
       if (b.announcementBanner !== void 0) updates.push({ key: "announcement_banner", value: String(b.announcementBanner) });
       if (b.headerCtaText !== void 0) updates.push({ key: "header_cta_text", value: String(b.headerCtaText) });
       if (b.headerCtaLink !== void 0) updates.push({ key: "header_cta_link", value: String(b.headerCtaLink) });
-      for (const item of updates) {
-        await database_default.agencySetting.upsert({
-          where: { key: item.key },
-          update: { value: item.value },
-          create: { key: item.key, value: item.value }
+      await database_default.$transaction(async (tx) => {
+        for (const item of updates) {
+          await tx.agencySetting.upsert({
+            where: { key: item.key },
+            update: { value: item.value },
+            create: { key: item.key, value: item.value }
+          });
+        }
+        await recordAuditLog(tx, {
+          userId: req.user.id,
+          action: "AGENCY_SETTINGS_UPDATE",
+          entity: "AgencySetting",
+          entityId: "configuration",
+          details: `Updated settings: ${updates.map((setting) => setting.key).join(", ")}.`,
+          ipAddress: req.ip
         });
-      }
+      });
       ApiResponse.success(res, b, "Settings updated successfully");
     } catch (error) {
       next(error);
@@ -60537,13 +68260,6 @@ var assignRiderSchema = external_exports.object({
 var cancelOrderSchema2 = external_exports.object({
   reason: external_exports.string().min(3, "Cancellation reason is required")
 });
-var createRiderSchema = external_exports.object({
-  name: external_exports.string().min(2, "Name is required"),
-  phone: external_exports.string().regex(/^[0-9]{10}$/, "10-digit phone number is required"),
-  email: external_exports.string().email().optional(),
-  password: external_exports.string().min(6, "Password must be at least 6 characters"),
-  vehicleNumber: external_exports.string().optional()
-});
 var updateRiderSchema = external_exports.object({
   name: external_exports.string().min(2).optional(),
   phone: external_exports.string().regex(/^[0-9]{10}$/).optional(),
@@ -60579,11 +68295,25 @@ router6.put("/orders/:id/reject", validate(rejectOrderSchema), AdminController.r
 router6.put("/orders/:id/assign-rider", validate(assignRiderSchema), AdminController.assignRider);
 router6.put("/orders/:id/cancel", validate(cancelOrderSchema2), AdminController.cancelOrder);
 router6.get("/riders", AdminController.listRiders);
-router6.post("/riders", validate(createRiderSchema), AdminController.createRider);
+router6.get("/rider-applications", ApplicationController.listRiderApplications);
+router6.get("/rider-applications/:id/documents/:document", ApplicationController.getRiderDocument);
+router6.delete("/rider-applications/:id/documents", ApplicationController.deleteRiderDocuments);
+router6.patch(
+  "/rider-applications/:id/review",
+  validate(
+    external_exports.discriminatedUnion("status", [
+      external_exports.object({ status: external_exports.literal("APPROVED") }),
+      external_exports.object({ status: external_exports.literal("REJECTED"), reason: external_exports.string().trim().min(3).max(500) })
+    ])
+  ),
+  ApplicationController.reviewRiderApplication
+);
 router6.put("/riders/:id", validate(updateRiderSchema), AdminController.updateRider);
 router6.put("/riders/:id/toggle-status", AdminController.toggleRiderStatus);
 router6.get("/customers", AdminController.listCustomers);
 router6.get("/customers/:id", AdminController.getCustomerDetail);
+router6.get("/customers/:customerId/udyam-certificate", ApplicationController.getCustomerUdyamDocument);
+router6.delete("/customers/:customerId/documents", ApplicationController.deleteCustomerDocuments);
 router6.get("/products", AdminController.listProducts);
 router6.post("/products", validate(productSchema), AdminController.createProduct);
 router6.put("/products/:id", validate(productSchema.partial()), AdminController.updateProduct);
@@ -60600,6 +68330,7 @@ var admin_routes_default = router6;
 
 // src/routes/rider.routes.ts
 var import_express7 = __toESM(require_express2());
+var import_multer2 = __toESM(require_multer());
 
 // src/services/delivery.service.ts
 var DeliveryService = class {
@@ -60796,7 +68527,7 @@ var DeliveryService = class {
       where: { id: order.id },
       data: { status: "OTP_PENDING" /* OTP_PENDING */ }
     });
-    const message = `Your D.S SHINDE GAS delivery confirmation OTP for order ${order.orderNumber} is: ${plainOtp}. Share this ONLY with the delivery partner upon cylinder inspection.`;
+    const message = `Your DS Shinde Gas delivery confirmation OTP for order ${order.orderNumber} is: ${plainOtp}. Share this ONLY with the delivery partner upon cylinder inspection.`;
     await sendSms({
       phone: order.deliveryPhone,
       message
@@ -60807,7 +68538,7 @@ var DeliveryService = class {
         subject: `Delivery OTP for Order ${order.orderNumber}`,
         text: message,
         html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
-          <h2 style="color: #ea580c;">D.S SHINDE GAS AGENCY</h2>
+          <h2 style="color: #ea580c;">DS Shinde Gas</h2>
           <p>Your delivery partner is at your doorstep. Please share this Delivery Confirmation OTP after inspecting your cylinder:</p>
           <h1 style="letter-spacing: 6px; color: #1e293b; background: #fef3c7; padding: 12px 24px; display: inline-block;">${plainOtp}</h1>
           <p>Order Number: <strong>${order.orderNumber}</strong></p>
@@ -60872,12 +68603,22 @@ var DeliveryService = class {
         "Delivery OTP must be verified before marking delivery as completed."
       );
     }
+    if (order.paymentStatus !== "PAID" /* PAID */) {
+      throw new BadRequestError("Payment must be recorded before completing this delivery.");
+    }
     const updatedOrder = await database_default.$transaction(async (tx) => {
+      const deliveredAt = /* @__PURE__ */ new Date();
+      const remindersEndAt = new Date(deliveredAt);
+      remindersEndAt.setDate(remindersEndAt.getDate() + order.bookingDurationDays);
+      const nextReminderAt = new Date(deliveredAt);
+      nextReminderAt.setDate(nextReminderAt.getDate() + 2);
       const ord = await tx.order.update({
         where: { id: orderId },
         data: {
           status: "DELIVERED" /* DELIVERED */,
-          deliveredAt: /* @__PURE__ */ new Date()
+          deliveredAt,
+          remindersEndAt,
+          nextReminderAt: order.remindersEnabled && nextReminderAt < remindersEndAt ? nextReminderAt : null
         }
       });
       await tx.rider.update({
@@ -60897,7 +68638,7 @@ var DeliveryService = class {
     await NotificationService.createNotification({
       userId: order.customerId,
       title: "Order Delivered!",
-      message: `Your LPG cylinder order ${order.orderNumber} has been delivered successfully. Thank you for choosing D.S SHINDE GAS AGENCY!`,
+      message: `Your LPG cylinder order ${order.orderNumber} has been delivered successfully. Thank you for choosing DS Shinde Gas!`,
       type: "DELIVERY" /* DELIVERY */,
       orderId
     });
@@ -60913,6 +68654,48 @@ var DeliveryService = class {
 
 // src/controllers/rider.controller.ts
 var RiderController = class {
+  static async getDashboardStats(req, res, next) {
+    try {
+      const rider = await database_default.rider.findUnique({ where: { userId: req.user.id } });
+      if (!rider) throw new NotFoundError("Rider profile not found");
+      const today = /* @__PURE__ */ new Date();
+      today.setHours(0, 0, 0, 0);
+      const activeStatuses = [
+        "RIDER_ASSIGNED" /* RIDER_ASSIGNED */,
+        "OUT_FOR_DELIVERY" /* OUT_FOR_DELIVERY */,
+        "ARRIVED" /* ARRIVED */,
+        "OTP_PENDING" /* OTP_PENDING */
+      ];
+      const [assignedCount, activeDeliveryCount, completedTodayCount, totalDelivered, cashAggregate] = await Promise.all([
+        database_default.order.count({ where: { riderId: rider.id, status: "RIDER_ASSIGNED" /* RIDER_ASSIGNED */ } }),
+        database_default.order.count({
+          where: { riderId: rider.id, status: { in: activeStatuses.filter((status) => status !== "RIDER_ASSIGNED" /* RIDER_ASSIGNED */) } }
+        }),
+        database_default.order.count({
+          where: { riderId: rider.id, status: "DELIVERED" /* DELIVERED */, deliveredAt: { gte: today } }
+        }),
+        database_default.order.count({ where: { riderId: rider.id, status: "DELIVERED" /* DELIVERED */ } }),
+        database_default.payment.aggregate({
+          where: {
+            collectedById: req.user.id,
+            status: "PAID",
+            method: "COD",
+            createdAt: { gte: today }
+          },
+          _sum: { amount: true }
+        })
+      ]);
+      ApiResponse.success(res, {
+        assignedCount,
+        activeDeliveryCount,
+        completedTodayCount,
+        totalDelivered,
+        totalCashCollected: Number(cashAggregate._sum.amount || 0)
+      }, "Rider dashboard statistics retrieved");
+    } catch (error) {
+      next(error);
+    }
+  }
   /**
    * Get active orders assigned to the logged-in rider
    */
@@ -61181,6 +68964,68 @@ var RiderController = class {
 // src/routes/rider.routes.ts
 var router7 = (0, import_express7.Router)();
 router7.use(authenticateToken, requireRole("RIDER" /* RIDER */));
+var applicationSchema = external_exports.object({
+  fullName: external_exports.string().trim().min(2).max(100),
+  address: external_exports.string().trim().min(10).max(500),
+  vehicleNumber: external_exports.string().trim().min(5).max(20)
+});
+var uploadRiderDocuments = (0, import_multer2.default)({
+  storage: import_multer2.default.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 4 },
+  fileFilter: (_req, file, callback) => {
+    const isRc = file.fieldname === "rcDocument";
+    const allowed = isRc ? ["application/pdf", "image/jpeg", "image/png", "image/webp"] : ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.mimetype)) {
+      callback(new BadRequestError("RC documents must be PDF or an image; photos must be JPEG, PNG, or WebP."));
+      return;
+    }
+    callback(null, true);
+  }
+}).fields([
+  { name: "rcDocument", maxCount: 1 },
+  { name: "frontPhoto", maxCount: 1 },
+  { name: "backPhoto", maxCount: 1 },
+  { name: "selfie", maxCount: 1 }
+]);
+var handleUploadError2 = (error, _req, _res, next) => {
+  if (error instanceof import_multer2.default.MulterError) {
+    next(new BadRequestError(
+      error.code === "LIMIT_FILE_SIZE" ? "Each application document must be 5 MB or smaller." : "Upload exactly one RC book and three rider photos."
+    ));
+    return;
+  }
+  next(error);
+};
+var ensureApprovedRider = async (_req, _res, next) => {
+  try {
+    const [rider, application] = await Promise.all([
+      database_default.rider.findUnique({
+        where: { userId: _req.user.id },
+        select: { id: true }
+      }),
+      database_default.riderApplication.findUnique({
+        where: { userId: _req.user.id },
+        select: { status: true }
+      })
+    ]);
+    if (!rider) throw new NotFoundError("Your rider application must be approved before accessing delivery tasks.");
+    if (application && application.status !== "APPROVED") {
+      throw new BadRequestError("Your rider application must be approved before accessing delivery tasks.");
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+router7.get("/application", ApplicationController.getRiderApplication);
+router7.post(
+  "/application",
+  (req, res, next) => uploadRiderDocuments(req, res, (error) => handleUploadError2(error, req, res, next)),
+  validate(applicationSchema),
+  ApplicationController.submitRiderApplication
+);
+router7.use(ensureApprovedRider);
+router7.get("/dashboard", RiderController.getDashboardStats);
 var rejectAssignmentSchema = external_exports.object({
   reason: external_exports.string().min(3, "Rejection reason is required")
 });
@@ -61278,38 +69123,114 @@ router8.put("/:id/read", NotificationController.markAsRead);
 router8.patch("/:id/read", NotificationController.markAsRead);
 var notification_routes_default = router8;
 
+// src/services/reminder.service.ts
+var REMINDER_INTERVAL_MS = 2 * 24 * 60 * 60 * 1e3;
+var ReminderService = class {
+  static async dispatchDueReminders(now = /* @__PURE__ */ new Date()) {
+    const dueOrders = await database_default.order.findMany({
+      where: {
+        status: "DELIVERED" /* DELIVERED */,
+        remindersEnabled: true,
+        nextReminderAt: { lte: now },
+        remindersEndAt: { gt: now }
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        customerId: true,
+        nextReminderAt: true,
+        remindersEndAt: true
+      },
+      orderBy: { nextReminderAt: "asc" },
+      take: 100
+    });
+    let sent = 0;
+    for (const order of dueOrders) {
+      if (!order.nextReminderAt || !order.remindersEndAt) continue;
+      const scheduledAt = order.nextReminderAt;
+      const nextReminderAt = new Date(scheduledAt.getTime() + REMINDER_INTERVAL_MS);
+      const keepReminding = nextReminderAt < order.remindersEndAt;
+      const message = `It has been two days since your DS Shinde Gas cylinder delivery. Need a refill? Sign in to your customer dashboard to book your next LPG cylinder.`;
+      const claimed = await database_default.$transaction(async (tx) => {
+        const updated = await tx.order.updateMany({
+          where: {
+            id: order.id,
+            status: "DELIVERED" /* DELIVERED */,
+            remindersEnabled: true,
+            nextReminderAt: scheduledAt,
+            remindersEndAt: { gt: now }
+          },
+          data: { nextReminderAt: keepReminding ? nextReminderAt : null }
+        });
+        if (updated.count !== 1) return false;
+        await tx.notification.create({
+          data: {
+            userId: order.customerId,
+            title: "Your LPG refill reminder",
+            message,
+            type: "DELIVERY" /* DELIVERY */,
+            orderId: order.id
+          }
+        });
+        return true;
+      });
+      if (!claimed) continue;
+      sent += 1;
+    }
+    return { sent };
+  }
+};
+
 // src/routes/index.ts
 var apiRouter = (0, import_express9.Router)();
+apiRouter.get("/reminders/process", async (req, res, next) => {
+  try {
+    if (!config_default.cronSecret) {
+      throw new AppError("Reminder scheduling is not configured.", 503);
+    }
+    if (req.get("authorization") !== `Bearer ${config_default.cronSecret}`) {
+      throw new UnauthorizedError("A valid scheduler authorization is required.");
+    }
+    const result = await ReminderService.dispatchDueReminders();
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
 apiRouter.get("/health", async (req, res) => {
   try {
     await database_default.$queryRaw`SELECT 1`;
     res.status(200).json({
       status: "ok",
-      service: "D.S SHINDE GAS AGENCY API",
+      service: "DS Shinde Gas API",
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       database: "connected"
     });
   } catch (error) {
     res.status(503).json({
       status: "degraded",
-      service: "D.S SHINDE GAS AGENCY API",
+      service: "DS Shinde Gas API",
       timestamp: (/* @__PURE__ */ new Date()).toISOString(),
       database: "disconnected"
     });
   }
 });
-apiRouter.get("/settings/public", async (req, res) => {
+apiRouter.get("/settings/public", async (req, res, next) => {
   try {
     const settingsList = await database_default.agencySetting.findMany();
     const map = new Map(settingsList.map((s) => [s.key, s.value]));
     const structured = {
-      agencyName: map.get("agency_name") || "D.S SHINDE GAS AGENCY",
+      agencyName: "DS Shinde Gas",
       primaryPhone: map.get("contact_phone_1") || "9511760208",
       secondaryPhone: map.get("contact_phone_2") || "9975300929",
       email: map.get("agency_email") || "support@dsshindegas.com",
       address: map.get("agency_address") || "Shop No. 4, Main Road, Near Market Yard, Maharashtra, India",
       deliveryAreas: (map.get("service_areas") || "Karad, Malkapur, Ogalewadi, Saidapur, Vidyanagar, Wathar").split(",").map((s) => s.trim()).filter(Boolean),
       businessHours: map.get("support_hours") || "8:00 AM - 8:00 PM (Monday to Saturday)",
+      deliveryCharges: Number(map.get("delivery_charge_default") || 50),
+      taxPercentage: Number(map.get("tax_percentage") || 0),
+      welcomeOfferEnabled: map.get("welcome_offer_enabled") === "true",
+      welcomeOfferAmount: Number(map.get("welcome_offer_amount") || 0),
       heroHeadline: map.get("hero_headline") || "Your Trusted LPG Gas Partner",
       heroSubheadline: map.get("hero_subheadline") || "Reliable LPG Cylinder Solutions for Home and Business",
       heroDescription: map.get("hero_description") || "Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.",
@@ -61330,33 +69251,7 @@ apiRouter.get("/settings/public", async (req, res) => {
       message: "Public settings loaded successfully"
     });
   } catch (error) {
-    const defaultStructured = {
-      agencyName: "D.S SHINDE GAS AGENCY",
-      primaryPhone: "9511760208",
-      secondaryPhone: "9975300929",
-      email: "support@dsshindegas.com",
-      address: "Shop No. 4, Main Road, Near Market Yard, Maharashtra, India",
-      deliveryAreas: ["Karad", "Malkapur", "Ogalewadi", "Saidapur", "Vidyanagar", "Wathar"],
-      businessHours: "8:00 AM - 8:00 PM (Monday to Saturday)",
-      heroHeadline: "Your Trusted LPG Gas Partner",
-      heroSubheadline: "Reliable LPG Cylinder Solutions for Home and Business",
-      heroDescription: "Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.",
-      heroPrimaryCtaText: "Order a Cylinder",
-      heroPrimaryCtaLink: "/dashboard/orders/new",
-      heroSecondaryCtaText: "Explore Cylinder Sizes",
-      heroSecondaryCtaLink: "/#cylinder-gallery",
-      heroImageUrl: "/assets/cylinders/hero-cylinder.jpg",
-      cylinderSectionTitle: "Explore Our LPG Cylinder Sizes",
-      cylinderSectionSubtitle: "Choose a cylinder capacity that matches your requirements.",
-      announcementBanner: "",
-      headerCtaText: "Order Cylinder",
-      headerCtaLink: "/dashboard/orders/new"
-    };
-    res.status(200).json({
-      success: true,
-      data: defaultStructured,
-      message: "Default settings loaded successfully"
-    });
+    next(error);
   }
 });
 apiRouter.post("/contact", async (req, res) => {
@@ -61486,7 +69381,7 @@ app.use("/api", routes_default);
 app.use("/", routes_default);
 app.get("/", (req, res) => {
   res.status(200).json({
-    agency: "D.S SHINDE GAS AGENCY",
+    agency: "DS Shinde Gas",
     tagline: "Reliable LPG Cylinder Delivery Platform",
     status: "online",
     version: "1.0.0",
@@ -61500,7 +69395,7 @@ app.use(errorHandler);
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.LAMBDA_TASK_ROOT) {
   const server = app.listen(config_default.port, () => {
     console.log(`====================================================`);
-    console.log(`  D.S SHINDE GAS AGENCY BACKEND API`);
+    console.log(`  DS Shinde Gas Backend API`);
     console.log(`  Mode: ${config_default.nodeEnv}`);
     console.log(`  Port: ${config_default.port}`);
     console.log(`  URL: http://localhost:${config_default.port}`);

@@ -32,43 +32,9 @@ export const ProductManagement: React.FC = () => {
     adminService
       .getProducts()
       .then((data) => setProducts(data))
-      .catch(() => {
-        // Fallback products
-        setProducts([
-          {
-            id: 'prod-14kg',
-            name: '14.2 kg Domestic LPG Cylinder',
-            size: '14.2 kg',
-            description: 'Standard domestic subsidized/non-subsidized LPG cylinder for regular household cooking and families.',
-            price: 920,
-            inStock: true,
-            stockQuantity: 150,
-            type: 'DOMESTIC',
-            isActive: true,
-          },
-          {
-            id: 'prod-19kg',
-            name: '19 kg Commercial LPG Cylinder',
-            size: '19 kg',
-            description: 'High-capacity commercial blue cylinder specifically engineered for restaurants, catering, and heavy kitchen use.',
-            price: 1850,
-            inStock: true,
-            stockQuantity: 80,
-            type: 'COMMERCIAL',
-            isActive: true,
-          },
-          {
-            id: 'prod-5kg',
-            name: '5 kg Domestic Mini Cylinder',
-            size: '5 kg',
-            description: 'Compact & lightweight portable cylinder ideal for bachelors, small households, students, and outdoor camping.',
-            price: 360,
-            inStock: true,
-            stockQuantity: 50,
-            type: 'DOMESTIC',
-            isActive: true,
-          },
-        ]);
+      .catch((error: any) => {
+        setProducts([]);
+        toast.error(error.response?.data?.message || 'Could not load cylinder products.');
       })
       .finally(() => setLoading(false));
   };
@@ -127,18 +93,8 @@ export const ProductManagement: React.FC = () => {
         toast.success('New cylinder catalog item added');
       }
       setIsModalOpen(false);
-    } catch {
-      if (editingProduct) {
-        setProducts((prev) =>
-          prev.map((p) => (p.id === editingProduct.id ? { ...p, ...formData } : p))
-        );
-        toast.success('Product updated');
-      } else {
-        const newMock: Product = { id: `prod-${Date.now()}`, ...formData };
-        setProducts((prev) => [...prev, newMock]);
-        toast.success('Product added');
-      }
-      setIsModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not save this cylinder product.');
     } finally {
       setSaving(false);
     }
@@ -152,11 +108,8 @@ export const ProductManagement: React.FC = () => {
         prev.map((p) => (p.id === prod.id ? { ...p, isActive: nextStatus } : p))
       );
       toast.success(`Cylinder marked ${nextStatus ? 'Active' : 'Disabled'}`);
-    } catch {
-      setProducts((prev) =>
-        prev.map((p) => (p.id === prod.id ? { ...p, isActive: nextStatus } : p))
-      );
-      toast.success('Cylinder status updated');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not update this cylinder status.');
     }
   };
 

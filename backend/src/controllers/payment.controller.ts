@@ -36,6 +36,19 @@ export class PaymentController {
     }
   }
 
+  static async markPaymentFailed(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await PaymentService.markPaymentFailed(
+        req.body.orderId,
+        req.body.razorpayOrderId,
+        req.user!.id
+      );
+      ApiResponse.success(res, result, 'Payment attempt recorded as failed.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Razorpay Webhook listener
    */

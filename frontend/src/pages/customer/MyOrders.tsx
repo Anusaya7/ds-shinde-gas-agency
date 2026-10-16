@@ -6,10 +6,9 @@ import { Order, OrderStatus } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
-import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export const MyOrders: React.FC = () => {
-  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -21,102 +20,12 @@ export const MyOrders: React.FC = () => {
       .then((res) => {
         setOrders(res.orders);
       })
-      .catch(() => {
-        // Fallback demo orders for testing
-        setOrders([
-          {
-            id: 'ord-101',
-            orderNumber: 'DS-2026-1049',
-            customerId: user?.id || 'demo-cust',
-            customerName: user?.name || 'Rahul Sharma',
-            customerPhone: user?.phone || '9876543210',
-            deliveryAddress: {
-              id: 'addr-1',
-              fullName: user?.name || 'Rahul Sharma',
-              phone: user?.phone || '9876543210',
-              addressLine1: 'Flat 402, Sai Residency',
-              area: 'Central City',
-              city: 'Pune',
-              state: 'Maharashtra',
-              pincode: '411001',
-            },
-            items: [
-              {
-                productId: 'prod-14kg',
-                productName: '14.2 kg Domestic LPG Cylinder',
-                size: '14.2 kg',
-                unitPrice: 920,
-                quantity: 1,
-                subtotal: 920,
-              },
-            ],
-            subtotal: 920,
-            deliveryCharges: 0,
-            taxes: 46,
-            paymentFee: 0,
-            totalAmount: 966,
-            paymentMethod: 'COD',
-            paymentStatus: 'PENDING',
-            orderStatus: 'OUT_FOR_DELIVERY',
-            statusHistory: [
-              { status: 'PLACED', timestamp: new Date(Date.now() - 7200000).toISOString() },
-              { status: 'ACCEPTED', timestamp: new Date(Date.now() - 5400000).toISOString() },
-              { status: 'ASSIGNED', timestamp: new Date(Date.now() - 3600000).toISOString() },
-              { status: 'OUT_FOR_DELIVERY', timestamp: new Date(Date.now() - 1800000).toISOString() },
-            ],
-            riderName: 'Ramesh Patil',
-            riderPhone: '9975300929',
-            deliveryOtp: '849201',
-            createdAt: new Date(Date.now() - 7200000).toISOString(),
-            updatedAt: new Date().toISOString(),
-          },
-          {
-            id: 'ord-100',
-            orderNumber: 'DS-2026-1024',
-            customerId: user?.id || 'demo-cust',
-            customerName: user?.name || 'Rahul Sharma',
-            customerPhone: user?.phone || '9876543210',
-            deliveryAddress: {
-              id: 'addr-1',
-              fullName: user?.name || 'Rahul Sharma',
-              phone: user?.phone || '9876543210',
-              addressLine1: 'Flat 402, Sai Residency',
-              area: 'Central City',
-              city: 'Pune',
-              state: 'Maharashtra',
-              pincode: '411001',
-            },
-            items: [
-              {
-                productId: 'prod-14kg',
-                productName: '14.2 kg Domestic LPG Cylinder',
-                size: '14.2 kg',
-                unitPrice: 920,
-                quantity: 1,
-                subtotal: 920,
-              },
-            ],
-            subtotal: 920,
-            deliveryCharges: 0,
-            taxes: 46,
-            paymentFee: 0,
-            totalAmount: 966,
-            paymentMethod: 'ONLINE',
-            paymentStatus: 'PAID',
-            orderStatus: 'DELIVERED',
-            statusHistory: [
-              { status: 'PLACED', timestamp: new Date(Date.now() - 86400000 * 14).toISOString() },
-              { status: 'ACCEPTED', timestamp: new Date(Date.now() - 86400000 * 14 + 1800000).toISOString() },
-              { status: 'DELIVERED', timestamp: new Date(Date.now() - 86400000 * 14 + 7200000).toISOString() },
-            ],
-            deliveredAt: new Date(Date.now() - 86400000 * 14 + 7200000).toISOString(),
-            createdAt: new Date(Date.now() - 86400000 * 14).toISOString(),
-            updatedAt: new Date(Date.now() - 86400000 * 14 + 7200000).toISOString(),
-          },
-        ]);
+      .catch((error: any) => {
+        setOrders([]);
+        toast.error(error.response?.data?.message || 'Could not load your bookings.');
       })
       .finally(() => setLoading(false));
-  }, [user]);
+  }, []);
 
   const filteredOrders = orders.filter((o) => {
     const matchesStatus = statusFilter === 'ALL' || o.orderStatus === statusFilter;
@@ -164,11 +73,13 @@ export const MyOrders: React.FC = () => {
           >
             <option value="ALL">All Statuses</option>
             <option value="PLACED">Placed</option>
+            <option value="AWAITING_REVIEW">Pending Approval</option>
             <option value="ACCEPTED">Accepted</option>
             <option value="ASSIGNED">Assigned</option>
             <option value="OUT_FOR_DELIVERY">Out for Delivery</option>
             <option value="DELIVERED">Delivered</option>
             <option value="CANCELLED">Cancelled</option>
+            <option value="REJECTED">Rejected</option>
           </select>
         </div>
       </div>
@@ -208,6 +119,10 @@ export const MyOrders: React.FC = () => {
                 <div className="text-xs text-gray-500">
                   <span>Deliver to: </span>
                   {order.deliveryAddress.addressLine1}, {order.deliveryAddress.area}
+                </div>
+                <div className="text-xs text-gray-500">
+                  <span>Booking duration: </span>
+                  {order.bookingDurationDays ? `${order.bookingDurationDays} days` : 'Not specified'}
                 </div>
               </div>
 

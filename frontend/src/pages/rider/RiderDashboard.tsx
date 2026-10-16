@@ -11,16 +11,23 @@ import {
   ArrowRight,
   ShieldCheck,
 } from 'lucide-react';
-import { riderService, fallbackRiderStats } from '../../services/rider.service';
+import { riderService } from '../../services/rider.service';
 import { Order, RiderDashboardStats } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 
 export const RiderDashboard: React.FC = () => {
-  const [stats, setStats] = useState<RiderDashboardStats>(fallbackRiderStats);
+  const [stats, setStats] = useState<RiderDashboardStats>({
+    assignedCount: 0,
+    activeDeliveryCount: 0,
+    completedTodayCount: 0,
+    totalDelivered: 0,
+    totalCashCollected: 0,
+  });
   const [assignedOrders, setAssignedOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     Promise.all([
@@ -29,90 +36,10 @@ export const RiderDashboard: React.FC = () => {
     ])
       .then(([statsData, ordersData]) => {
         setStats(statsData);
-        setAssignedOrders(
-          ordersData.length > 0
-            ? ordersData
-            : [
-                {
-                  id: 'ord-1047',
-                  orderNumber: 'DS-2026-1047',
-                  customerId: 'cust-3',
-                  customerName: 'Kavita Joshi',
-                  customerPhone: '9890123456',
-                  deliveryAddress: {
-                    id: 'addr-3',
-                    fullName: 'Kavita Joshi',
-                    phone: '9890123456',
-                    addressLine1: 'Flat 101, Sunshine Apts, 1st Floor',
-                    area: 'Central City',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411001',
-                    landmark: 'Opposite State Bank',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-5kg',
-                      productName: '5 kg Domestic Mini Cylinder',
-                      size: '5 kg',
-                      unitPrice: 360,
-                      quantity: 1,
-                      subtotal: 360,
-                    },
-                  ],
-                  subtotal: 360,
-                  deliveryCharges: 0,
-                  taxes: 18,
-                  paymentFee: 0,
-                  totalAmount: 378,
-                  paymentMethod: 'COD',
-                  paymentStatus: 'PENDING',
-                  orderStatus: 'ASSIGNED',
-                  statusHistory: [],
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-                {
-                  id: 'ord-1049',
-                  orderNumber: 'DS-2026-1049',
-                  customerId: 'cust-1',
-                  customerName: 'Rahul Sharma',
-                  customerPhone: '9876543210',
-                  deliveryAddress: {
-                    id: 'addr-1',
-                    fullName: 'Rahul Sharma',
-                    phone: '9876543210',
-                    addressLine1: 'Flat 402, Sai Residency',
-                    area: 'Central City',
-                    city: 'Pune',
-                    state: 'Maharashtra',
-                    pincode: '411001',
-                    landmark: 'Near Old Bus Stand',
-                  },
-                  items: [
-                    {
-                      productId: 'prod-14kg',
-                      productName: '14.2 kg Domestic Cylinder',
-                      size: '14.2 kg',
-                      unitPrice: 920,
-                      quantity: 1,
-                      subtotal: 920,
-                    },
-                  ],
-                  subtotal: 920,
-                  deliveryCharges: 0,
-                  taxes: 46,
-                  paymentFee: 0,
-                  totalAmount: 966,
-                  paymentMethod: 'COD',
-                  paymentStatus: 'PENDING',
-                  orderStatus: 'OUT_FOR_DELIVERY',
-                  statusHistory: [],
-                  createdAt: new Date(Date.now() - 3600000).toISOString(),
-                  updatedAt: new Date().toISOString(),
-                },
-              ]
-        );
+        setAssignedOrders(ordersData);
+      })
+      .catch((loadError: any) => {
+        setError(loadError.response?.data?.message || 'Could not load your delivery dashboard.');
       })
       .finally(() => setLoading(false));
   }, []);
@@ -121,6 +48,11 @@ export const RiderDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error}
+        </div>
+      )}
       {/* Top Banner */}
       <div className="bg-primaryDark rounded-2xl p-6 text-white shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>

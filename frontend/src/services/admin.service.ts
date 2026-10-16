@@ -9,34 +9,19 @@ import {
   ReportItem,
   OrderStatus,
 } from '../types';
-
-export const fallbackAdminStats: DashboardStats = {
-  totalOrders: 284,
-  newOrders: 14,
-  awaitingReview: 9,
-  accepted: 18,
-  outForDelivery: 12,
-  delivered: 235,
-  cancelled: 10,
-  rejected: 5,
-  pendingPayments: 7,
-  totalCollected: 248650,
-  activeRidersCount: 8,
-  activeCustomersCount: 192,
-};
+import { normalizeOrder } from '../utils/order';
 
 export const fallbackSettings: AgencySettings = {
-  agencyName: 'D.S SHINDE GAS AGENCY',
+  agencyName: 'DS Shinde Gas',
   primaryPhone: '9511760208',
   secondaryPhone: '9975300929',
   email: 'support@dsshindegas.com',
   address: 'Shop No. 4, Main Road, Near Market Yard, Maharashtra, India',
   deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
-  deliveryCharges: 0,
-  taxPercentage: 5,
-  onlinePaymentFee: 0,
-  cardPaymentFee: 15,
-  codPaymentFee: 0,
+  deliveryCharges: 50,
+  taxPercentage: 0,
+  welcomeOfferEnabled: false,
+  welcomeOfferAmount: 0,
   isOrderingEnabled: true,
   businessHours: '8:00 AM - 8:00 PM (Monday to Saturday)',
   heroHeadline: 'Your Trusted LPG Gas Partner',
@@ -56,12 +41,16 @@ export const fallbackSettings: AgencySettings = {
 
 export const adminService = {
   async getDashboardStats(): Promise<DashboardStats> {
-    try {
-      const res = await api.get<{ success: boolean; data: DashboardStats }>('/admin/dashboard');
-      return res.data.data;
-    } catch {
-      return fallbackAdminStats;
-    }
+    const res = await api.get<{ success: boolean; data: DashboardStats & {
+      totalCustomers?: number;
+      totalRiders?: number;
+      availableRiders?: number;
+    } }>('/admin/dashboard');
+    return {
+      ...res.data.data,
+      activeCustomersCount: res.data.data.totalCustomers ?? 0,
+      activeRidersCount: res.data.data.availableRiders ?? 0,
+    };
   },
 
   async getOrders(params?: {
@@ -73,60 +62,55 @@ export const adminService = {
     page?: number;
     limit?: number;
   }): Promise<{ orders: Order[]; total: number }> {
-    try {
-      const res = await api.get<{
-        success: boolean;
-        data: Order[];
-        meta?: { total: number };
-      }>('/admin/orders', { params });
-      return {
-        orders: res.data.data || [],
-        total: res.data.meta?.total || (res.data.data ? res.data.data.length : 0),
-      };
-    } catch {
-      return { orders: [], total: 0 };
-    }
+    const res = await api.get<{
+      success: boolean;
+      data: Order[];
+      meta?: { total: number };
+    }>('/admin/orders', { params });
+    return {
+      orders: (res.data.data || []).map(normalizeOrder),
+      total: res.data.meta?.total || (res.data.data ? res.data.data.length : 0),
+    };
   },
 
   async getOrderById(id: string): Promise<Order> {
     const res = await api.get<{ success: boolean; data: Order }>(`/admin/orders/${id}`);
-    return res.data.data;
+    return normalizeOrder(res.data.data);
   },
 
   async acceptOrder(id: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/admin/orders/${id}/accept`);
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/admin/orders/${id}/accept`);
+    return normalizeOrder(res.data.data);
   },
 
   async rejectOrder(id: string, reason: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/admin/orders/${id}/reject`, { reason });
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/admin/orders/${id}/reject`, { reason });
+    return normalizeOrder(res.data.data);
   },
 
   async assignRider(orderId: string, riderId: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/admin/orders/${orderId}/assign-rider`, {
+    const res = await api.put<{ success: boolean; data: Order }>(`/admin/orders/${orderId}/assign-rider`, {
       riderId,
     });
-    return res.data.data;
+    return normalizeOrder(res.data.data);
   },
 
   async cancelOrder(id: string, reason: string): Promise<Order> {
-    const res = await api.post<{ success: boolean; data: Order }>(`/admin/orders/${id}/cancel`, { reason });
-    return res.data.data;
+    const res = await api.put<{ success: boolean; data: Order }>(`/admin/orders/${id}/cancel`, { reason });
+    return normalizeOrder(res.data.data);
   },
 
   async getRiders(): Promise<Rider[]> {
-    try {
-      const res = await api.get<{ success: boolean; data: Rider[] }>('/admin/riders');
-      return res.data.data || [];
-    } catch {
-      return [];
-    }
-  },
-
-  async addRider(data: { name: string; phone: string; email?: string; vehicleNumber?: string; password?: string }): Promise<Rider> {
-    const res = await api.post<{ success: boolean; data: Rider }>('/admin/riders', data);
-    return res.data.data;
+    const res = await api.get<{ success: boolean; data: Array<Rider & {
+      userId?: string;
+      isAvailable?: boolean;
+      activeOrdersCount?: number;
+    }> }>('/admin/riders');
+    return (res.data.data || []).map((rider) => ({
+      ...rider,
+      assignedOrdersCount: rider.activeOrdersCount ?? 0,
+      completedOrdersCount: rider.completedOrdersCount ?? 0,
+    }));
   },
 
   async updateRider(id: string, data: Partial<Rider>): Promise<Rider> {
@@ -134,21 +118,17 @@ export const adminService = {
     return res.data.data;
   },
 
-  async toggleRiderStatus(id: string, isActive: boolean): Promise<Rider> {
-    const res = await api.patch<{ success: boolean; data: Rider }>(`/admin/riders/${id}/status`, { isActive });
+  async toggleRiderStatus(id: string): Promise<Rider> {
+    const res = await api.put<{ success: boolean; data: Rider }>(`/admin/riders/${id}/toggle-status`);
     return res.data.data;
   },
 
   async getCustomers(params?: { search?: string; page?: number; limit?: number }): Promise<{ customers: User[]; total: number }> {
-    try {
-      const res = await api.get<{ success: boolean; data: User[]; meta?: { total: number } }>('/admin/customers', { params });
-      return {
-        customers: res.data.data || [],
-        total: res.data.meta?.total || (res.data.data ? res.data.data.length : 0),
-      };
-    } catch {
-      return { customers: [], total: 0 };
-    }
+    const res = await api.get<{ success: boolean; data: User[]; meta?: { total: number } }>('/admin/customers', { params });
+    return {
+      customers: res.data.data || [],
+      total: res.data.meta?.total || (res.data.data ? res.data.data.length : 0),
+    };
   },
 
   async getCustomerById(id: string): Promise<{ customer: User; orders: Order[] }> {
@@ -177,7 +157,7 @@ export const adminService = {
 
   async getReports(params?: { startDate?: string; endDate?: string }): Promise<ReportItem[]> {
     try {
-      const res = await api.get<{ success: boolean; data: ReportItem[] }>('/admin/reports', { params });
+      const res = await api.get<{ success: boolean; data: ReportItem[] }>('/admin/reports/orders', { params });
       return res.data.data || [];
     } catch {
       return [];
@@ -185,37 +165,29 @@ export const adminService = {
   },
 
   async getSettings(): Promise<AgencySettings> {
-    try {
-      const res = await api.get<any>('/admin/settings');
-      const raw = res.data.data;
-      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-        return {
-          ...fallbackSettings,
-          ...raw,
-          deliveryAreas: Array.isArray(raw.deliveryAreas) ? raw.deliveryAreas : fallbackSettings.deliveryAreas,
-        };
-      }
-      return fallbackSettings;
-    } catch {
-      return fallbackSettings;
+    const res = await api.get<any>('/admin/settings');
+    const raw = res.data.data;
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      throw new Error('Agency settings response is invalid.');
     }
+    return {
+      ...fallbackSettings,
+      ...raw,
+      deliveryAreas: Array.isArray(raw.deliveryAreas) ? raw.deliveryAreas : fallbackSettings.deliveryAreas,
+    };
   },
 
   async getPublicSettings(): Promise<AgencySettings> {
-    try {
-      const res = await api.get<any>('/settings/public');
-      const raw = res.data?.data;
-      if (raw && typeof raw === 'object') {
-        return {
-          ...fallbackSettings,
-          ...raw,
-          deliveryAreas: Array.isArray(raw.deliveryAreas) ? raw.deliveryAreas : fallbackSettings.deliveryAreas,
-        };
-      }
-      return fallbackSettings;
-    } catch {
-      return fallbackSettings;
+    const res = await api.get<any>('/settings/public');
+    const raw = res.data?.data;
+    if (!raw || typeof raw !== 'object') {
+      throw new Error('Public settings response is invalid.');
     }
+    return {
+      ...fallbackSettings,
+      ...raw,
+      deliveryAreas: Array.isArray(raw.deliveryAreas) ? raw.deliveryAreas : fallbackSettings.deliveryAreas,
+    };
   },
 
   async updateSettings(data: Partial<AgencySettings>): Promise<AgencySettings> {

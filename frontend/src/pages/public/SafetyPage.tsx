@@ -55,7 +55,7 @@ export const SafetyPage: React.FC = () => {
                 <li>Open all windows and doors for ventilation; LPG is heavier than air.</li>
                 <li>Do NOT turn any electrical switch ON or OFF (sparks can ignite gas).</li>
                 <li>Do NOT strike matchsticks, light cigarettes, or use cellphones near leak.</li>
-                <li>Evacuate premises and immediately call our 24/7 hotline.</li>
+                <li>Move to a safe location and call the national LPG emergency number 1906.</li>
               </ol>
             </div>
 

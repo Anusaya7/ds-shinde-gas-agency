@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Role } from '../types';
+import { User } from '../types';
 import { authService, LoginPayload, RegisterPayload } from '../services/auth.service';
 import toast from 'react-hot-toast';
 
@@ -12,7 +12,6 @@ interface AuthContextType {
   register: (data: RegisterPayload) => Promise<User>;
   logout: () => Promise<void>;
   updateUser: (updatedUser: Partial<User>) => void;
-  quickSwitchRole?: (role: Role) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -63,7 +62,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (data: LoginPayload): Promise<User> => {
     try {
-      const response = await authService.login(data);
+      const response =
+        data.type === 'OTP' && data.otp
+          ? await authService.verifyOtp(
+              data.identifier,
+              data.otp,
+              data.role || 'CUSTOMER',
+              data.purpose || 'LOGIN',
+              data.name
+            )
+          : await authService.login(data);
       const authToken = response.token || response.accessToken || '';
       setToken(authToken);
       setUser(response.user);
@@ -115,23 +123,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('user', JSON.stringify(updated));
   };
 
-  // Helper for quick demonstration if needed
-  const quickSwitchRole = (role: Role) => {
-    const demoUser: User = {
-      id: `demo-${role.toLowerCase()}`,
-      name: role === 'ADMIN' ? 'Admin Manager' : role === 'RIDER' ? 'Ramesh Delivery Rider' : 'Rahul Sharma',
-      phone: role === 'ADMIN' ? '9511760208' : role === 'RIDER' ? '9975300929' : '9876543210',
-      email: `${role.toLowerCase()}@dsshindegas.com`,
-      role,
-      isActive: true,
-    };
-    setUser(demoUser);
-    setToken(`demo-token-${role.toLowerCase()}`);
-    localStorage.setItem('token', `demo-token-${role.toLowerCase()}`);
-    localStorage.setItem('user', JSON.stringify(demoUser));
-    toast.success(`Switched to ${role} demo profile`);
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -143,7 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         logout,
         updateUser,
-        quickSwitchRole,
       }}
     >
       {children}

@@ -7,6 +7,52 @@ import { ApiResponse } from '../utils/apiResponse.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
 
 export class RiderController {
+  static async getDashboardStats(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const rider = await prisma.rider.findUnique({ where: { userId: req.user!.id } });
+      if (!rider) throw new NotFoundError('Rider profile not found');
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const activeStatuses: OrderStatus[] = [
+        OrderStatus.RIDER_ASSIGNED,
+        OrderStatus.OUT_FOR_DELIVERY,
+        OrderStatus.ARRIVED,
+        OrderStatus.OTP_PENDING,
+      ];
+      const [assignedCount, activeDeliveryCount, completedTodayCount, totalDelivered, cashAggregate] =
+        await Promise.all([
+          prisma.order.count({ where: { riderId: rider.id, status: OrderStatus.RIDER_ASSIGNED } }),
+          prisma.order.count({
+            where: { riderId: rider.id, status: { in: activeStatuses.filter((status) => status !== OrderStatus.RIDER_ASSIGNED) } },
+          }),
+          prisma.order.count({
+            where: { riderId: rider.id, status: OrderStatus.DELIVERED, deliveredAt: { gte: today } },
+          }),
+          prisma.order.count({ where: { riderId: rider.id, status: OrderStatus.DELIVERED } }),
+          prisma.payment.aggregate({
+            where: {
+              collectedById: req.user!.id,
+              status: 'PAID',
+              method: 'COD',
+              createdAt: { gte: today },
+            },
+            _sum: { amount: true },
+          }),
+        ]);
+
+      ApiResponse.success(res, {
+        assignedCount,
+        activeDeliveryCount,
+        completedTodayCount,
+        totalDelivered,
+        totalCashCollected: Number(cashAggregate._sum.amount || 0),
+      }, 'Rider dashboard statistics retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   /**
    * Get active orders assigned to the logged-in rider
    */

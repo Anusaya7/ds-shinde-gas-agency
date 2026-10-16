@@ -1,12 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Flame, Phone, Mail, MapPin, ShieldCheck, Clock, Award } from 'lucide-react';
+import { Flame, Phone, Mail, MapPin, ShieldCheck, Clock } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
 
 export const Footer: React.FC = () => {
   const { settings } = useSettings();
 
-  const agencyName = settings.agencyName || 'D.S SHINDE GAS AGENCY';
+  const agencyName = 'DS Shinde Gas';
   const primaryPhone = settings.primaryPhone || '9511760208';
   const secondaryPhone = settings.secondaryPhone || '9975300929';
   const email = settings.email || 'support@dsshindegas.com';
@@ -28,20 +28,20 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p className="text-sm text-blue-100/80 leading-relaxed mb-6">
-              Premier certified distributor providing dependable domestic & commercial LPG cylinder delivery, safe cylinder installations, and expedited doorstep refills.
+              LPG cylinder booking for households and local businesses, with clear order status, customer support, and delivery handover guidance.
             </p>
             <div className="flex flex-col gap-2.5 text-xs text-blue-200">
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>100% Certified Cylinders & Weight Check</span>
+                <span>Review your cylinder at handover</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-[#F59E0B]" />
                 <span>Delivery: {businessHours}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Award className="w-4 h-4 text-[#F59E0B]" />
-                <span>Govt. Standard Safety Compliant</span>
+                <ShieldCheck className="w-4 h-4 text-[#F59E0B]" />
+                <span>LPG safety guidance for customers</span>
               </div>
             </div>
           </div>
@@ -71,40 +71,25 @@ export const Footer: React.FC = () => {
                 <Link to="/faq" className="hover:text-[#F59E0B] transition-colors">Frequently Asked Questions (FAQ)</Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-[#F59E0B] transition-colors">About D.S Shinde Agency</Link>
+                <Link to="/about" className="hover:text-[#F59E0B] transition-colors">                About DS Shinde Gas</Link>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Agency Portals & Customer Care */}
+          {/* Col 3: Booking & Customer Care */}
           <div>
             <h4 className="text-sm font-black text-white mb-4 uppercase tracking-wider border-b border-blue-900/80 pb-2">
-              Agency Portals & Access
+              Bookings & Support
             </h4>
             <ul className="space-y-2.5 text-sm text-blue-100/90">
               <li>
-                <Link to="/quick-book" className="hover:text-[#F59E0B] font-bold text-[#F59E0B] transition-colors flex items-center gap-1.5">
-                  ⚡ Instant Cylinder Booking (No Login)
-                </Link>
-              </li>
-              <li>
-                <Link to="/admin/login" className="hover:text-white transition-colors flex items-center gap-1.5 text-blue-200">
-                  🛡️ Admin Management Portal
-                </Link>
-              </li>
-              <li>
                 <Link to="/rider/login" className="hover:text-white transition-colors flex items-center gap-1.5 text-amber-200">
-                  🛵 Delivery Rider Console
+                  Rider Booking
                 </Link>
               </li>
               <li>
                 <Link to="/login" className="hover:text-white transition-colors flex items-center gap-1.5">
-                  👤 Customer Account Login
-                </Link>
-              </li>
-              <li>
-                <Link to="/register" className="hover:text-[#F59E0B] transition-colors">
-                  New Customer Registration
+                  Customer Booking
                 </Link>
               </li>
               <li>
@@ -154,7 +139,7 @@ export const Footer: React.FC = () => {
 
             <div className="mt-5 p-3.5 rounded-xl bg-blue-950/80 border border-blue-900 text-xs text-blue-100">
               <span className="text-red-400 font-bold block mb-1">🚨 Emergency Gas Leak?</span>
-              Turn off regulator knob immediately, open all doors & windows, do not switch electric appliances, and call our hotline instantly.
+              Avoid flames and electrical switches, move to a safe place, and call the national LPG emergency number 1906.
             </div>
           </div>
         </div>

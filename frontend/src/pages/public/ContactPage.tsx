@@ -31,16 +31,13 @@ export const ContactPage: React.FC = () => {
       toast.success('Your message has been sent to our agency team!');
       setFormData({ name: '', phone: '', email: '', subject: '', message: '' });
     } catch (err: any) {
-      // Fallback feedback if offline
-      setSubmitted(true);
-      toast.success('Your message has been submitted to the agency!');
-      setFormData({ name: '', phone: '', email: '', subject: '', message: '' });
+      toast.error(err.response?.data?.message || 'Could not send your message. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const agencyName = settings.agencyName || 'D.S SHINDE GAS AGENCY';
+  const agencyName = settings.agencyName || 'DS Shinde Gas';
   const primaryPhone = settings.primaryPhone || '9511760208';
   const secondaryPhone = settings.secondaryPhone || '9975300929';
   const email = settings.email || 'support@dsshindegas.com';

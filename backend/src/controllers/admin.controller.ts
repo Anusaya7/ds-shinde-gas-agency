@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { OrderStatus, PaymentStatus, Role, NotificationType } from '../constants/enums.js';
 import prisma from '../config/database.js';
 import { ApiResponse } from '../utils/apiResponse.js';
-import { BadRequestError, NotFoundError, ConflictError } from '../utils/errors.js';
+import { BadRequestError, NotFoundError } from '../utils/errors.js';
 import { NotificationService } from '../services/notification.service.js';
+import { recordAuditLog } from '../services/audit.service.js';
 
 export class AdminController {
   /**
@@ -205,6 +205,11 @@ export class AdminController {
       if (existing.status === OrderStatus.CANCELLED || existing.status === OrderStatus.REJECTED) {
         throw new BadRequestError(`Cannot accept order with status: ${existing.status}`);
       }
+      if (existing.status !== OrderStatus.ORDER_PLACED && existing.status !== OrderStatus.AWAITING_REVIEW) {
+        throw new BadRequestError(
+          `Only bookings awaiting review can be accepted (current status: ${existing.status}).`
+        );
+      }
 
       const order = await prisma.$transaction(async (tx) => {
         const ord = await tx.order.update({
@@ -219,6 +224,14 @@ export class AdminController {
             note: 'Order reviewed and accepted by administration',
             changedById: adminId,
           },
+        });
+        await recordAuditLog(tx, {
+          userId: adminId,
+          action: 'ORDER_APPROVE',
+          entity: 'Order',
+          entityId: id,
+          details: `Approved order ${existing.orderNumber}.`,
+          ipAddress: req.ip,
         });
 
         return ord;
@@ -255,6 +268,14 @@ export class AdminController {
       if (!existing) {
         throw new NotFoundError('Order not found');
       }
+      if (existing.status !== OrderStatus.ORDER_PLACED && existing.status !== OrderStatus.AWAITING_REVIEW) {
+        throw new BadRequestError(
+          `Only bookings awaiting review can be rejected (current status: ${existing.status}).`
+        );
+      }
+      if (existing.paymentStatus === PaymentStatus.PAID) {
+        throw new BadRequestError('A paid order cannot be rejected before its payment has been refunded.');
+      }
 
       const order = await prisma.$transaction(async (tx) => {
         const ord = await tx.order.update({
@@ -272,6 +293,14 @@ export class AdminController {
             note: `Order rejected by admin. Reason: ${reason}`,
             changedById: adminId,
           },
+        });
+        await recordAuditLog(tx, {
+          userId: adminId,
+          action: 'ORDER_REJECT',
+          entity: 'Order',
+          entityId: id,
+          details: `Rejected order ${existing.orderNumber}: ${reason}`,
+          ipAddress: req.ip,
         });
 
         return ord;
@@ -522,67 +551,6 @@ export class AdminController {
   }
 
   /**
-   * Create new rider (Creates User + Rider)
-   */
-  static async createRider(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const { name, email, phone, password, vehicleNumber } = req.body;
-
-      if (!name || !phone || !password) {
-        throw new BadRequestError('Name, phone number, and password are required');
-      }
-
-      // Check existing phone/email
-      if (email) {
-        const existingEmail = await prisma.user.findUnique({ where: { email } });
-        if (existingEmail) throw new ConflictError('A user with this email already exists');
-      }
-
-      const existingPhone = await prisma.user.findUnique({ where: { phone } });
-      if (existingPhone) throw new ConflictError('A user with this phone already exists');
-
-      const passwordHash = await bcrypt.hash(password, 10);
-
-      const rider = await prisma.user.create({
-        data: {
-          name,
-          email: email || null,
-          phone,
-          passwordHash,
-          role: Role.RIDER,
-          isActive: true,
-          isVerified: true,
-          riderProfile: {
-            create: {
-              vehicleNumber: vehicleNumber || null,
-              isAvailable: true,
-            },
-          },
-        },
-        include: {
-          riderProfile: true,
-        },
-      });
-
-      ApiResponse.created(
-        res,
-        {
-          id: rider.riderProfile?.id,
-          userId: rider.id,
-          name: rider.name,
-          phone: rider.phone,
-          email: rider.email,
-          vehicleNumber: rider.riderProfile?.vehicleNumber,
-          isAvailable: rider.riderProfile?.isAvailable,
-        },
-        'Rider created successfully'
-      );
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  /**
    * Update rider profile
    */
   static async updateRider(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -703,6 +671,14 @@ export class AdminController {
         prisma.user.count({ where }),
       ]);
 
+      await recordAuditLog(prisma, {
+        userId: req.user!.id,
+        action: 'CUSTOMER_LIST',
+        entity: 'Customer',
+        entityId: 'list',
+        details: `Listed customer accounts; page ${page}.`,
+        ipAddress: req.ip,
+      });
       ApiResponse.paginated(res, customers, total, page, limit, 'Customers retrieved');
     } catch (error) {
       next(error);
@@ -745,6 +721,14 @@ export class AdminController {
         throw new NotFoundError('Customer not found');
       }
 
+      await recordAuditLog(prisma, {
+        userId: req.user!.id,
+        action: 'CUSTOMER_PROFILE_VIEW',
+        entity: 'Customer',
+        entityId: customer.id,
+        details: 'Viewed customer profile, saved addresses, and booking history.',
+        ipAddress: req.ip,
+      });
       ApiResponse.success(res, customer, 'Customer detail retrieved');
     } catch (error) {
       next(error);
@@ -1069,7 +1053,7 @@ export class AdminController {
       const map = new Map(settingsList.map((s) => [s.key, s.value]));
 
       const structured = {
-        agencyName: map.get('agency_name') || 'D.S SHINDE GAS AGENCY',
+        agencyName: 'DS Shinde Gas',
         primaryPhone: map.get('contact_phone_1') || '9511760208',
         secondaryPhone: map.get('contact_phone_2') || '9975300929',
         email: map.get('agency_email') || 'contact@dsshinde.com',
@@ -1079,10 +1063,9 @@ export class AdminController {
           .map((s) => s.trim())
           .filter(Boolean),
         deliveryCharges: Number(map.get('delivery_charge_default') || 50),
-        taxPercentage: Number(map.get('tax_percentage') || 5),
-        onlinePaymentFee: Number(map.get('online_payment_fee_percent') || 0),
-        cardPaymentFee: 15,
-        codPaymentFee: 0,
+        taxPercentage: Number(map.get('tax_percentage') || 0),
+        welcomeOfferEnabled: map.get('welcome_offer_enabled') === 'true',
+        welcomeOfferAmount: Number(map.get('welcome_offer_amount') || 0),
         isOrderingEnabled: true,
         businessHours: map.get('support_hours') || '8:00 AM - 8:00 PM (Monday to Saturday)',
         heroHeadline: map.get('hero_headline') || 'Your Trusted LPG Gas Partner',
@@ -1114,17 +1097,56 @@ export class AdminController {
     try {
       if (req.body.key && req.body.value !== undefined) {
         const { key, value, description } = req.body;
-        const setting = await prisma.agencySetting.upsert({
-          where: { key },
-          update: {
-            value: String(value),
-            ...(description !== undefined && { description }),
-          },
-          create: {
-            key,
-            value: String(value),
-            description,
-          },
+        let settingValue = String(value);
+
+        if (['tax_percentage', 'welcome_offer_amount', 'delivery_charge_default'].includes(key)) {
+          if (typeof value !== 'number' && typeof value !== 'string') {
+            throw new BadRequestError('This setting must be a valid non-negative number.');
+          }
+          if (typeof value === 'string' && !value.trim()) {
+            throw new BadRequestError('This setting must be a valid non-negative number.');
+          }
+          const parsedValue = typeof value === 'string' ? Number(value.trim()) : value;
+          const max = key === 'tax_percentage' ? 100 : Number.POSITIVE_INFINITY;
+          if (!Number.isFinite(parsedValue) || parsedValue < 0 || parsedValue > max) {
+            throw new BadRequestError(
+              key === 'tax_percentage'
+                ? 'Tax percentage must be between 0 and 100.'
+                : 'This setting must be a valid non-negative number.'
+            );
+          }
+          settingValue = String(parsedValue);
+        }
+
+        if (key === 'welcome_offer_enabled') {
+          if (value !== true && value !== false && value !== 'true' && value !== 'false') {
+            throw new BadRequestError('Welcome offer enabled must be true or false.');
+          }
+          settingValue = String(value);
+        }
+
+        const setting = await prisma.$transaction(async (tx) => {
+          const updated = await tx.agencySetting.upsert({
+            where: { key },
+            update: {
+              value: settingValue,
+              ...(description !== undefined && { description }),
+            },
+            create: {
+              key,
+              value: settingValue,
+              description,
+            },
+          });
+          await recordAuditLog(tx, {
+            userId: req.user!.id,
+            action: 'AGENCY_SETTING_UPDATE',
+            entity: 'AgencySetting',
+            entityId: updated.id,
+            details: `Updated setting "${key}".`,
+            ipAddress: req.ip,
+          });
+          return updated;
         });
         ApiResponse.success(res, setting, 'Setting updated successfully');
         return;
@@ -1143,9 +1165,33 @@ export class AdminController {
         const areasStr = Array.isArray(b.deliveryAreas) ? b.deliveryAreas.join(', ') : String(b.deliveryAreas);
         updates.push({ key: 'service_areas', value: areasStr });
       }
-      if (b.deliveryCharges !== undefined) updates.push({ key: 'delivery_charge_default', value: String(b.deliveryCharges) });
-      if (b.taxPercentage !== undefined) updates.push({ key: 'tax_percentage', value: String(b.taxPercentage) });
-      if (b.onlinePaymentFee !== undefined) updates.push({ key: 'online_payment_fee_percent', value: String(b.onlinePaymentFee) });
+      if (b.deliveryCharges !== undefined) {
+        const deliveryCharges = Number(b.deliveryCharges);
+        if (!Number.isFinite(deliveryCharges) || deliveryCharges < 0) {
+          throw new BadRequestError('Delivery charge must be a non-negative number.');
+        }
+        updates.push({ key: 'delivery_charge_default', value: String(deliveryCharges) });
+      }
+      if (b.taxPercentage !== undefined) {
+        const taxPercentage = Number(b.taxPercentage);
+        if (!Number.isFinite(taxPercentage) || taxPercentage < 0 || taxPercentage > 100) {
+          throw new BadRequestError('Tax percentage must be between 0 and 100.');
+        }
+        updates.push({ key: 'tax_percentage', value: String(taxPercentage) });
+      }
+      if (b.welcomeOfferEnabled !== undefined && typeof b.welcomeOfferEnabled !== 'boolean') {
+        throw new BadRequestError('Welcome offer enabled must be true or false.');
+      }
+      if (b.welcomeOfferEnabled !== undefined) {
+        updates.push({ key: 'welcome_offer_enabled', value: String(Boolean(b.welcomeOfferEnabled)) });
+      }
+      if (b.welcomeOfferAmount !== undefined) {
+        const amount = Number(b.welcomeOfferAmount);
+        if (!Number.isFinite(amount) || amount < 0) {
+          throw new BadRequestError('Welcome offer amount must be a non-negative number.');
+        }
+        updates.push({ key: 'welcome_offer_amount', value: String(amount) });
+      }
       if (b.businessHours !== undefined) updates.push({ key: 'support_hours', value: String(b.businessHours) });
 
       // CMS & Website Fields
@@ -1163,13 +1209,23 @@ export class AdminController {
       if (b.headerCtaText !== undefined) updates.push({ key: 'header_cta_text', value: String(b.headerCtaText) });
       if (b.headerCtaLink !== undefined) updates.push({ key: 'header_cta_link', value: String(b.headerCtaLink) });
 
-      for (const item of updates) {
-        await prisma.agencySetting.upsert({
-          where: { key: item.key },
-          update: { value: item.value },
-          create: { key: item.key, value: item.value },
+      await prisma.$transaction(async (tx) => {
+        for (const item of updates) {
+          await tx.agencySetting.upsert({
+            where: { key: item.key },
+            update: { value: item.value },
+            create: { key: item.key, value: item.value },
+          });
+        }
+        await recordAuditLog(tx, {
+          userId: req.user!.id,
+          action: 'AGENCY_SETTINGS_UPDATE',
+          entity: 'AgencySetting',
+          entityId: 'configuration',
+          details: `Updated settings: ${updates.map((setting) => setting.key).join(', ')}.`,
+          ipAddress: req.ip,
         });
-      }
+      });
 
       ApiResponse.success(res, b, 'Settings updated successfully');
     } catch (error) {

@@ -24,9 +24,9 @@ export const ProductsPage: React.FC = () => {
   const filteredProducts = products.filter((prod) => {
     const matchesCategory = selectedCategory === 'ALL' || prod.type === selectedCategory;
     const matchesSearch =
-      prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.size.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      prod.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (prod.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (prod.size || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (prod.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 

@@ -4,9 +4,9 @@ import { Flame, Phone, Mail, MapPin, ShieldCheck, Clock, Award } from 'lucide-re
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-primaryDark text-white pt-16 pb-12 border-t-4 border-accent">
+    <footer className="bg-primaryDark text-white pt-12 pb-8 border-t-4 border-accent">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
           {/* Col 1: Brand & Bio */}
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -88,11 +88,6 @@ export const Footer: React.FC = () => {
                 <Link to="/login" className="hover:text-accentLight transition-colors">Customer Portal Login</Link>
               </li>
               <li>
-                <Link to="/login" className="text-amber-300 font-semibold hover:text-white transition-colors flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5" /> Staff & Admin Portal
-                </Link>
-              </li>
-              <li>
                 <Link to="/register" className="hover:text-accentLight transition-colors">New Connection Registration</Link>
               </li>
             </ul>
@@ -128,7 +123,7 @@ export const Footer: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-5 p-3 rounded-lg bg-blue-900/60 border border-blue-800 text-xs">
+            <div className="mt-5 p-3 rounded-lg bg-blue-900/60 border border-blue-800 text-xs text-blue-100">
               <span className="text-red-400 font-bold block mb-1">🚨 Emergency Gas Leak?</span>
               Turn off regulator immediately, open windows, do not switch electric appliances, and call our helpline instantly.
             </div>
@@ -136,13 +131,13 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom copyright bar */}
-        <div className="mt-12 pt-8 border-t border-blue-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-blue-300 gap-4">
+        <div className="pt-6 border-t border-blue-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-blue-300 gap-4">
           <p>© {new Date().getFullYear()} D.S SHINDE GAS AGENCY. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <Link to="/privacy" className="hover:text-white">Privacy</Link>
-            <Link to="/terms" className="hover:text-white">Terms</Link>
-            <Link to="/refund-policy" className="hover:text-white">Refunds</Link>
-            <Link to="/contact" className="hover:text-white">Help</Link>
+            <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+            <Link to="/refund-policy" className="hover:text-white transition-colors">Refunds</Link>
+            <Link to="/contact" className="hover:text-white transition-colors">Help</Link>
           </div>
         </div>
       </div>

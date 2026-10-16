@@ -45,3 +45,5 @@ desktop.ini
 *.swo
 
 .vercel
+
+*.tsbuildinfo

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Flame,
   MapPin,
@@ -104,13 +104,29 @@ export const NewOrder: React.FC = () => {
         setProducts(prods.filter((p) => p.inStock && p.isActive));
 
         // Default 1 qty of standard 14.2kg if available
-        const defaultProd = prods.find((p) => p.size.includes('14.2')) || prods[0];
+        const defaultProd = prods.find((p) => (p?.size || '').includes('14.2')) || prods[0];
         if (defaultProd) {
           setCart({ [defaultProd.id]: 1 });
         }
       })
       .finally(() => setLoading(false));
   }, [user]);
+
+  // Handle pre-selected cylinder from homepage or other entry points
+  const location = useLocation();
+  const preSelectKg = location.state?.preSelectKg;
+  const preSelectProductId = location.state?.preSelectProductId;
+
+  // Apply pre-selection after products are loaded
+  useEffect(() => {
+    if (preSelectKg && preSelectProductId && !loading) {
+      const cleanKg = preSelectKg.replace(' KG', '').trim();
+      const prod = products.find((p) => p.id === preSelectProductId || (p?.size || '').includes(cleanKg));
+      if (prod) {
+        setCart({ [prod.id]: 1 });
+      }
+    }
+  }, [preSelectKg, preSelectProductId, products, loading]);
 
   const handleAddressSelect = (id: string) => {
     setSelectedAddressId(id);

@@ -2,7 +2,7 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'accent' | 'outline' | 'ghost' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'accent' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
@@ -21,27 +21,27 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none select-none';
+    'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none select-none';
 
   const sizeStyles = {
-    sm: 'text-xs px-3 py-1.5 gap-1.5 min-h-[34px]',
-    md: 'text-sm px-4 py-2.5 gap-2 min-h-[42px]',
-    lg: 'text-base px-6 py-3 gap-2.5 min-h-[48px]',
+    sm: 'text-xs px-3 py-1.5 gap-1.5 min-h-[36px]',
+    md: 'text-sm px-5 py-2.5 gap-2 min-h-[44px]',
+    lg: 'text-base px-7 py-3.5 gap-2.5 min-h-[52px]',
   };
 
   const variantStyles = {
     primary:
-      'bg-primary text-white hover:bg-primaryDark focus:ring-primary shadow-sm hover:shadow',
-    accent:
-      'bg-accent text-white hover:bg-accent-dark focus:ring-accent shadow-sm hover:shadow',
+      'bg-secondary text-white hover:bg-secondary-dark focus:ring-secondary/40 shadow-soft hover:shadow-card-hover',
     secondary:
-      'bg-gray-100 text-gray-800 hover:bg-gray-200 focus:ring-gray-300',
+      'bg-white text-primary border border-primary/30 hover:bg-primary/5 hover:border-primary/50 focus:ring-primary/40 shadow-soft',
+    accent:
+      'bg-accent text-white hover:bg-accent-dark focus:ring-accent/40 shadow-soft hover:shadow-card-hover',
     outline:
-      'border border-primary text-primary hover:bg-primary hover:text-white focus:ring-primary bg-transparent',
+      'border-2 border-secondary text-secondary hover:bg-secondary hover:text-white focus:ring-secondary/40 bg-transparent shadow-none',
     ghost:
-      'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-300 bg-transparent',
+      'text-text-secondary hover:bg-background-tertiary hover:text-text-primary focus:ring-background-tertiary bg-transparent shadow-none',
     danger:
-      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm',
+      'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500/40 shadow-soft',
   };
 
   return (

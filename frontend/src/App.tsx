@@ -44,6 +44,8 @@ import { ProductManagement } from './pages/admin/ProductManagement';
 import { Reports } from './pages/admin/Reports';
 import { AdminSettings } from './pages/admin/AdminSettings';
 import { AdminNotifications } from './pages/admin/AdminNotifications';
+import { WebsiteCms } from './pages/admin/WebsiteCms';
+import { AdminEnquiries } from './pages/admin/AdminEnquiries';
 
 // Rider Pages
 import { RiderDashboard } from './pages/rider/RiderDashboard';
@@ -127,6 +129,8 @@ export const App: React.FC = () => {
         <Route path="products" element={<ProductManagement />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="cms" element={<WebsiteCms />} />
+        <Route path="enquiries" element={<AdminEnquiries />} />
         <Route path="notifications" element={<AdminNotifications />} />
       </Route>
 

@@ -154,6 +154,32 @@ export interface AgencySettings {
   codPaymentFee: number;
   isOrderingEnabled: boolean;
   businessHours: string;
+  // CMS & Public Site Fields
+  heroHeadline?: string;
+  heroSubheadline?: string;
+  heroDescription?: string;
+  heroPrimaryCtaText?: string;
+  heroPrimaryCtaLink?: string;
+  heroSecondaryCtaText?: string;
+  heroSecondaryCtaLink?: string;
+  heroImageUrl?: string;
+  cylinderSectionTitle?: string;
+  cylinderSectionSubtitle?: string;
+  announcementBanner?: string;
+  headerCtaText?: string;
+  headerCtaLink?: string;
+}
+
+export interface ContactEnquiry {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  subject?: string;
+  message: string;
+  status: 'NEW' | 'REVIEWED' | 'RESOLVED';
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface AppNotification {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Phone, Mail, MapPin, DollarSign, Clock, ShieldCheck, Plus, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Settings, Save, Phone, Mail, MapPin, DollarSign, Clock, ShieldCheck, Plus, X, Globe, ArrowRight } from 'lucide-react';
 import { adminService, fallbackSettings } from '../../services/admin.service';
 import { AgencySettings } from '../../types';
 import { Button } from '../../components/ui/Button';
@@ -68,11 +69,19 @@ export const AdminSettings: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Agency Configuration & Rules</h1>
-        <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-          Configure agency contact helplines, coverage zones, tariffs, and payment gateways
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Agency Configuration & Rules</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+            Configure agency contact helplines, coverage zones, tariffs, and payment gateways
+          </p>
+        </div>
+        <Link
+          to="/admin/cms"
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200 text-xs font-bold transition-colors"
+        >
+          <Globe className="w-4 h-4" /> Manage Website CMS <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">

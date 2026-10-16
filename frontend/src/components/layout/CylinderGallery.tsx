@@ -6,6 +6,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { productService } from '../../services/product.service';
 import { Product } from '../../types';
 
+import { useSettings } from '../../contexts/SettingsContext';
+
 interface CylinderConfig {
   kg: string;
   title: string;
@@ -49,7 +51,7 @@ const CYLINDER_CATALOG: CylinderConfig[] = [
     title: '19.2 KG Large Domestic',
     description: 'High-capacity domestic cylinder for large families and extended usage with fewer refills needed.',
     useCase: 'Best for: Large families, heavy usage',
-    image: '/assets/cylinders/19kg.svg',
+    image: '/assets/cylinders/19kg.jpg',
     fallbackColor: '#8bc34a',
     productType: 'DOMESTIC',
   },
@@ -58,7 +60,7 @@ const CYLINDER_CATALOG: CylinderConfig[] = [
     title: '33 KG Commercial LPG',
     description: 'Standard commercial blue cylinder specifically engineered for restaurants, hotels, and heavy kitchen use.',
     useCase: 'Best for: Restaurants, hotels, canteens',
-    image: '/assets/cylinders/33kg.svg',
+    image: '/assets/cylinders/33kg.jpg',
     fallbackColor: '#7cb342',
     productType: 'COMMERCIAL',
   },
@@ -76,7 +78,7 @@ const CYLINDER_CATALOG: CylinderConfig[] = [
     title: '425 KG Industrial Vessel',
     description: 'Bulk LPG storage vessel for industrial plants, large manufacturing, and centralized gas distribution.',
     useCase: 'Best for: Industrial plants, bulk supply',
-    image: '/assets/cylinders/425kg.svg',
+    image: '/assets/cylinders/425kg.jpg',
     fallbackColor: '#17365D',
     productType: 'COMMERCIAL',
   },
@@ -204,6 +206,7 @@ const CylinderCard: React.FC<CylinderCardProps> = ({
 
 export const CylinderGallery: React.FC = () => {
   const { isAuthenticated } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
   const [products, setProducts] = React.useState<Product[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -228,21 +231,23 @@ export const CylinderGallery: React.FC = () => {
     });
   };
 
+  const sectionTitle = settings.cylinderSectionTitle || 'Explore Our LPG Cylinder Sizes';
+  const sectionSubtitle = settings.cylinderSectionSubtitle || 'Choose a cylinder capacity that matches your requirements.';
+
   return (
     <section className="py-16 bg-background-primary" id="cylinder-gallery">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-12">
           <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary text-xs font-bold uppercase tracking-wider">
-            <Flame className="w-3.5 h-3.5" />
+            <Flame className="w-3.5 h-3.5 text-accent" />
             Cylinder Catalog
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold text-text-primary mt-4 tracking-tight">
-            Explore Our LPG Cylinder Sizes
+            {sectionTitle}
           </h2>
           <p className="text-base text-text-secondary mt-3 max-w-2xl mx-auto">
-            Find the right capacity for your home, commercial kitchen, business or industrial use.
-            All cylinders are weight-verified and safety-sealed before dispatch.
+            {sectionSubtitle}
           </p>
         </div>
 

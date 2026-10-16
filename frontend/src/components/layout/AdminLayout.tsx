@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   ExternalLink,
+  Globe,
+  Mail,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -29,6 +31,8 @@ export const AdminLayout: React.FC = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/admin', icon: LayoutDashboard, exact: true },
+    { name: 'Website CMS', path: '/admin/cms', icon: Globe },
+    { name: 'Customer Inquiries', path: '/admin/enquiries', icon: Mail },
     { name: 'Orders Dispatch', path: '/admin/orders', icon: Package },
     { name: 'Delivery Riders', path: '/admin/riders', icon: Bike },
     { name: 'Customer Directory', path: '/admin/customers', icon: Users },

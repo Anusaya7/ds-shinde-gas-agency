@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Flame, Truck, ShieldCheck, CreditCard, Layers, ArrowRight, Phone, Search, CheckCircle2, Clock, Sparkles, MapPin, HelpCircle, DollarSign, Users, Calendar, Mail } from 'lucide-react';
+import { Flame, Truck, ShieldCheck, CreditCard, Layers, ArrowRight, Phone, Search, CheckCircle2, Clock, Sparkles, MapPin, HelpCircle, DollarSign, Users, Calendar, Mail, Award, Check } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { CylinderGallery } from '../../components/layout/CylinderGallery';
 import { productService } from '../../services/product.service';
 import { Product } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 export const HomePage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [trackOrderNumber, setTrackOrderNumber] = useState('');
   const { isAuthenticated } = useAuth();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,156 +28,195 @@ export const HomePage: React.FC = () => {
     navigate(`/dashboard/orders/${trackOrderNumber.trim()}/track`);
   };
 
+  const heroHeadline = settings.heroHeadline || 'Your Trusted LPG Gas Partner';
+  const heroSubheadline = settings.heroSubheadline || 'Reliable LPG Cylinder Solutions for Home and Business';
+  const heroDescription = settings.heroDescription || 'Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.';
+  const heroPrimaryCtaText = settings.heroPrimaryCtaText || 'Order a Cylinder';
+  const heroPrimaryCtaLink = settings.heroPrimaryCtaLink || '/dashboard/orders/new';
+  const heroSecondaryCtaText = settings.heroSecondaryCtaText || 'Explore Cylinder Sizes';
+  const heroSecondaryCtaLink = settings.heroSecondaryCtaLink || '#cylinder-gallery';
+  const heroImageUrl = settings.heroImageUrl || '/assets/cylinders/hero-cylinder.jpg';
+
   return (
     <div className="space-y-0">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-primary/5 via-background-primary to-secondary/5 py-16 sm:py-24 overflow-hidden">
-          {/* Abstract decorative elements */}
-          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 rounded-full bg-accent/15 blur-3xl pointer-events-none" />
+      <section className="relative bg-[#F3F8FD] py-14 sm:py-20 overflow-hidden border-b border-[#E2E8F0]">
+        {/* Soft background ambient glows */}
+        <div className="absolute top-0 right-0 -mr-20 -mt-20 w-[450px] h-[450px] rounded-full bg-[#2878C8]/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-[380px] h-[380px] rounded-full bg-[#F59E0B]/10 blur-3xl pointer-events-none" />
 
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-              {/* Left Content */}
-              <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
-                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs sm:text-sm font-semibold text-primary">
-                  <Sparkles className="w-4 h-4 text-secondary" />
-                  <span>Trusted LPG Distributor Since Years</span>
-                </div>
-
-                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-text-primary">
-                  Reliable LPG Cylinders. Delivered with <span className="text-secondary">Care.</span>
-                </h1>
-
-                <p className="text-base sm:text-lg text-text-secondary max-w-2xl leading-relaxed">
-                  Choose the right cylinder size for your home, business or industrial requirements.
-                  All cylinders are weight-verified, safety-sealed, and delivered with complete documentation.
-                </p>
-
-                {/* CTAs */}
-                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                  <Link to={isAuthenticated ? '/dashboard/orders/new' : '/login'} className="w-full sm:w-auto">
-                    <Button
-                      variant="accent"
-                      size="lg"
-                      className="w-full sm:w-auto text-base font-bold shadow-xl hover:scale-105 transition-all"
-                      leftIcon={<Truck className="w-5 h-5" />}
-                    >
-                      Order a Cylinder
-                    </Button>
-                  </Link>
-
-                  <a href="#cylinder-gallery" className="w-full sm:w-auto">
-                    <Button
-                      variant="outline"
-                      size="lg"
-                      className="w-full sm:w-auto text-text-primary border-primary/30 hover:bg-primary/5 hover:border-primary/50 transition-all"
-                      leftIcon={<Search className="w-5 h-5" />}
-                    >
-                      Explore Cylinder Sizes
-                    </Button>
-                  </a>
-                </div>
-
-                {/* Trust indicators */}
-                <div className="pt-6 border-t border-border-light grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-                    <span className="text-xs sm:text-sm text-text-secondary">Weight Checked</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-                    <span className="text-xs sm:text-sm text-text-secondary">Safety Sealed</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-                    <span className="text-xs sm:text-sm text-text-secondary">Documented</span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-                    <span className="text-xs sm:text-sm text-text-secondary">24/7 Support</span>
-                  </div>
-                </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#2878C8]/10 border border-[#2878C8]/25 text-xs sm:text-sm font-bold text-[#17365D]">
+                <Sparkles className="w-4 h-4 text-[#F59E0B]" />
+                <span>Govt. Authorized LPG Cylinder Distributor</span>
               </div>
 
-              {/* Right Side - Trust Card */}
-              <div className="lg:col-span-5" id="quick-track">
-                <div className="bg-white rounded-2xl shadow-card-hover p-6 sm:p-8 border border-border-light relative overflow-hidden">
-                  {/* Subtle accent */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full -mr-16 -mt-16" />
+              <div className="space-y-3">
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-[#17365D]">
+                  {heroHeadline}
+                </h1>
+                <p className="text-lg sm:text-xl font-bold text-[#2878C8]">
+                  {heroSubheadline}
+                </p>
+              </div>
 
-                  <div className="relative z-10">
-                    <div className="flex items-center justify-between pb-4 border-b border-border-light">
-                      <div>
-                        <h3 className="text-lg font-bold text-text-primary">Track Your Order</h3>
-                        <p className="text-xs text-text-secondary">Enter order number to track delivery status</p>
-                      </div>
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                        <Truck className="w-5 h-5" />
-                      </div>
+              <p className="text-base sm:text-lg text-[#64748B] max-w-2xl leading-relaxed">
+                {heroDescription}
+              </p>
+
+              {/* CTAs */}
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                <Link
+                  to={isAuthenticated ? heroPrimaryCtaLink : '/login'}
+                  className="w-full sm:w-auto"
+                >
+                  <Button
+                    variant="accent"
+                    size="lg"
+                    className="w-full sm:w-auto text-base font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all bg-[#F59E0B] hover:bg-[#d98206] text-white border-0"
+                    leftIcon={<Truck className="w-5 h-5" />}
+                  >
+                    {heroPrimaryCtaText}
+                  </Button>
+                </Link>
+
+                <a href={heroSecondaryCtaLink} className="w-full sm:w-auto">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full sm:w-auto text-[#17365D] border-[#2878C8]/30 hover:bg-[#2878C8]/10 hover:border-[#2878C8] font-bold transition-all"
+                    leftIcon={<Search className="w-5 h-5 text-[#2878C8]" />}
+                  >
+                    {heroSecondaryCtaText}
+                  </Button>
+                </a>
+              </div>
+
+              {/* Trust indicators */}
+              <div className="pt-6 border-t border-[#E2E8F0] grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-[#15803D] shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold text-[#1F2937]">Weight Checked</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-[#15803D] shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold text-[#1F2937]">Safety Sealed</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-[#15803D] shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold text-[#1F2937]">100% Inspected</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-[#15803D] shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold text-[#1F2937]">Express Dispatch</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Photorealistic Cylinder & Trust Visual */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative mx-auto max-w-md lg:max-w-none">
+                {/* Visual frame with soft glowing backdrop */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-[#2878C8]/20 to-[#F59E0B]/20 rounded-3xl transform rotate-2 scale-95 blur-xl pointer-events-none" />
+
+                <div className="relative bg-white rounded-3xl p-6 shadow-2xl border border-[#E2E8F0] overflow-hidden flex flex-col items-center">
+                  {/* Floating badge top */}
+                  <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-[#17365D] text-white px-3.5 py-1.5 rounded-full text-xs font-bold shadow-md">
+                    <Award className="w-4 h-4 text-[#F59E0B]" />
+                    <span>PESO & ISI Certified</span>
+                  </div>
+
+                  {/* Cylinder Image */}
+                  <div className="w-full aspect-[4/4] flex items-center justify-center p-4 relative">
+                    <img
+                      src={heroImageUrl}
+                      alt="D.S Shinde LPG Cylinder"
+                      className="max-h-[340px] w-auto object-contain drop-shadow-2xl transition-transform duration-500 hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.src = '/assets/cylinders/hero-cylinder.jpg';
+                      }}
+                    />
+                  </div>
+
+                  {/* Floating feature pills beneath image */}
+                  <div className="w-full pt-3 border-t border-[#E2E8F0] grid grid-cols-2 gap-3 text-center">
+                    <div className="bg-[#F3F8FD] p-2.5 rounded-xl border border-[#E2E8F0]">
+                      <span className="block text-xs font-extrabold text-[#17365D]">Tare-Weight Tested</span>
+                      <span className="text-[11px] text-[#64748B]">Digital scale verification</span>
                     </div>
-
-                    <form onSubmit={handleTrackSubmit} className="mt-5 space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-text-primary uppercase tracking-wider mb-1.5">
-                          Order Number / Reference ID
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={trackOrderNumber}
-                            onChange={(e) => setTrackOrderNumber(e.target.value)}
-                            placeholder="e.g. ORD-1001 or DS-2026-..."
-                            className="w-full px-4 py-3 rounded-lg border border-border-light focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition-colors"
-                            required
-                          />
-                        </div>
-                      </div>
-
-                      <Button
-                        type="submit"
-                        variant="primary"
-                        size="md"
-                        className="w-full font-bold shadow-soft hover:shadow-card-hover"
-                        rightIcon={<ArrowRight className="w-4 h-4" />}
-                      >
-                        Track Delivery Status
-                      </Button>
-                    </form>
-
-                    <div className="mt-6 pt-5 border-t border-border-light space-y-3">
-                      <p className="text-xs font-semibold text-text-primary uppercase tracking-wider">
-                        Need immediate service?
-                      </p>
-                      <div className="p-3 rounded-xl bg-background-secondary border border-border-light flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-accent block">Standard 14.2 kg Refill</span>
-                          <span className="text-xs text-text-secondary">Quick booking for registered homes</span>
-                        </div>
-                        <Link
-                          to={isAuthenticated ? '/dashboard/orders/new' : '/login'}
-                          className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1"
-                        >
-                          Book <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
+                    <div className="bg-[#F3F8FD] p-2.5 rounded-xl border border-[#E2E8F0]">
+                      <span className="block text-xs font-extrabold text-[#17365D]">Tamper-Proof Seal</span>
+                      <span className="text-[11px] text-[#64748B]">Zero leakage guarantee</span>
                     </div>
+                  </div>
+                </div>
 
-                    {/* Call helpline prompt */}
-                    <div className="mt-4 text-center">
-                      <p className="text-xs text-text-secondary">
-                        Prefer booking on phone? Call{' '}
-                        <a href="tel:9511760208" className="font-bold text-primary hover:underline">
-                          9511760208
-                        </a>
-                      </p>
-                    </div>
+                {/* Floating bottom badge */}
+                <div className="absolute -bottom-4 right-4 z-20 hidden sm:flex items-center gap-2 bg-white text-[#17365D] border border-[#E2E8F0] px-4 py-2 rounded-2xl shadow-lg">
+                  <div className="w-7 h-7 rounded-full bg-[#15803D]/15 text-[#15803D] flex items-center justify-center font-bold">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-xs font-bold block text-[#17365D]">Rapid Delivery</span>
+                    <span className="text-[10px] text-[#64748B]">Direct to your doorstep</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </section>
+
+          {/* Quick Track & Helplines Strip */}
+          <div className="mt-12 bg-white rounded-2xl p-5 sm:p-6 shadow-md border border-[#E2E8F0]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+              <div className="lg:col-span-4 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-[#2878C8]/10 text-[#2878C8] flex items-center justify-center shrink-0">
+                  <Truck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-[#17365D] uppercase tracking-wider">Quick Order Tracking</h3>
+                  <p className="text-xs text-[#64748B]">Live GPS delivery status for active orders</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleTrackSubmit} className="lg:col-span-5 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={trackOrderNumber}
+                  onChange={(e) => setTrackOrderNumber(e.target.value)}
+                  placeholder="Enter order ID (e.g. ORD-1001)..."
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2878C8] text-sm text-[#1F2937]"
+                  required
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  className="bg-[#2878C8] hover:bg-[#1f63a6] text-white font-bold shrink-0 shadow-sm"
+                  rightIcon={<ArrowRight className="w-4 h-4" />}
+                >
+                  Track
+                </Button>
+              </form>
+
+              <div className="lg:col-span-3 flex items-center justify-end gap-2 text-right">
+                <div className="text-right">
+                  <span className="text-[11px] text-[#64748B] block font-semibold">Immediate Booking Hotline</span>
+                  <a
+                    href={`tel:${settings.primaryPhone || '9511760208'}`}
+                    className="text-sm font-black text-[#17365D] hover:text-[#2878C8] transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    +91 {settings.primaryPhone || '9511760208'}
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
         {/* Cylinder Gallery - NEW SECTION */}
         <CylinderGallery />
@@ -319,36 +360,38 @@ export const HomePage: React.FC = () => {
         </section>
 
         {/* Contact and customer support */}
-        <section className="bg-primaryDark py-12 text-white">
+        <section className="bg-[#17365D] py-14 text-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-primary rounded-2xl p-8 sm:p-10 border border-blue-800 shadow-xl flex flex-col lg:flex-row items-center justify-between gap-8">
+            <div className="bg-[#1b4170] rounded-3xl p-8 sm:p-10 border border-[#2878C8]/40 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8">
               <div className="space-y-2 text-center lg:text-left">
-                <span className="text-xs font-bold text-accentLight uppercase tracking-wider">
+                <span className="text-xs font-bold text-[#F59E0B] uppercase tracking-wider bg-[#F59E0B]/10 px-3 py-1 rounded-full border border-[#F59E0B]/20">
                   Emergency & Support Hotline
                 </span>
-                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-                  Need Fast Gas Delivery or Urgent Leakage Assistance?
+                <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-2 text-white">
+                  Need Fast Gas Delivery or Leakage Assistance?
                 </h3>
-                <p className="text-sm text-blue-200 max-w-xl">
+                <p className="text-sm text-blue-100 max-w-xl">
                   Our agency operates dedicated lines to assist domestic and commercial patrons with instant dispatch and safety guidelines.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-4 shrink-0">
                 <a
-                  href="tel:9511760208"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-accent hover:bg-accent-dark text-white font-bold text-sm shadow-lg transition-transform hover:scale-105"
+                  href={`tel:${settings.primaryPhone || '9511760208'}`}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#F59E0B] hover:bg-[#d98206] text-white font-bold text-sm shadow-lg transition-transform hover:scale-105"
                 >
-                  <Phone className="w-4 h-4" /> Call 9511760208
+                  <Phone className="w-4 h-4" /> Call +91 {settings.primaryPhone || '9511760208'}
                 </a>
-                <a
-                  href="tel:9975300929"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-blue-800 hover:bg-blue-700 text-white font-bold text-sm border border-blue-600 transition-colors"
-                >
-                  <Phone className="w-4 h-4" /> Call 9975300929
-                </a>
+                {settings.secondaryPhone && (
+                  <a
+                    href={`tel:${settings.secondaryPhone}`}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#2878C8] hover:bg-[#1f63a6] text-white font-bold text-sm border border-[#2878C8]/50 transition-colors shadow-md"
+                  >
+                    <Phone className="w-4 h-4" /> Call +91 {settings.secondaryPhone}
+                  </a>
+                )}
                 <Link to="/contact">
-                  <Button variant="outline" size="md" className="text-white border-blue-400 bg-blue-800/50">
+                  <Button variant="outline" size="md" className="text-white border-white/40 hover:bg-white/10">
                     Contact Us
                   </Button>
                 </Link>

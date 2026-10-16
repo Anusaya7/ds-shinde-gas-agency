@@ -31,14 +31,27 @@ export const fallbackSettings: AgencySettings = {
   secondaryPhone: '9975300929',
   email: 'support@dsshindegas.com',
   address: 'Shop No. 4, Main Road, Near Market Yard, Maharashtra, India',
-  deliveryAreas: ['Central City', 'East Suburb', 'Industrial Area', 'Market Ward', 'North Colony', 'South Avenue'],
+  deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
   deliveryCharges: 0,
   taxPercentage: 5,
   onlinePaymentFee: 0,
   cardPaymentFee: 15,
   codPaymentFee: 0,
   isOrderingEnabled: true,
-  businessHours: '8:00 AM - 8:00 PM (Mon - Sun)',
+  businessHours: '8:00 AM - 8:00 PM (Monday to Saturday)',
+  heroHeadline: 'Your Trusted LPG Gas Partner',
+  heroSubheadline: 'Reliable LPG Cylinder Solutions for Home and Business',
+  heroDescription: 'Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.',
+  heroPrimaryCtaText: 'Order a Cylinder',
+  heroPrimaryCtaLink: '/dashboard/orders/new',
+  heroSecondaryCtaText: 'Explore Cylinder Sizes',
+  heroSecondaryCtaLink: '/#cylinder-gallery',
+  heroImageUrl: '/assets/cylinders/hero-cylinder.jpg',
+  cylinderSectionTitle: 'Explore Our LPG Cylinder Sizes',
+  cylinderSectionSubtitle: 'Choose a cylinder capacity that matches your requirements.',
+  announcementBanner: '',
+  headerCtaText: 'Order Cylinder',
+  headerCtaLink: '/dashboard/orders/new',
 };
 
 export const adminService = {
@@ -175,29 +188,23 @@ export const adminService = {
     try {
       const res = await api.get<any>('/admin/settings');
       const raw = res.data.data;
-      if (Array.isArray(raw)) {
-        const map = new Map(raw.map((s: any) => [s.key, s.value]));
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
         return {
-          agencyName: map.get('agency_name') || fallbackSettings.agencyName,
-          primaryPhone: map.get('contact_phone_1') || fallbackSettings.primaryPhone,
-          secondaryPhone: map.get('contact_phone_2') || fallbackSettings.secondaryPhone,
-          email: map.get('agency_email') || fallbackSettings.email,
-          address: map.get('agency_address') || fallbackSettings.address,
-          deliveryAreas: (map.get('service_areas') || '')
-            .split(',')
-            .map((s: string) => s.trim())
-            .filter(Boolean).length > 0
-            ? (map.get('service_areas') || '').split(',').map((s: string) => s.trim()).filter(Boolean)
-            : fallbackSettings.deliveryAreas,
-          deliveryCharges: Number(map.get('delivery_charge_default') ?? fallbackSettings.deliveryCharges),
-          taxPercentage: Number(map.get('tax_percentage') ?? fallbackSettings.taxPercentage),
-          onlinePaymentFee: Number(map.get('online_payment_fee_percent') ?? fallbackSettings.onlinePaymentFee),
-          cardPaymentFee: fallbackSettings.cardPaymentFee,
-          codPaymentFee: fallbackSettings.codPaymentFee,
-          isOrderingEnabled: fallbackSettings.isOrderingEnabled,
-          businessHours: map.get('support_hours') || fallbackSettings.businessHours,
+          ...fallbackSettings,
+          ...raw,
+          deliveryAreas: Array.isArray(raw.deliveryAreas) ? raw.deliveryAreas : fallbackSettings.deliveryAreas,
         };
       }
+      return fallbackSettings;
+    } catch {
+      return fallbackSettings;
+    }
+  },
+
+  async getPublicSettings(): Promise<AgencySettings> {
+    try {
+      const res = await api.get<any>('/settings/public');
+      const raw = res.data?.data;
       if (raw && typeof raw === 'object') {
         return {
           ...fallbackSettings,
@@ -214,5 +221,24 @@ export const adminService = {
   async updateSettings(data: Partial<AgencySettings>): Promise<AgencySettings> {
     const res = await api.put<any>('/admin/settings', data);
     return res.data.data;
+  },
+
+  async submitContact(data: { name: string; phone: string; email?: string; subject?: string; message: string }): Promise<any> {
+    const res = await api.post('/contact', data);
+    return res.data;
+  },
+
+  async getEnquiries(): Promise<any[]> {
+    try {
+      const res = await api.get<{ success: boolean; data: any[] }>('/admin/enquiries');
+      return res.data?.data || [];
+    } catch {
+      return [];
+    }
+  },
+
+  async updateEnquiryStatus(id: string, status: string): Promise<any> {
+    const res = await api.put(`/admin/enquiries/${id}/status`, { status });
+    return res.data;
   },
 };

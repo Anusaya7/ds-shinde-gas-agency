@@ -33,11 +33,11 @@ export const HowToOrderPage: React.FC = () => {
     },
     {
       step: '03',
-      title: 'Select Cylinder Type & Quantity',
+      title: 'Select Cylinder Capacity & Quantity',
       description:
-        'Pick standard domestic 14.2 kg or 5 kg cylinders, or commercial 19 kg cylinders according to your requirement.',
+        'Choose from our complete 7-tier catalog: 5 KG, 13 KG, 15 KG, 19.2 KG, 33 KG, 50 KG, or 425 KG industrial vessel according to your needs.',
       icon: Flame,
-      color: 'bg-red-100 text-accent',
+      color: 'bg-red-100 text-[#F59E0B]',
     },
     {
       step: '04',

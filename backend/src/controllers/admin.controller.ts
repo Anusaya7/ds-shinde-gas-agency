@@ -1085,6 +1085,19 @@ export class AdminController {
         codPaymentFee: 0,
         isOrderingEnabled: true,
         businessHours: map.get('support_hours') || '8:00 AM - 8:00 PM (Monday to Saturday)',
+        heroHeadline: map.get('hero_headline') || 'Your Trusted LPG Gas Partner',
+        heroSubheadline: map.get('hero_subheadline') || 'Reliable LPG Cylinder Solutions for Home and Business',
+        heroDescription: map.get('hero_description') || 'Explore cylinder capacities, place your order conveniently and manage your delivery through a simple ordering experience.',
+        heroPrimaryCtaText: map.get('hero_primary_cta_text') || 'Order a Cylinder',
+        heroPrimaryCtaLink: map.get('hero_primary_cta_link') || '/dashboard/orders/new',
+        heroSecondaryCtaText: map.get('hero_secondary_cta_text') || 'Explore Cylinder Sizes',
+        heroSecondaryCtaLink: map.get('hero_secondary_cta_link') || '/#cylinder-gallery',
+        heroImageUrl: map.get('hero_image_url') || '/assets/cylinders/hero-cylinder.jpg',
+        cylinderSectionTitle: map.get('cylinder_section_title') || 'Explore Our LPG Cylinder Sizes',
+        cylinderSectionSubtitle: map.get('cylinder_section_subtitle') || 'Choose a cylinder capacity that matches your requirements.',
+        announcementBanner: map.get('announcement_banner') || '',
+        headerCtaText: map.get('header_cta_text') || 'Order Cylinder',
+        headerCtaLink: map.get('header_cta_link') || '/dashboard/orders/new',
         rawSettings: settingsList,
       };
 
@@ -1135,6 +1148,21 @@ export class AdminController {
       if (b.onlinePaymentFee !== undefined) updates.push({ key: 'online_payment_fee_percent', value: String(b.onlinePaymentFee) });
       if (b.businessHours !== undefined) updates.push({ key: 'support_hours', value: String(b.businessHours) });
 
+      // CMS & Website Fields
+      if (b.heroHeadline !== undefined) updates.push({ key: 'hero_headline', value: String(b.heroHeadline) });
+      if (b.heroSubheadline !== undefined) updates.push({ key: 'hero_subheadline', value: String(b.heroSubheadline) });
+      if (b.heroDescription !== undefined) updates.push({ key: 'hero_description', value: String(b.heroDescription) });
+      if (b.heroPrimaryCtaText !== undefined) updates.push({ key: 'hero_primary_cta_text', value: String(b.heroPrimaryCtaText) });
+      if (b.heroPrimaryCtaLink !== undefined) updates.push({ key: 'hero_primary_cta_link', value: String(b.heroPrimaryCtaLink) });
+      if (b.heroSecondaryCtaText !== undefined) updates.push({ key: 'hero_secondary_cta_text', value: String(b.heroSecondaryCtaText) });
+      if (b.heroSecondaryCtaLink !== undefined) updates.push({ key: 'hero_secondary_cta_link', value: String(b.heroSecondaryCtaLink) });
+      if (b.heroImageUrl !== undefined) updates.push({ key: 'hero_image_url', value: String(b.heroImageUrl) });
+      if (b.cylinderSectionTitle !== undefined) updates.push({ key: 'cylinder_section_title', value: String(b.cylinderSectionTitle) });
+      if (b.cylinderSectionSubtitle !== undefined) updates.push({ key: 'cylinder_section_subtitle', value: String(b.cylinderSectionSubtitle) });
+      if (b.announcementBanner !== undefined) updates.push({ key: 'announcement_banner', value: String(b.announcementBanner) });
+      if (b.headerCtaText !== undefined) updates.push({ key: 'header_cta_text', value: String(b.headerCtaText) });
+      if (b.headerCtaLink !== undefined) updates.push({ key: 'header_cta_link', value: String(b.headerCtaLink) });
+
       for (const item of updates) {
         await prisma.agencySetting.upsert({
           where: { key: item.key },
@@ -1144,6 +1172,37 @@ export class AdminController {
       }
 
       ApiResponse.success(res, b, 'Settings updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get all contact enquiries
+   */
+  static async getContactEnquiries(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const enquiries = await (prisma as any).contactEnquiry.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+      ApiResponse.success(res, enquiries, 'Contact enquiries retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update enquiry status (NEW -> REVIEWED -> RESOLVED)
+   */
+  static async updateEnquiryStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const updated = await (prisma as any).contactEnquiry.update({
+        where: { id },
+        data: { status },
+      });
+      ApiResponse.success(res, updated, 'Enquiry status updated successfully');
     } catch (error) {
       next(error);
     }

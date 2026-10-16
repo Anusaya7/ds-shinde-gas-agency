@@ -57,21 +57,7 @@ const settingSchema = z.union([
     value: z.any(),
     description: z.string().optional(),
   }),
-  z.object({
-    agencyName: z.string().optional(),
-    primaryPhone: z.string().optional(),
-    secondaryPhone: z.string().optional(),
-    email: z.string().optional(),
-    address: z.string().optional(),
-    deliveryAreas: z.array(z.string()).optional(),
-    deliveryCharges: z.number().optional(),
-    taxPercentage: z.number().optional(),
-    onlinePaymentFee: z.number().optional(),
-    cardPaymentFee: z.number().optional(),
-    codPaymentFee: z.number().optional(),
-    isOrderingEnabled: z.boolean().optional(),
-    businessHours: z.string().optional(),
-  }),
+  z.record(z.any()),
 ]);
 
 // Dashboard
@@ -109,6 +95,10 @@ router.get('/reports/export', AdminController.exportOrdersCsv);
 // Settings
 router.get('/settings', AdminController.getSettings);
 router.put('/settings', validate(settingSchema), AdminController.updateSettings);
+
+// Contact Enquiries
+router.get('/enquiries', AdminController.getContactEnquiries);
+router.put('/enquiries/:id/status', AdminController.updateEnquiryStatus);
 
 // Notifications
 router.get('/notifications', AdminController.getNotifications);

@@ -33,6 +33,7 @@ DS_Gas/
 
 ### Prerequisites
 - Node.js 18+
+- PostgreSQL 14+
 
 ### 1. Clone & Install
 
@@ -49,10 +50,10 @@ npm install
 ### 2. Database Setup
 
 ```bash
-# Configure the backend environment (SQLite is used for local development)
+# Configure the backend environment
 cd backend
 cp .env.example .env
-# Edit .env and set local secrets
+# Create a PostgreSQL database, then set its URL and local secrets in .env
 
 # Run migrations
 npx prisma migrate dev
@@ -144,7 +145,7 @@ See `backend/.env.example` for the full list. Key variables:
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | Local SQLite file; production needs a durable database and a matching Prisma provider |
+| `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | JWT signing secret |
 | `JWT_REFRESH_SECRET` | Refresh token secret |
 | `RAZORPAY_KEY_ID` | Razorpay API key |
@@ -168,12 +169,11 @@ See `backend/.env.example` for the full list. Key variables:
 
 ## 🏭 Production Deployment
 
-The Vercel build compiles both the backend API bundle and frontend assets. Do not
-enable production bookings until a durable database is configured and the Prisma
-schema and migrations have been set up for it; the current SQLite database is
-for local development and is not durable on serverless functions. Configure the
-required JWT secrets, document-encryption key, payment-provider credentials,
-notification-provider settings, and cron secret in Vercel's environment settings.
+The Vercel build compiles both the backend API bundle and frontend assets. Use a
+durable PostgreSQL database and apply Prisma migrations before serving bookings.
+Configure the required JWT secrets, document-encryption key, payment-provider
+credentials, notification-provider settings, and cron secret in Vercel's
+environment settings.
 
 ## 📞 Business Contact
 - **DS Shinde Gas**

@@ -162,7 +162,7 @@ export const WebsiteCms: React.FC = () => {
                   type="text"
                   value={settings.heroImageUrl || ''}
                   onChange={(e) => setSettings({ ...settings, heroImageUrl: e.target.value })}
-                  placeholder="/assets/cylinders/hero-cylinder.jpg"
+                  placeholder="/assets/cylinders/cylinder-size-range.jpeg"
                   className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                   required
                 />
@@ -173,10 +173,7 @@ export const WebsiteCms: React.FC = () => {
                   className="px-3 py-2.5 rounded-xl border border-gray-300 text-xs font-medium bg-white"
                 >
                   <option value="">Preset Images</option>
-                  <option value="/assets/cylinders/hero-cylinder.jpg">Red Hero Cylinder</option>
-                  <option value="/assets/cylinders/19kg.jpg">19kg Commercial Blue</option>
-                  <option value="/assets/cylinders/33kg.jpg">33kg Commercial Blue</option>
-                  <option value="/assets/cylinders/425kg.jpg">425kg Bullet Vessel</option>
+                  <option value="/assets/cylinders/cylinder-size-range.jpeg">Gaspoint Cylinder Size Guide</option>
                 </select>
               </div>
             </div>
@@ -195,7 +192,7 @@ export const WebsiteCms: React.FC = () => {
           <div className="bg-white rounded-2xl p-6 border border-[#E2E8F0] grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
             <div className="md:col-span-8 space-y-3">
               <span className="inline-block px-3 py-1 rounded-full bg-[#2878C8]/10 text-[#17365D] text-[11px] font-bold">
-                Govt. Authorized LPG Cylinder Distributor
+                Gaspoint LPG cylinder size reference
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-[#17365D] leading-tight">
                 {settings.heroHeadline || 'Your Trusted LPG Gas Partner'}
@@ -218,11 +215,11 @@ export const WebsiteCms: React.FC = () => {
 
             <div className="md:col-span-4 flex items-center justify-center p-3 bg-[#F3F8FD] rounded-2xl border border-[#E2E8F0]">
               <img
-                src={settings.heroImageUrl || '/assets/cylinders/hero-cylinder.jpg'}
-                alt="Hero Preview"
+                src={settings.heroImageUrl || '/assets/cylinders/cylinder-size-range.jpeg'}
+                alt="Gaspoint LPG cylinder size guide preview"
                 className="max-h-36 object-contain"
                 onError={(e) => {
-                  e.currentTarget.src = '/assets/cylinders/hero-cylinder.jpg';
+                  e.currentTarget.src = '/assets/cylinders/cylinder-size-range.jpeg';
                 }}
               />
             </div>
@@ -230,7 +227,7 @@ export const WebsiteCms: React.FC = () => {
         </div>
 
         {/* Cylinder Catalog Section Configuration */}
-        <Card title="Cylinder Gallery Section Headings" subtitle="Customize titles on the 7-cylinder capacity grid">
+        <Card title="Cylinder Size Guide Headings" subtitle="Customize the heading and supporting text shown with the Gaspoint capacity image">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Cylinder Section Title"

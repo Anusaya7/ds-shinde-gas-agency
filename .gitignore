@@ -23,6 +23,7 @@ build/
 *.sqlite3
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
+backend/prisma/schema.local.generated.prisma
 
 # Logs
 logs/
@@ -48,3 +49,7 @@ desktop.ini
 .vercel
 
 *.tsbuildinfo
+
+
+website/.next/
+website/node_modules/

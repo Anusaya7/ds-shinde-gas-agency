@@ -65,7 +65,7 @@ npx prisma db seed
 ### 3. Start Development Servers
 
 ```bash
-# Terminal 1 — Backend (port 5000)
+# Terminal 1 — Backend (port 5000; uses the local SQLite dev.db)
 cd backend
 npm run dev
 
@@ -75,6 +75,12 @@ npm run dev
 ```
 
 Open http://localhost:5173 in your browser.
+
+The local backend generates a SQLite Prisma client from the PostgreSQL schema
+when it starts and uses `backend/prisma/dev.db`. The production build and
+deployment continue to use PostgreSQL. To run the backend against PostgreSQL
+locally instead, use `npm run dev:server` after configuring a PostgreSQL
+`DATABASE_URL` and applying the migrations.
 
 ### Administrator Bootstrap
 

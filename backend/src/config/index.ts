@@ -63,6 +63,11 @@ export const config = {
     provider: process.env.SMS_PROVIDER || 'mock',
     apiKey: process.env.SMS_API_KEY || '',
     senderId: process.env.SMS_SENDER_ID || 'DSSGAS',
+    // MSG91 transactional OTP SMS (https://msg91.com)
+    msg91: {
+      authKey: process.env.MSG91_AUTH_KEY || '',
+      templateId: process.env.MSG91_OTP_TEMPLATE_ID || '',
+    },
   },
   cronSecret: process.env.CRON_SECRET || '',
 

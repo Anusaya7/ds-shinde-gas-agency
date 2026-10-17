@@ -14,13 +14,13 @@ export const Footer: React.FC = () => {
   const businessHours = settings.businessHours || '8:00 AM – 8:00 PM (Monday to Saturday)';
 
   return (
-    <footer className="bg-[#17365D] text-white pt-14 pb-8 border-t-4 border-[#F59E0B]">
+    <footer className="bg-[#10284A] text-white pt-14 pb-8 border-t-4 border-[#F47721]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 pb-10">
           {/* Col 1: Brand & Bio */}
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#F59E0B] flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-xl bg-[#F47721] flex items-center justify-center shadow-md">
                 <Flame className="w-6 h-6 text-white" />
               </div>
               <span className="font-extrabold text-xl tracking-tight text-white">
@@ -53,25 +53,25 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-sm text-blue-100/90">
               <li>
-                <Link to="/" className="hover:text-[#F59E0B] transition-colors">Home Page</Link>
+                <Link to="/" className="hover:text-[#F47721] transition-colors">Home Page</Link>
               </li>
               <li>
-                <Link to="/products" className="hover:text-[#F59E0B] transition-colors">LPG Cylinder Products</Link>
+                <Link to="/products" className="hover:text-[#F47721] transition-colors">LPG Cylinder Products</Link>
               </li>
               <li>
-                <Link to="/how-to-order" className="hover:text-[#F59E0B] transition-colors">How to Book an LPG Cylinder</Link>
+                <Link to="/how-to-order" className="hover:text-[#F47721] transition-colors">How to Book an LPG Cylinder</Link>
               </li>
               <li>
-                <Link to="/delivery" className="hover:text-[#F59E0B] transition-colors">Delivery Coverage & Timing</Link>
+                <Link to="/delivery" className="hover:text-[#F47721] transition-colors">Delivery Coverage & Timing</Link>
               </li>
               <li>
-                <Link to="/safety" className="hover:text-[#F59E0B] transition-colors">LPG Safety & Leak Guidelines</Link>
+                <Link to="/safety" className="hover:text-[#F47721] transition-colors">LPG Safety & Leak Guidelines</Link>
               </li>
               <li>
-                <Link to="/faq" className="hover:text-[#F59E0B] transition-colors">Frequently Asked Questions (FAQ)</Link>
+                <Link to="/faq" className="hover:text-[#F47721] transition-colors">Frequently Asked Questions (FAQ)</Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-[#F59E0B] transition-colors">                About DS Shinde Gas</Link>
+                <Link to="/about" className="hover:text-[#F47721] transition-colors">About DS Shinde Gas</Link>
               </li>
             </ul>
           </div>
@@ -93,12 +93,12 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="hover:text-[#F59E0B] transition-colors">
+                <Link to="/contact" className="hover:text-[#F47721] transition-colors">
                   Customer Support Helpdesk
                 </Link>
               </li>
               <li>
-                <Link to="/refund-policy" className="hover:text-[#F59E0B] transition-colors">
+                <Link to="/refund-policy" className="hover:text-[#F47721] transition-colors">
                   Refund & Cancellation Policy
                 </Link>
               </li>
@@ -112,11 +112,11 @@ export const Footer: React.FC = () => {
             </h4>
             <div className="space-y-4 text-sm text-blue-100">
               <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
+                <MapPin className="w-5 h-5 text-[#F47721] shrink-0 mt-0.5" />
                 <span className="text-xs sm:text-sm leading-relaxed">{address}</span>
               </div>
               <div className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
+                <Phone className="w-5 h-5 text-[#F47721] shrink-0 mt-0.5" />
                 <div>
                   <a href={`tel:${primaryPhone}`} className="hover:underline font-bold block text-sm">
                     +91 {primaryPhone}
@@ -130,7 +130,7 @@ export const Footer: React.FC = () => {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
+                <Mail className="w-5 h-5 text-[#F47721] shrink-0 mt-0.5" />
                 <a href={`mailto:${email}`} className="hover:underline text-xs sm:text-sm">
                   {email}
                 </a>

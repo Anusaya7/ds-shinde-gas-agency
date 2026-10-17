@@ -105,46 +105,39 @@ export const HomePage: React.FC = () => {
 
           <div className="relative mx-auto w-full max-w-xl lg:ml-auto">
             <div className="absolute inset-4 rotate-3 rounded-[2rem] bg-[#F47721]/10" />
-            <div className="relative overflow-hidden rounded-[2rem] border border-white bg-white p-5 shadow-[0_28px_80px_-30px_rgba(16,40,74,0.35)] sm:p-8">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#F47721]">
-                    DS Shinde Gas
+            <div className="relative overflow-hidden rounded-[2rem] bg-[#10284A] p-6 text-white shadow-[0_28px_80px_-30px_rgba(16,40,74,0.45)] sm:p-8">
+              <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#F47721]/20 blur-2xl" />
+              <div className="relative">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold text-orange-200">
+                    <Flame className="h-4 w-4" />
+                    Gaspoint size guide
                   </span>
-                  <h2 className="mt-1 text-lg font-extrabold text-[#10284A] sm:text-xl">
-                    LPG, delivered with care
-                  </h2>
+                  <ShieldCheck className="h-6 w-6 text-emerald-300" />
                 </div>
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#10284A]">
-                  <Flame className="h-6 w-6 fill-orange-400 text-orange-400" />
-                </span>
-              </div>
-              <div className="my-2 flex aspect-[1.2/1] items-center justify-center sm:aspect-[1.35/1]">
-                <img
-                  src="/assets/cylinders/hero-cylinder.jpg"
-                  alt="LPG cylinder for home delivery from DS Shinde Gas"
-                  className="h-full max-h-[330px] w-full object-contain"
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-t border-slate-100 pt-4 text-center">
-                <div className="rounded-2xl bg-slate-50 px-2 py-3">
-                  <ShieldCheck className="mx-auto h-5 w-5 text-emerald-600" />
-                  <span className="mt-1 block text-[11px] font-bold text-[#10284A] sm:text-xs">
-                    Safety checked
-                  </span>
+                <h2 className="mt-6 text-2xl font-black leading-tight sm:text-3xl">
+                  The right cylinder size, made clear.
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-blue-100">
+                  Explore the capacities shown in the Gaspoint reference image. Ask our team to
+                  confirm availability and today’s price before booking.
+                </p>
+                <div className="mt-6 grid grid-cols-4 gap-2">
+                  {['12', '15', '17', '19.2', '21', '33', '50', '425'].map((size) => (
+                    <span
+                      key={size}
+                      className="rounded-xl border border-white/15 bg-white/10 px-2 py-2.5 text-center text-xs font-extrabold text-white sm:text-sm"
+                    >
+                      {size} kg
+                    </span>
+                  ))}
                 </div>
-                <div className="rounded-2xl bg-slate-50 px-2 py-3">
-                  <Truck className="mx-auto h-5 w-5 text-[#F47721]" />
-                  <span className="mt-1 block text-[11px] font-bold text-[#10284A] sm:text-xs">
-                    At your doorstep
-                  </span>
-                </div>
-                <div className="rounded-2xl bg-slate-50 px-2 py-3">
-                  <Headphones className="mx-auto h-5 w-5 text-[#10284A]" />
-                  <span className="mt-1 block text-[11px] font-bold text-[#10284A] sm:text-xs">
-                    Local support
-                  </span>
-                </div>
+                <Link
+                  to="/#cylinder-gallery"
+                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#F47721] px-4 text-sm font-bold text-white transition hover:bg-[#DD6414]"
+                >
+                  View the size guide <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
             </div>
           </div>
@@ -167,9 +160,7 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      <section id="cylinder-gallery" className="scroll-mt-24 bg-slate-50 py-14 sm:py-20">
-        <CylinderGallery />
-      </section>
+      <CylinderGallery />
 
       <section className="bg-white py-14 sm:py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">

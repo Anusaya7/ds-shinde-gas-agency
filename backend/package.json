@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "tsx watch src/index.ts",
+    "dev": "node scripts/dev-local.cjs",
+    "dev:server": "tsx watch src/index.ts",
     "build": "prisma generate && tsc && esbuild src/index.ts --bundle --platform=node --target=node20 --outfile=dist/index.cjs --external:@prisma/client",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",

@@ -4,7 +4,7 @@ import ApplyForm from "@/components/ApplyForm";
 export const metadata: Metadata = {
   title: "Contact Us",
   description:
-    "Contact DS Shinde Gas Agency — authorized Gaspoint LPG dealer. Call 7030970436 / 7030514530 / 9112260266 or send an enquiry.",
+    "Contact DS Gas Agency — call +91 95117 60208 / +91 99753 00929 or send an enquiry. Helpline active 8:00 AM – 8:00 PM, Monday to Saturday.",
 };
 
 export default function ContactPage() {
@@ -13,13 +13,20 @@ export default function ContactPage() {
       <section className="bg-gpnavy text-white py-14">
         <div className="mx-auto max-w-7xl px-4">
           <h1 className="text-3xl sm:text-4xl font-extrabold font-[family-name:var(--font-poppins)]">
-            Contact DS Shinde Gas Agency
+            Contact DS Gas Agency
           </h1>
+          <p className="mt-3 text-white/80 max-w-2xl">
+            We&apos;re here to help — questions about your cylinder, delivery area or booking? Reach
+            us during business hours: <strong>8:00 AM – 8:00 PM (Monday to Saturday)</strong>.
+          </p>
           <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 text-sm">
-            <a href="tel:7030970436" className="hover:text-gpred">📞 7030970436</a>
-            <a href="tel:7030514530" className="hover:text-gpred">📞 7030514530</a>
-            <a href="tel:9112260266" className="hover:text-gpred">📞 9112260266</a>
-            <a href="https://www.gaspoint.in" className="hover:text-gpred">🌐 www.gaspoint.in</a>
+            <a href="tel:+919511760208" className="hover:text-gpred">📞 +91 95117 60208</a>
+            <a href="tel:+919975300929" className="hover:text-gpred">📞 +91 99753 00929</a>
+            <a href="mailto:support@dsshindegas.com" className="hover:text-gpred">✉️ support@dsshindegas.com</a>
+          </div>
+          <div className="mt-4 grid gap-2 text-sm text-white/80">
+            <p>📍 Shop No. 4, Main Road, Near Market Yard, Maharashtra, India</p>
+            <p>🚨 Gas leak emergency? Move to a safe place and call <strong>1906</strong>.</p>
           </div>
         </div>
       </section>
@@ -32,8 +39,8 @@ export default function ContactPage() {
           </div>
           <div className="mt-8 rounded-2xl overflow-hidden border border-gray-200">
             <iframe
-              title="DS Shinde Gas Agency location map"
-              src="https://www.google.com/maps?q=India&output=embed"
+              title="DS Gas Agency location map"
+              src="https://www.google.com/maps?q=Maharashtra,India&output=embed"
               width="100%"
               height="320"
               loading="lazy"

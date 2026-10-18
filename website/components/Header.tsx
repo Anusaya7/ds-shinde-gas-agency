@@ -5,12 +5,10 @@ import { useState } from "react";
 
 const nav = [
   { href: "/", label: "Home" },
-  { href: "/#about", label: "About" },
+  { href: "/#about", label: "About us" },
   { href: "/products", label: "Products" },
-  { href: "/dealership", label: "Dealership" },
-  { href: "/#roi", label: "Investment & ROI" },
-  { href: "/dealership#documents", label: "Documents" },
-  { href: "/#support", label: "Support" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#booking", label: "Booking" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -22,12 +20,12 @@ export default function Header() {
       {/* Top strip */}
       <div className="bg-gpnavy text-white text-xs sm:text-sm">
         <div className="mx-auto max-w-7xl px-4 py-1.5 flex items-center justify-between gap-2">
-          <span className="font-medium">जरुरत जीवन की...</span>
+          <span className="font-medium">LPG, delivered with care</span>
           <span className="hidden sm:inline text-white/80">
-            Authorized Gaspoint LPG Dealer · NSE: CONFIPET
+            Trusted local LPG delivery · Est. 2026
           </span>
-          <a href="tel:7030970436" className="font-semibold hover:underline">
-            📞 7030970436
+          <a href="tel:+919511760208" className="font-semibold hover:underline">
+            📞 9511760208
           </a>
         </div>
       </div>
@@ -41,10 +39,10 @@ export default function Header() {
             </span>
             <span className="leading-tight">
               <span className="block text-xl font-extrabold font-[family-name:var(--font-poppins)] text-gpred">
-                Gaspoint
+                DS Gas
               </span>
               <span className="block text-[11px] text-gpnavy font-medium">
-                DS Shinde Gas Agency
+                DS Gas Agency
               </span>
             </span>
           </Link>
@@ -61,10 +59,10 @@ export default function Header() {
               </Link>
             ))}
             <Link
-              href="/#apply"
+              href="/#booking"
               className="rounded-full bg-gpred px-4 py-2 text-sm font-semibold text-white shadow hover:bg-red-700 transition-colors"
             >
-              Apply for Dealership
+              Customer Booking
             </Link>
           </nav>
 
@@ -96,11 +94,11 @@ export default function Header() {
             </Link>
           ))}
           <Link
-            href="/#apply"
+            href="/#booking"
             onClick={() => setOpen(false)}
             className="mt-3 block rounded-full bg-gpred px-4 py-2.5 text-center text-sm font-semibold text-white"
           >
-            Apply for Dealership
+            Customer Booking
           </Link>
         </nav>
       )}

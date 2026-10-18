@@ -297,7 +297,7 @@ export const NewOrder: React.FC = () => {
       : 0;
   const hasCommercialItem = selectedItems.some((item) => item.type === 'COMMERCIAL');
   const taxes = hasCommercialItem ? Math.round((subtotal * settings.taxPercentage) / 100) : 0;
-  const paymentFee = 0;
+  const paymentFee = paymentMethod === 'CARD' ? Math.round((subtotal + deliveryCharges + taxes) * (settings.onlinePaymentFee || 3) / 100 * 100) / 100 : 0;
   const totalAmount = subtotal + deliveryCharges + taxes + paymentFee;
 
   // Step Validation
@@ -981,9 +981,9 @@ export const NewOrder: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Pay through secure Razorpay checkout after approval. Card details are not stored by DS Shinde Gas.
                 </p>
-                <span className="inline-block mt-3 text-[10px] font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                  No added card surcharge
-                </span>
+<span className="inline-block mt-3 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
+                   {settings.onlinePaymentFee || 3}% MDR surcharge applies
+                 </span>
               </div>
             </div>
 

@@ -5,11 +5,11 @@ import { useEffect, useRef, useState } from "react";
 type Stat = { value: number; suffix: string; label: string };
 
 const stats: Stat[] = [
-  { value: 58, suffix: "+", label: "Bottling Plants" },
-  { value: 15, suffix: "+", label: "Cylinder Manufacturing Units (5 Million capacity)" },
-  { value: 250, suffix: "+", label: "Auto LPG Stations" },
-  { value: 5500, suffix: "+", label: "Dealer Network" },
-  { value: 12, suffix: "+", label: "States Presence" },
+  { value: 7, suffix: "+", label: "Cylinder Sizes Available" },
+  { value: 6, suffix: "", label: "Days a Week Delivery (8AM–8PM)" },
+  { value: 100, suffix: "%", label: "Safety Checked Cylinders" },
+  { value: 1906, suffix: "", label: "National LPG Emergency No." },
+  { value: 2026, suffix: "", label: "Established" },
 ];
 
 function Counter({ target, suffix }: { target: number; suffix: string }) {
@@ -62,11 +62,8 @@ export default function TrustStats() {
         </div>
         <div className="mt-10 text-center">
           <span className="inline-block rounded-full border border-gpred bg-gpred/10 px-5 py-2 text-sm font-semibold">
-            Listed: NSE: <span className="font-bold">CONFIPET</span>
+            DS Gas Agency · Established <span className="font-bold">2026</span>
           </span>
-          <p className="mt-3 text-xs text-white/50">
-            Figures as per latest company presentation; subject to change.
-          </p>
         </div>
       </div>
     </section>

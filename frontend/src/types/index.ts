@@ -158,6 +158,7 @@ export interface AgencySettings {
   welcomeOfferAmount: number;
   isOrderingEnabled: boolean;
   businessHours: string;
+  onlinePaymentFee: number;
   // CMS & Public Site Fields
   heroHeadline?: string;
   heroSubheadline?: string;

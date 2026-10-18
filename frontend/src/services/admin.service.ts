@@ -20,6 +20,7 @@ export const fallbackSettings: AgencySettings = {
   deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
   deliveryCharges: 50,
   taxPercentage: 0,
+  onlinePaymentFee: 3,
   welcomeOfferEnabled: false,
   welcomeOfferAmount: 0,
   isOrderingEnabled: true,

@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-const firmTypes = ["Proprietorship", "Partnership", "Company", "LLP"];
+const subjects = [
+  "New Cylinder Booking",
+  "Refill / Delivery Query",
+  "Delivery Area Question",
+  "Complaint / Feedback",
+  "Other",
+];
 
 export default function ApplyForm() {
   const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
@@ -13,7 +19,6 @@ export default function ApplyForm() {
     const form = e.currentTarget;
     const data = new FormData(form);
     try {
-      // POST to the existing backend enquiry endpoint (adjust path if needed)
       const res = await fetch("/api/enquiry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,8 +39,8 @@ export default function ApplyForm() {
         <p className="text-2xl">✅</p>
         <h3 className="mt-2 text-lg font-bold text-gpgreen">Thank you!</h3>
         <p className="mt-1 text-sm text-gray-700">
-          Your enquiry has been received. Our team will contact you shortly. For urgent queries call
-          7030970436.
+          Your enquiry has been received. The DS Gas Agency team will contact you shortly. For
+          urgent queries call +91 95117 60208.
         </p>
       </div>
     );
@@ -51,21 +56,21 @@ export default function ApplyForm() {
         <input name="name" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700">Firm Type *</label>
-        <select name="firmType" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+        <label className="block text-sm font-medium text-gray-700">Subject *</label>
+        <select name="subject" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
           <option value="">Select…</option>
-          {firmTypes.map((f) => (
-            <option key={f}>{f}</option>
+          {subjects.map((s) => (
+            <option key={s}>{s}</option>
           ))}
         </select>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700">City / District *</label>
+        <label className="block text-sm font-medium text-gray-700">City / Area *</label>
         <input name="city" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">State *</label>
-        <input name="state" required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
+        <input name="state" required defaultValue="Maharashtra" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Phone *</label>
@@ -80,13 +85,16 @@ export default function ApplyForm() {
         <input name="email" type="email" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2" />
       </div>
       <div className="sm:col-span-2">
-        <label className="block text-sm font-medium text-gray-700">Investment Capacity</label>
-        <select name="investment" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+        <label className="block text-sm font-medium text-gray-700">Cylinder Size of Interest</label>
+        <select name="cylinder" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
           <option value="">Select…</option>
-          <option>Up to ₹2,00,000</option>
-          <option>₹2,10,000 – ₹4,20,000</option>
-          <option>₹4,20,000 – ₹10,00,000</option>
-          <option>Above ₹10,00,000</option>
+          <option>5 kg Domestic Mini</option>
+          <option>13 kg Domestic</option>
+          <option>15 kg Commercial</option>
+          <option>19.2 kg Large Domestic</option>
+          <option>33 kg Commercial</option>
+          <option>50 kg Industrial</option>
+          <option>425 kg Industrial Vessel</option>
         </select>
       </div>
       <div className="sm:col-span-2">
@@ -101,14 +109,14 @@ export default function ApplyForm() {
             className="mt-0.5 accent-gpred"
           />
           <span>
-            I consent to DS Shinde Gas Agency / Gaspoint Petroleum India Limited contacting me
-            regarding dealership opportunities and using the details provided for this purpose.
+            I consent to DS Gas Agency contacting me regarding my enquiry and using the details
+            provided for this purpose.
           </span>
         </label>
       </div>
       {status === "error" && (
         <p className="sm:col-span-2 text-sm text-gpred">
-          Something went wrong. Please call us at 7030970436 / 7030514530 / 9112260266.
+          Something went wrong. Please call us at +91 95117 60208 / +91 99753 00929.
         </p>
       )}
       <div className="sm:col-span-2 flex flex-wrap items-center gap-4">
@@ -116,13 +124,11 @@ export default function ApplyForm() {
           type="submit"
           className="rounded-full bg-gpred px-8 py-3 font-semibold text-white shadow hover:bg-red-700 transition-colors"
         >
-          Submit Enquiry
+          Send Enquiry
         </button>
         <p className="text-xs text-gray-500">
-          Or call: <a href="tel:7030970436" className="font-semibold text-gpred">7030970436</a> /{" "}
-          <a href="tel:7030514530" className="font-semibold text-gpred">7030514530</a> /{" "}
-          <a href="tel:9112260266" className="font-semibold text-gpred">9112260266</a> ·{" "}
-          <a href="https://www.gaspoint.in" className="font-semibold text-gpred">www.gaspoint.in</a>
+          Or call: <a href="tel:+919511760208" className="font-semibold text-gpred">+91 95117 60208</a> /{" "}
+          <a href="tel:+919975300929" className="font-semibold text-gpred">+91 99753 00929</a>
         </p>
       </div>
     </form>

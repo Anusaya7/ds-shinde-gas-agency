@@ -14,25 +14,26 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: {
-    default: "DS Shinde Gas Agency – Authorized Gaspoint LPG Dealer",
-    template: "%s | DS Shinde Gas Agency",
+    default: "DS Gas Agency – LPG Cylinder Booking & Delivery",
+    template: "%s | DS Gas Agency",
   },
   description:
-    "DS Shinde Gas Agency is an authorized Gaspoint LPG dealership — a brand of Gaspoint Petroleum India Limited, part of Confidence Group (NSE: CONFIPET). Established 1993, a 30-year legacy in India's LPG & CNG sector supplying BIS-standard domestic, commercial and industrial LPG cylinders, dealership opportunities and auto LPG.",
+    "DS Gas Agency, established in 2026 by Sagar Shinde, is your trusted local LPG delivery partner — domestic, commercial and industrial LPG cylinders with doorstep delivery, clear booking updates and safety-first service.",
   keywords: [
-    "Gaspoint",
-    "DS Shinde Gas Agency",
-    "LPG dealer",
-    "LPG dealership",
-    "Confidence Group",
-    "CONFIPET",
-    "LPG cylinders",
-    "PESO godown",
+    "DS Gas Agency",
+    "DS Shinde Gas",
+    "LPG delivery",
+    "LPG cylinder booking",
+    "gas agency",
+    "Sagar Shinde",
+    "domestic LPG",
+    "commercial LPG",
+    "industrial LPG",
   ],
   openGraph: {
-    title: "DS Shinde Gas Agency – Authorized Gaspoint LPG Dealer",
+    title: "DS Gas Agency – LPG Cylinder Booking & Delivery",
     description:
-      "India's leading private LPG company. A brand of Gaspoint Petroleum India Limited, part of Confidence Group. Dealership opportunities available.",
+      "Your trusted local LPG delivery partner. Established 2026. Book a cylinder and follow your booking to your doorstep.",
     type: "website",
     locale: "en_IN",
   },
@@ -41,21 +42,20 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  name: "DS Shinde Gas Agency",
+  name: "DS Gas Agency",
+  alternateName: "DS Shinde Gas Agency",
   description:
-    "Authorized Gaspoint LPG dealership — a brand of Gaspoint Petroleum India Limited, part of Confidence Group (NSE: CONFIPET).",
-  telephone: ["+917030970436", "+917030514530", "+919112260266"],
-  url: "https://www.gaspoint.in",
-  brand: "Gaspoint",
-  parentOrganization: {
-    "@type": "Organization",
-    name: "Gaspoint Petroleum India Limited",
-    parentOrganization: { "@type": "Organization", name: "Confidence Group" },
-  },
+    "Local LPG gas agency established in 2026 by Sagar Shinde — domestic, commercial and industrial LPG cylinder delivery.",
+  founder: { "@type": "Person", name: "Sagar Shinde" },
+  foundingDate: "2026",
+  telephone: ["+919511760208", "+919975300929"],
+  email: "support@dsshindegas.com",
   address: {
     "@type": "PostalAddress",
     addressCountry: "IN",
+    addressRegion: "Maharashtra",
   },
+  openingHours: "Mo-Sa 08:00-20:00",
 };
 
 export default function RootLayout({

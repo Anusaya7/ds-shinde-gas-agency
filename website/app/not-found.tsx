@@ -17,10 +17,10 @@ export default function NotFound() {
             Go to Home
           </Link>
           <Link
-            href="/dealership"
+            href="/products"
             className="rounded-full border-2 border-gpnavy px-6 py-3 font-semibold text-gpnavy hover:bg-gpnavy hover:text-white"
           >
-            Dealership
+            View Products
           </Link>
         </div>
       </div>

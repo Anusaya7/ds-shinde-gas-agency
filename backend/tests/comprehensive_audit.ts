@@ -275,7 +275,7 @@ async function runAudit() {
         deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
         deliveryCharges: 50,
         taxPercentage: 5,
-        onlinePaymentFee: 0,
+        onlinePaymentFee: 3,
       }),
     });
     if (getSettings.status === 200 && updateSettings.status === 200 && Array.isArray(getSettings.data?.data?.deliveryAreas)) {
@@ -1211,21 +1211,59 @@ async function runAudit() {
       });
     }
 
-    // Check Surcharge (must remain 0%)
-    const agencySettingsRes = await request('/admin/settings', {
+    // Check Surcharge - must reflect 3% for card payments per user requirement
+    const adminSettingsRes = await request('/admin/settings', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
-    const feeSetting = agencySettingsRes.data?.data?.onlinePaymentFee;
+    const feeSetting = adminSettingsRes.data?.data?.onlinePaymentFee;
 
-    if (feeSetting === 0) {
+    record({
+      id: 'PAY-FEE-01',
+      module: 'Payment',
+      scenario: 'Card payment fee verification (3% credit card surcharge per user requirement)',
+      expected: 'onlinePaymentFee set to 3% for card payments',
+      actual: `Configured fee: ${feeSetting}%`,
+      evidence: `onlinePaymentFee = ${feeSetting}`,
+      status: feeSetting === 3 ? 'PASS' : 'FAIL',
+      issue: feeSetting === undefined ? 'onlinePaymentFee not configured in AgencySetting' : feeSetting !== 3 ? 'Surcharge should be 3%, not ' + feeSetting + '%' : undefined,
+    });
+
+    // Verify actual order with CARD payment includes 3% surcharge
+    const cardOrderRes = await request('/orders', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${customer1Token}` },
+      body: JSON.stringify({
+        items: [{ productId: prod5kg.id, quantity: 1 }],
+        deliveryName: 'Rahul Deshmukh',
+        deliveryPhone: '9822001122',
+        deliveryAddress: 'Shop 12, Main Road Karad',
+        deliveryArea: 'Karad',
+        deliveryCity: 'Karad',
+        deliveryPinCode: '415110',
+        paymentMethod: 'CARD',
+      }),
+    });
+    if (cardOrderRes.status === 201) {
+      const ord = cardOrderRes.data.data.order;
+      const cardSubtotal = Number(ord.subtotal);
+      const cardDelivery = Number(ord.deliveryCharges);
+      const cardTaxes = Number(ord.taxes);
+      const cardFee = Number(ord.paymentFee);
+      const cardTotal = Number(ord.totalAmount);
+      const baseForFee = cardSubtotal + cardDelivery + cardTaxes;
+      const expectedFee = Math.round(baseForFee * 0.03 * 100) / 100;
+      const feeMatches3pct = Math.abs(cardFee - expectedFee) < 0.01;
+      const totalMatches = Math.abs(cardTotal - (baseForFee + cardFee)) < 0.01;
+
       record({
-        id: 'PAY-FEE-01',
+        id: 'PAY-FEE-02',
         module: 'Payment',
-        scenario: 'Card payment fee verification (3% credit card surcharge remains disabled as requested)',
-        expected: 'Online / Card surcharge configured to 0% in accordance with legal and gateway guidelines',
-        actual: `Configured fee: ${feeSetting}%`,
-        evidence: `onlinePaymentFee = 0`,
-        status: 'PASS',
+        scenario: 'Actual card order includes 3% MDR surcharge in total amount',
+        expected: `paymentFee=₹${expectedFee} (3% of ₹${baseForFee}), Total=₹${baseForFee + expectedFee}`,
+        actual: `paymentFee=₹${cardFee}, totalFeeBase=₹${baseForFee}, Total=₹${cardTotal}, method=${ord.paymentMethod}`,
+        evidence: `Subtotal=₹${cardSubtotal}, Delivery=₹${cardDelivery}, Taxes=₹${cardTaxes}, Fee=₹${cardFee}, Total=₹${cardTotal}`,
+        status: feeMatches3pct && totalMatches ? 'PASS' : 'FAIL',
+        issue: !feeMatches3pct || !totalMatches ? 'Card payment total does not include correct 3% surcharge' : undefined,
       });
     }
   } catch (err: any) {

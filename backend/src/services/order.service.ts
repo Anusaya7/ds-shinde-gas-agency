@@ -118,7 +118,10 @@ export class OrderService {
 
     // 4. Apply the configured tax rate only to commercial cylinder orders.
     const taxes = hasCommercialItem ? (subtotal * taxRatePercent) / 100 : 0;
-    const paymentFee = 0;
+
+    // 5. Apply 3% MDR (Merchant Discount Rate) for card payments per user requirement
+    const paymentMethod = dto.paymentMethod || 'COD';
+    const paymentFee = paymentMethod === 'CARD' ? Math.round((subtotal + totalDeliveryCharge + taxes) * 0.03 * 100) / 100 : 0;
     const baseTotal = subtotal + totalDeliveryCharge + taxes + paymentFee;
 
     const orderNumber = generateOrderNumber();

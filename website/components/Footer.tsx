@@ -2,10 +2,10 @@ import Link from "next/link";
 
 const quickLinks = [
   { href: "/", label: "Home" },
-  { href: "/products", label: "Products" },
-  { href: "/dealership", label: "Dealership" },
-  { href: "/#roi", label: "Investment & ROI" },
-  { href: "/dealership#documents", label: "Documents" },
+  { href: "/#about", label: "About DS Gas Agency" },
+  { href: "/products", label: "LPG Cylinder Products" },
+  { href: "/#how", label: "How to Book" },
+  { href: "/#booking", label: "Customer Booking" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -15,12 +15,15 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 py-12 grid gap-10 md:grid-cols-3">
         <div>
           <p className="text-2xl font-extrabold font-[family-name:var(--font-poppins)]">
-            <span className="text-white">Confidence</span> <span className="text-gpred">Group</span>
+            <span className="text-white">DS</span> <span className="text-gpred">Gas Agency</span>
           </p>
-          <p className="mt-1 text-sm text-white/70">NSE: CONFIPET · Listed on BSE & NSE</p>
+          <p className="mt-1 text-sm text-white/70">LPG, delivered with care · Est. 2026</p>
           <p className="mt-4 text-sm text-white/80">
-            Gaspoint Petroleum India Limited — a Confidence Group company. Essential Energy, Endless
-            Opportunity.
+            LPG cylinder booking for households and local businesses, with clear order status,
+            customer support, and delivery handover guidance. Founded by <strong>Sagar Shinde</strong>.
+          </p>
+          <p className="mt-3 text-sm text-white/70">
+            🕗 Delivery: 8:00 AM – 8:00 PM (Monday to Saturday)
           </p>
         </div>
 
@@ -40,25 +43,24 @@ export default function Footer() {
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">Contact</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-white/80">Agency Contact</h3>
           <ul className="mt-4 space-y-2 text-sm">
+            <li>📍 Shop No. 4, Main Road, Near Market Yard, Maharashtra, India</li>
             <li>
-              <a href="tel:7030970436" className="hover:text-gpred">📞 7030970436</a>
+              <a href="tel:+919511760208" className="hover:text-gpred">📞 +91 95117 60208</a>
             </li>
             <li>
-              <a href="tel:7030514530" className="hover:text-gpred">📞 7030514530</a>
+              <a href="tel:+919975300929" className="hover:text-gpred">📞 +91 99753 00929</a>
             </li>
             <li>
-              <a href="tel:9112260266" className="hover:text-gpred">📞 9112260266</a>
-            </li>
-            <li>
-              <a href="https://www.gaspoint.in" className="hover:text-gpred">
-                🌐 www.gaspoint.in
+              <a href="mailto:support@dsshindegas.com" className="hover:text-gpred">
+                ✉️ support@dsshindegas.com
               </a>
             </li>
           </ul>
           <p className="mt-4 text-sm text-white/80">
-            DS Shinde Gas Agency, Authorized Gaspoint LPG Dealer, India.
+            🚨 <strong>Gas leak emergency?</strong> Avoid flames &amp; electrical switches, move to
+            safety and call <strong>1906</strong>.
           </p>
         </div>
       </div>
@@ -66,14 +68,8 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-5 text-xs text-white/60 space-y-2">
           <p>
-            <strong className="text-white/80">Disclaimer:</strong> Figures on this site (investment,
-            ROI, margins, network stats) are indicative/illustrative, sourced from company
-            presentations, and subject to change. Dealership allotment is at the sole discretion of
-            Gaspoint Petroleum India Limited. This is not an offer or contract.
-          </p>
-          <p>
-            © {new Date().getFullYear()} DS Shinde Gas Agency · Authorized Gaspoint LPG Dealer. All
-            rights reserved.
+            © {new Date().getFullYear()} DS Gas Agency. All rights reserved. Cylinder prices and
+            product availability are confirmed with your booking.
           </p>
         </div>
       </div>

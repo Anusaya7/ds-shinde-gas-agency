@@ -1064,6 +1064,7 @@ export class AdminController {
           .filter(Boolean),
         deliveryCharges: Number(map.get('delivery_charge_default') || 50),
         taxPercentage: Number(map.get('tax_percentage') || 0),
+        onlinePaymentFee: Number(map.get('online_payment_fee') || 3),
         welcomeOfferEnabled: map.get('welcome_offer_enabled') === 'true',
         welcomeOfferAmount: Number(map.get('welcome_offer_amount') || 0),
         isOrderingEnabled: true,
@@ -1178,6 +1179,13 @@ export class AdminController {
           throw new BadRequestError('Tax percentage must be between 0 and 100.');
         }
         updates.push({ key: 'tax_percentage', value: String(taxPercentage) });
+      }
+      if (b.onlinePaymentFee !== undefined) {
+        const fee = Number(b.onlinePaymentFee);
+        if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+          throw new BadRequestError('Online payment fee must be between 0 and 100.');
+        }
+        updates.push({ key: 'online_payment_fee', value: String(fee) });
       }
       if (b.welcomeOfferEnabled !== undefined && typeof b.welcomeOfferEnabled !== 'boolean') {
         throw new BadRequestError('Welcome offer enabled must be true or false.');

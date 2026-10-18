@@ -10,6 +10,20 @@ import toast from 'react-hot-toast';
 
 const cylinderSizes = ['12', '15', '17', '19.2', '21', '33', '50', '425'];
 
+// Map product size to the red Gaspoint cylinder artwork
+function cylinderImage(size: string): string {
+  const kg = parseFloat(size);
+  if (Number.isNaN(kg)) return '/assets/cylinders/12kg.svg';
+  if (kg <= 12) return '/assets/cylinders/12kg.svg';
+  if (kg <= 15) return '/assets/cylinders/15kg.svg';
+  if (kg <= 17) return '/assets/cylinders/17kg.svg';
+  if (kg <= 19.2) return '/assets/cylinders/19kg.svg';
+  if (kg <= 21) return '/assets/cylinders/21kg.svg';
+  if (kg <= 33) return '/assets/cylinders/33kg.svg';
+  if (kg <= 50) return '/assets/cylinders/50kg.svg';
+  return '/assets/cylinders/425kg.svg';
+}
+
 export const ProductsPage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -164,6 +178,14 @@ export const ProductsPage: React.FC = () => {
                   }`}
                 >
                   <div className="p-6">
+                    <div className="mx-auto mb-4 flex h-40 w-full items-center justify-center rounded-2xl bg-gradient-to-b from-red-50 to-white">
+                      <img
+                        src={prod.imageUrl || cylinderImage(prod.size)}
+                        alt={`Gaspoint ${prod.size} red LPG cylinder`}
+                        className="h-36 w-auto object-contain"
+                        loading="lazy"
+                      />
+                    </div>
                     <div className="flex items-center justify-between mb-2">
                       <span
                         className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${

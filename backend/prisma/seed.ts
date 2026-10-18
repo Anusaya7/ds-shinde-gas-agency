@@ -88,38 +88,25 @@ async function main() {
   });
   console.log(`Sample customer created/verified: ${customerUser.email}`);
 
-  // 4. Cylinder Products (7 sizes)
+  // Cylinder Products (sizes 12kg to 425kg, branded Gaspoint)
   const products = [
     {
-      name: '5 KG LPG Cylinder',
-      sizeKg: 5,
-      description: 'Compact, lightweight, and portable 5kg LPG cylinder. Perfect for small families, camping, students, and low-usage applications.',
-      price: 420.0,
+      name: 'Gaspoint 12 KG Cylinder',
+      sizeKg: 12,
+      description: 'Compact Gaspoint domestic cylinder for small families and light daily cooking needs.',
+      price: 850.0,
       deliveryCharge: 50.0,
       isActive: true,
       minQuantity: 1,
       maxQuantity: 10,
       isCommercial: false,
       requiresQuotation: false,
-      imageUrl: '/images/cylinder-5kg.png',
+      imageUrl: '/assets/cylinders/12kg.svg',
     },
     {
-      name: '13 KG LPG Cylinder',
-      sizeKg: 13,
-      description: 'Mid-sized domestic cylinder for households with moderate cooking gas requirements.',
-      price: 950.0,
-      deliveryCharge: 60.0,
-      isActive: true,
-      minQuantity: 1,
-      maxQuantity: 5,
-      isCommercial: false,
-      requiresQuotation: false,
-      imageUrl: '/images/cylinder-13kg.png',
-    },
-    {
-      name: '15 KG LPG Cylinder',
+      name: 'Gaspoint 15 KG Cylinder',
       sizeKg: 15,
-      description: 'Standard domestic LPG cylinder widely used in regular households with standard safety valves.',
+      description: 'Standard Gaspoint domestic LPG cylinder widely used in regular households with standard safety valves.',
       price: 1080.0,
       deliveryCharge: 60.0,
       isActive: true,
@@ -127,12 +114,25 @@ async function main() {
       maxQuantity: 5,
       isCommercial: false,
       requiresQuotation: false,
-      imageUrl: '/images/cylinder-15kg.png',
+      imageUrl: '/assets/cylinders/15kg.svg',
     },
     {
-      name: '19.2 KG Commercial Cylinder',
+      name: 'Gaspoint 17 KG Cylinder',
+      sizeKg: 17,
+      description: 'Mid-size Gaspoint cylinder for larger households and small canteens with moderate usage.',
+      price: 1250.0,
+      deliveryCharge: 60.0,
+      isActive: true,
+      minQuantity: 1,
+      maxQuantity: 5,
+      isCommercial: false,
+      requiresQuotation: false,
+      imageUrl: '/assets/cylinders/17kg.svg',
+    },
+    {
+      name: 'Gaspoint 19 KG Cylinder',
       sizeKg: 19.2,
-      description: 'Standard commercial cylinder specifically designed for restaurants, fast-food outlets, tea stalls, and canteens.',
+      description: 'Gaspoint commercial cylinder designed for restaurants, fast-food outlets, tea stalls, and canteens.',
       price: 1850.0,
       deliveryCharge: 100.0,
       isActive: true,
@@ -140,12 +140,25 @@ async function main() {
       maxQuantity: 20,
       isCommercial: true,
       requiresQuotation: false,
-      imageUrl: '/images/cylinder-19kg.png',
+      imageUrl: '/assets/cylinders/19kg.svg',
     },
     {
-      name: '33 KG Commercial Cylinder',
+      name: 'Gaspoint 21 KG Cylinder',
+      sizeKg: 21,
+      description: 'Gaspoint commercial cylinder for busy kitchens, bakeries, and medium food outlets.',
+      price: 2050.0,
+      deliveryCharge: 100.0,
+      isActive: true,
+      minQuantity: 1,
+      maxQuantity: 20,
+      isCommercial: true,
+      requiresQuotation: false,
+      imageUrl: '/assets/cylinders/21kg.svg',
+    },
+    {
+      name: 'Gaspoint 33 KG Cylinder',
       sizeKg: 33,
-      description: 'Heavy-duty commercial LPG cylinder ideal for hotel banquets, sweet makers, and medium-scale food processing.',
+      description: 'Heavy-duty Gaspoint commercial cylinder ideal for hotel banquets, sweet makers, and medium-scale food processing.',
       price: 3200.0,
       deliveryCharge: 150.0,
       isActive: true,
@@ -153,12 +166,12 @@ async function main() {
       maxQuantity: 20,
       isCommercial: true,
       requiresQuotation: false,
-      imageUrl: '/images/cylinder-33kg.png',
+      imageUrl: '/assets/cylinders/33kg.svg',
     },
     {
-      name: '50 KG Industrial Cylinder',
+      name: 'Gaspoint 50 KG Cylinder',
       sizeKg: 50,
-      description: 'High-volume industrial cylinder engineered for intensive manufacturing processes, bakeries, and heating systems.',
+      description: 'High-volume Gaspoint industrial cylinder engineered for intensive manufacturing processes, bakeries, and heating systems.',
       price: 4800.0,
       deliveryCharge: 200.0,
       isActive: true,
@@ -166,12 +179,12 @@ async function main() {
       maxQuantity: 50,
       isCommercial: true,
       requiresQuotation: false,
-      imageUrl: '/images/cylinder-50kg.png',
+      imageUrl: '/assets/cylinders/50kg.svg',
     },
     {
-      name: '425 KG Bulk LOT Cylinder',
+      name: 'Gaspoint 425 KG Bulk LOT Cylinder',
       sizeKg: 425,
-      description: 'Massive Liquid Off-Take (LOT) bulk cylinder installations for large industrial plants, hotels, and boiler facilities. Custom quote provided.',
+      description: 'Massive Gaspoint Liquid Off-Take (LOT) bulk cylinder installations for large industrial plants, hotels, and boiler facilities. Custom quote provided.',
       price: 39500.0,
       deliveryCharge: 1000.0,
       isActive: true,
@@ -179,9 +192,27 @@ async function main() {
       maxQuantity: 10,
       isCommercial: true,
       requiresQuotation: true,
-      imageUrl: '/images/cylinder-425kg.png',
+      imageUrl: '/assets/cylinders/425kg.svg',
     },
   ];
+
+  // Remove legacy products outside the 12kg-425kg range (skip if referenced by existing orders)
+  const legacySizes = [5, 13];
+  for (const sizeKg of legacySizes) {
+    const legacy = await prisma.product.findFirst({ where: { sizeKg } });
+    if (legacy) {
+      try {
+        await prisma.product.delete({ where: { id: legacy.id } });
+        console.log(`Removed legacy product: ${legacy.name} (${sizeKg} kg)`);
+      } catch {
+        await prisma.product.update({
+          where: { id: legacy.id },
+          data: { isActive: false, name: `${legacy.name} (discontinued)` },
+        });
+        console.log(`Deactivated legacy product: ${legacy.name} (${sizeKg} kg) — still referenced by past orders`);
+      }
+    }
+  }
 
   for (const prod of products) {
     const existing = await prisma.product.findFirst({

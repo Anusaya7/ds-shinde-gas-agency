@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 340" width="200" height="340">
+  <defs>
+    <linearGradient id="body" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8E1B1B"/>
+      <stop offset="18%" stop-color="#C0392B"/>
+      <stop offset="45%" stop-color="#D64545"/>
+      <stop offset="68%" stop-color="#E8705F"/>
+      <stop offset="86%" stop-color="#F1948A"/>
+      <stop offset="100%" stop-color="#8E1B1B"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#641E16"/>
+      <stop offset="50%" stop-color="#C0392B"/>
+      <stop offset="100%" stop-color="#641E16"/>
+    </linearGradient>
+    <linearGradient id="valve" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5D6D7E"/>
+      <stop offset="50%" stop-color="#AEB6BF"/>
+      <stop offset="100%" stop-color="#5D6D7E"/>
+    </linearGradient>
+    <radialGradient id="cap" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDFEFE"/>
+      <stop offset="100%" stop-color="#BFC9CA"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Valve assembly -->
+  <rect x="90.1" y="6" width="19.8" height="13" rx="4" fill="url(#valve)"/>
+  <ellipse cx="100" cy="16" rx="12" ry="6" fill="url(#cap)" stroke="#444" stroke-width="1.4"/>
+  <rect x="97.5" y="9" width="5" height="6" fill="#7F8C8D"/>
+
+  <!-- Top ring -->
+  <rect x="67.6" y="46" width="64.8" height="8" rx="6" fill="url(#ring)"/>
+
+  <!-- Main cylinder body -->
+  <rect x="55" y="51" width="90" height="263" rx="13" fill="url(#body)" stroke="#7B241C" stroke-width="2.4"/>
+
+  <!-- Side highlights -->
+  <rect x="61" y="64" width="6" height="233" rx="4" fill="#FFFFFF" opacity="0.28"/>
+  <rect x="131" y="64" width="7" height="233" rx="4" fill="#8E1B1B" opacity="0.28"/>
+
+  <!-- Gaspoint brand label -->
+  <rect x="70" y="166" width="59" height="34" rx="8" fill="#FFFFFF" opacity="0.94" stroke="#7B241C" stroke-width="1.2"/>
+  <text x="100" y="181" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="bold" fill="#8E1B1B" text-anchor="middle">GASPOINT</text>
+  <text x="100" y="194" font-family="Arial, Helvetica, sans-serif" font-size="11" font-weight="bold" fill="#1C2833" text-anchor="middle">12 KG</text>
+  <text x="100" y="203" font-family="Arial, Helvetica, sans-serif" font-size="6" fill="#566573" text-anchor="middle">DOMESTIC LPG CYLINDER</text>
+
+  <!-- Bottom ring -->
+  <rect x="67.6" y="309" width="64.8" height="8" rx="6" fill="url(#ring)"/>
+
+  <!-- Base -->
+  <rect x="51" y="317" width="97" height="10" rx="7" fill="#5D4037"/>
+</svg>

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
-  Flame,
   MapPin,
   Plus,
   Minus,
@@ -135,8 +134,8 @@ export const NewOrder: React.FC = () => {
         }
         setProducts(prods.filter((p) => p.inStock && p.isActive));
 
-        // Default 1 qty of standard 14.2kg if available
-        const defaultProd = prods.find((p) => (p?.size || '').includes('14.2')) || prods[0];
+        // Default 1 qty of standard 12kg Gaspoint cylinder if available
+        const defaultProd = prods.find((p) => (p?.size || '').includes('12')) || prods[0];
         if (defaultProd) {
           setCart({ [defaultProd.id]: 1 });
         }
@@ -821,9 +820,12 @@ export const NewOrder: React.FC = () => {
       {/* STEP 2: SELECT CYLINDER */}
       {currentStep === 2 && (
         <div className="space-y-6">
-          <Card title="Step 2: Select Cylinder Type & Refill Quantity">
+          <Card title="Step 2: Select Cylinder Size (12 kg - 425 kg) & Quantity">
             <div className="space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              <p className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-[#B94A0B]">
+                Tap a Gaspoint cylinder size to select it, then adjust the refill quantity.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {products.map((prod) => {
                   const qty = cart[prod.id] || 0;
                   const isSelected = qty > 0;
@@ -833,8 +835,8 @@ export const NewOrder: React.FC = () => {
                       key={prod.id}
                       className={`p-5 rounded-2xl border transition-all duration-200 flex flex-col justify-between ${
                         isSelected
-                          ? 'border-primary bg-blue-50/50 shadow-md ring-2 ring-primary/20'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                          ? 'border-[#F47721] bg-orange-50/60 shadow-md ring-2 ring-[#F47721]/30'
+                          : 'border-gray-200 hover:border-[#F47721]/60 bg-white'
                       }`}
                     >
                       <div>
@@ -842,17 +844,22 @@ export const NewOrder: React.FC = () => {
                           <span
                             className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
                               prod.type === 'COMMERCIAL'
-                                ? 'bg-blue-100 text-primary'
-                                : 'bg-emerald-100 text-emerald-800'
+                                ? 'bg-[#10284A] text-white'
+                                : 'bg-[#F47721] text-white'
                             }`}
                           >
-                            {prod.size}
+                            {prod.type}
                           </span>
                           <span className="text-xs font-black text-gray-900">₹{prod.price}</span>
                         </div>
 
-                        <div className="w-14 h-14 mx-auto my-2 rounded-xl bg-blue-50 text-accent flex items-center justify-center">
-                          <Flame className="w-8 h-8" />
+                        <div className="mx-auto my-2 flex h-28 w-full items-center justify-center rounded-xl bg-gradient-to-b from-red-50 to-white">
+                          <img
+                            src={prod.imageUrl || '/assets/cylinders/12kg.svg'}
+                            alt={`Gaspoint ${prod.size} LPG cylinder`}
+                            className="h-24 w-auto object-contain"
+                            loading="lazy"
+                          />
                         </div>
 
                         <h4 className="font-bold text-gray-900 text-center text-sm mb-1">{prod.name}</h4>
@@ -861,27 +868,40 @@ export const NewOrder: React.FC = () => {
                         </p>
                       </div>
 
-                      {/* Quantity Selector */}
-                      <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-xs text-gray-500 font-medium">Quantity</span>
-                        <div className="flex items-center gap-2">
+                      {/* Select / Quantity controls */}
+                      <div className="pt-3 border-t border-gray-100">
+                        {qty === 0 ? (
                           <button
                             type="button"
-                            onClick={() => updateQuantity(prod.id, -1)}
-                            disabled={qty === 0}
-                            className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-gray-700"
+                            onClick={() => setCart((prev) => ({ ...prev, [prod.id]: 1 }))}
+                            className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-[#F47721] px-3 text-xs font-bold text-white shadow-sm transition hover:bg-[#DD6414]"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Plus className="h-3.5 w-3.5" />
+                            Select {prod.size}
                           </button>
-                          <span className="w-8 text-center text-sm font-bold text-gray-900">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(prod.id, 1)}
-                            className="w-8 h-8 rounded-lg bg-primary hover:bg-primaryDark text-white flex items-center justify-center shadow-xs"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        ) : (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500 font-medium">Quantity</span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(prod.id, -1)}
+                                disabled={qty === 0}
+                                className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 flex items-center justify-center text-gray-700"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="w-8 text-center text-sm font-bold text-gray-900">{qty}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(prod.id, 1)}
+                                className="w-8 h-8 rounded-lg bg-[#F47721] hover:bg-[#DD6414] text-white flex items-center justify-center shadow-xs"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );

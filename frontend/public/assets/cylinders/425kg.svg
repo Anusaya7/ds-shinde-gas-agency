@@ -1,70 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 800" width="320" height="800">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 780" width="320" height="780">
   <defs>
-    <linearGradient id="body425" x1="0%" y1="100%" x2="0%" y2="0%">
-      <stop offset="0%" style="stop-color:#0d47a1"/>
-      <stop offset="30%" style="stop-color:#1e3a5f"/>
-      <stop offset="60%" style="stop-color:#2c5282"/>
-      <stop offset="100%" style="stop-color:#17365D"/>
+    <linearGradient id="body" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8E1B1B"/>
+      <stop offset="18%" stop-color="#C0392B"/>
+      <stop offset="45%" stop-color="#D64545"/>
+      <stop offset="68%" stop-color="#E8705F"/>
+      <stop offset="86%" stop-color="#F1948A"/>
+      <stop offset="100%" stop-color="#8E1B1B"/>
     </linearGradient>
-    <linearGradient id="band425" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:#e8eaf6"/>
-      <stop offset="50%" style="stop-color:#d6e0f0"/>
-      <stop offset="100%" style="stop-color:#c5d8f2"/>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#641E16"/>
+      <stop offset="50%" stop-color="#C0392B"/>
+      <stop offset="100%" stop-color="#641E16"/>
     </linearGradient>
-    <linearGradient id="valve425" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#0a2845"/>
-      <stop offset="50%" style="stop-color:#0d47a1"/>
-      <stop offset="100%" style="stop-color:#0a2845"/>
+    <linearGradient id="valve" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#5D6D7E"/>
+      <stop offset="50%" stop-color="#AEB6BF"/>
+      <stop offset="100%" stop-color="#5D6D7E"/>
     </linearGradient>
-    <linearGradient id="topCap425" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#1d4d83"/>
-      <stop offset="50%" style="stop-color:#132f5f"/>
-      <stop offset="100%" style="stop-color:#0d47a1"/>
-    </linearGradient>
+    <radialGradient id="cap" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDFEFE"/>
+      <stop offset="100%" stop-color="#BFC9CA"/>
+    </radialGradient>
   </defs>
-  <!-- Heavy industrial top cap -->
-  <rect x="50" y="10" width "220" height="60" rx="12" fill="url(topCap425)"/>
-  <circle cx="160" cy="30" r="12" fill="#fff" stroke="#fff" stroke-width="1"/>
-  <text x="160" y="45" font-family="Arial" font-size="9" fill="#b3e5fc" text-anchor="middle">INDUSTRIAL LPG</text>
-  <text x="160" y="55" font-family="Arial" font-size="8" fill="#fff" text-anchor="middle">425 KG CAPACITY</text>
-  <!-- Main valve assembly -->
-  <rect x="110" y="80" width "100" height "40" rx="8" fill="valve425"/>
-  <!-- Banding -->
-  <rect x="30" y="140" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="200" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="260" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="320" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="380" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="440" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="500" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="560" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="620" width "260" height "12" rx="5" fill="url(band425)"/>
-  <rect x="30" y="680" width "260" height "12" rx="5" fill="url(band425)"/>
-  <!-- Massive cylinder body -->
-  <rect x="30" y="152" width "260" height "680" rx="24" fill="url(#body425)" stroke="#0d47a1" stroke-width="4"/>
-  <!-- Highlight stripes -->
-  <rect x="36" y="165" width "248" height "18" rx="6" fill="#fff" opacity="0.3"/>
-  <rect x="36" y="215" width "248" height "18" rx="6" fill="#fff" opacity="0.25"/>
-  <rect x="36" y="265" width "248" height "18" rx="6" fill="#fff" opacity="0.2"/>
-  <rect x="36" y="315" width "248" height "18" rx="6" fill="#fff" opacity="0.3"/>
-  <rect x="36" y="365" width "248" height "18" rx="6" fill="#fff" opacity="0.2"/>
-  <rect x="36" y="415" width "248" height "18" rx="6" fill="#fff" opacity="0.25"/>
-  <rect x="36" y="465" width "248" height "18" rx="6" fill="#fff" opacity="0.3"/>
-  <rect x="36" y="515" width "248" height "18" rx="6" fill="#fff" opacity="0.2"/>
-  <rect x="36" y="565" width "248" height "18" rx="6" fill="#fff" opacity="0.25"/>
-  <rect x="36" y="615" width "248" height "18" rx="6" fill="#fff" opacity="0.2"/>
-  <rect x="36" y="665" width "248" height "18" rx="6" fill="#fff" opacity="0.3"/>
-  <!-- Left reinforcement -->
-  <rect x="28" y="210" width "14" height "580" rx="8" fill="#0d47a1" opacity="0.4"/>
-  <!-- Right reinforcement -->
-  <rect x="300" y="210" width "14" height "580" rx="8" fill="#0d47a1" opacity="0.3"/>
-  <!-- Label plate -->
-  <rect x="110" y="730" width "100" height "50" rx="8" fill="#fff" opacity="0.95"/>
-  <text x="160" y="755" font-family="Arial" font-size="20" font-weight="bold" fill="#17365D" text-anchor="middle">425 KG</text>
-  <text x="160" y="770" font-family="Arial" font-size="9" fill="#666" text-anchor="middle">INDUSTRIAL GAS CYLINDER</text>
-  <!-- Industrial data panel -->
-  <rect x="30" y="765" width "30" height "24" fill="#0d47a1"/>
-  <text x="45" y="785" font-family="Arial" font-size="8" fill="#fff" text-anchor="start">S/N: DS-425</text>
-  <!-- Bottom base ring -->
-  <rect x="10" y="785" width "300" height "14" rx="10" fill="url(#ring425)"/>
+
+  <!-- Valve assembly -->
+  <rect x="140.2" y="6" width="39.6" height="25" rx="4" fill="url(#valve)"/>
+  <ellipse cx="160" cy="31" rx="25" ry="13" fill="url(#cap)" stroke="#444" stroke-width="1.4"/>
+  <rect x="157.5" y="18" width="5" height="13" fill="#7F8C8D"/>
+
+  <!-- Top ring -->
+  <rect x="95.2" y="90" width="129.6" height="16" rx="6" fill="url(#ring)"/>
+
+  <!-- Main cylinder body -->
+  <rect x="70" y="101" width="180" height="638" rx="26" fill="url(#body)" stroke="#7B241C" stroke-width="2.4"/>
+
+  <!-- Side highlights -->
+  <rect x="83" y="126" width="13" height="579" rx="4" fill="#FFFFFF" opacity="0.28"/>
+  <rect x="221" y="126" width="14" height="579" rx="4" fill="#8E1B1B" opacity="0.28"/>
+
+  <!-- Gaspoint brand label -->
+  <rect x="101" y="386" width="119" height="68" rx="8" fill="#FFFFFF" opacity="0.94" stroke="#7B241C" stroke-width="1.2"/>
+  <text x="160" y="416" font-family="Arial, Helvetica, sans-serif" font-size="27" font-weight="bold" fill="#8E1B1B" text-anchor="middle">GASPOINT</text>
+  <text x="160" y="442" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="bold" fill="#1C2833" text-anchor="middle">425 KG</text>
+  <text x="160" y="460" font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#566573" text-anchor="middle">BULK LOT INSTALLATION</text>
+
+  <!-- Bottom ring -->
+  <rect x="95.2" y="728" width="129.6" height="16" rx="6" fill="url(#ring)"/>
+
+  <!-- Base -->
+  <rect x="63" y="745" width="194" height="20" rx="7" fill="#5D4037"/>
 </svg>

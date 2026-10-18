@@ -59470,7 +59470,12 @@ var config = {
   sms: {
     provider: process.env.SMS_PROVIDER || "mock",
     apiKey: process.env.SMS_API_KEY || "",
-    senderId: process.env.SMS_SENDER_ID || "DSSGAS"
+    senderId: process.env.SMS_SENDER_ID || "DSSGAS",
+    // MSG91 transactional OTP SMS (https://msg91.com)
+    msg91: {
+      authKey: process.env.MSG91_AUTH_KEY || "",
+      templateId: process.env.MSG91_OTP_TEMPLATE_ID || ""
+    }
   },
   cronSecret: process.env.CRON_SECRET || "",
   otp: {
@@ -63635,20 +63640,65 @@ ${text || html}`);
 }
 
 // src/utils/sms.ts
+function normalizeIndianMobile(phone) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 10 && /^[6-9]/.test(digits)) return digits;
+  if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+  if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+  return null;
+}
+async function sendViaMsg91(phone, message) {
+  const { authKey, templateId } = config_default.sms.msg91;
+  const mobile = normalizeIndianMobile(phone);
+  if (!authKey || !templateId) {
+    console.warn(
+      "[SMS] MSG91 selected but MSG91_AUTH_KEY / MSG91_OTP_TEMPLATE_ID missing. SMS not sent."
+    );
+    return false;
+  }
+  if (!mobile) {
+    console.warn(`[SMS] Invalid Indian mobile number: ${phone}`);
+    return false;
+  }
+  const otpMatch = message.match(/\b\d{6}\b/);
+  const otp = otpMatch ? otpMatch[0] : "";
+  try {
+    const res = await fetch("https://control.msg91.com/api/v5/flow/", {
+      method: "POST",
+      headers: {
+        "authkey": authKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        template_id: templateId,
+        short_url: "0",
+        recipients: [{ mobiles: `91${mobile}`, OTP: otp }]
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.type === "success") {
+      return true;
+    }
+    console.error("[SMS] MSG91 error:", data.message || data);
+    return false;
+  } catch (error) {
+    console.error("[SMS] MSG91 request failed:", error);
+    return false;
+  }
+}
 async function sendSms(options) {
   const { phone, message } = options;
-  if (config_default.isDev && config_default.sms.provider === "mock") {
+  if (config_default.isDev) {
     console.log("----------------------------------------------------");
     console.log(`[DEV SMS] Sender: ${config_default.sms.senderId}`);
     console.log(`[DEV SMS] To: ${phone}`);
     console.log(`[DEV SMS] Message: ${message}`);
     console.log("----------------------------------------------------");
-    return true;
   }
-  console.error(
-    `SMS delivery is unavailable for provider "${config_default.sms.provider}". Configure a real SMS gateway before enabling SMS notifications.`
-  );
-  return false;
+  if (config_default.sms.provider === "msg91") {
+    return sendViaMsg91(phone, message);
+  }
+  return true;
 }
 
 // src/utils/errors.ts
@@ -66200,7 +66250,8 @@ var OrderService = class {
       };
     });
     const taxes = hasCommercialItem ? subtotal * taxRatePercent / 100 : 0;
-    const paymentFee = 0;
+    const paymentMethod = dto.paymentMethod || "COD";
+    const paymentFee = paymentMethod === "CARD" ? Math.round((subtotal + totalDeliveryCharge + taxes) * 0.03 * 100) / 100 : 0;
     const baseTotal = subtotal + totalDeliveryCharge + taxes + paymentFee;
     const orderNumber = generateOrderNumber();
     let welcomeOfferDiscount = 0;
@@ -68047,6 +68098,7 @@ var AdminController = class {
         deliveryAreas: (map.get("service_areas") || "Karad, Malkapur, Ogalewadi, Saidapur, Vidyanagar, Wathar").split(",").map((s) => s.trim()).filter(Boolean),
         deliveryCharges: Number(map.get("delivery_charge_default") || 50),
         taxPercentage: Number(map.get("tax_percentage") || 0),
+        onlinePaymentFee: Number(map.get("online_payment_fee") || 3),
         welcomeOfferEnabled: map.get("welcome_offer_enabled") === "true",
         welcomeOfferAmount: Number(map.get("welcome_offer_amount") || 0),
         isOrderingEnabled: true,
@@ -68151,6 +68203,13 @@ var AdminController = class {
           throw new BadRequestError("Tax percentage must be between 0 and 100.");
         }
         updates.push({ key: "tax_percentage", value: String(taxPercentage) });
+      }
+      if (b.onlinePaymentFee !== void 0) {
+        const fee = Number(b.onlinePaymentFee);
+        if (!Number.isFinite(fee) || fee < 0 || fee > 100) {
+          throw new BadRequestError("Online payment fee must be between 0 and 100.");
+        }
+        updates.push({ key: "online_payment_fee", value: String(fee) });
       }
       if (b.welcomeOfferEnabled !== void 0 && typeof b.welcomeOfferEnabled !== "boolean") {
         throw new BadRequestError("Welcome offer enabled must be true or false.");

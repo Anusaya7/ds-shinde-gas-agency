@@ -230,11 +230,11 @@ async function runAudit() {
       });
     }
 
-    // TEST-ADM-05: Product Catalog (7 LPG Cylinder Sizes Verification)
+    // TEST-ADM-05: Product Catalog (Gaspoint Cylinder Sizes Verification)
     const prodsRes = await request('/admin/products', {
       headers: { Authorization: `Bearer ${adminToken}` },
     });
-    const expectedSizes = [5, 13, 15, 19.2, 33, 50, 425];
+    const expectedSizes = [12, 15, 17, 19.2, 21, 33, 50, 425];
     const foundSizes = prodsRes.data?.data?.map((p: any) => p.sizeKg) || [];
     const allSizesPresent = expectedSizes.every((sz) => foundSizes.includes(sz));
 
@@ -242,8 +242,8 @@ async function runAudit() {
       record({
         id: 'ADM-PROD-01',
         module: 'Admin',
-        scenario: 'Verify all 7 cylinder sizes in Admin catalog (5, 13, 15, 19.2, 33, 50, 425 KG)',
-        expected: 'HTTP 200, all 7 sizes present in catalog',
+        scenario: 'Verify all 8 active Gaspoint cylinder sizes in Admin catalog (12, 15, 17, 19.2, 21, 33, 50, 425 KG)',
+        expected: 'HTTP 200, all active sizes present in catalog',
         actual: `Found sizes: ${foundSizes.sort((a: number, b: number) => a - b).join(', ')} KG`,
         evidence: `Count: ${prodsRes.data?.data?.length} products`,
         status: 'PASS',
@@ -252,8 +252,8 @@ async function runAudit() {
       record({
         id: 'ADM-PROD-01',
         module: 'Admin',
-        scenario: 'Verify all 7 cylinder sizes in Admin catalog',
-        expected: 'HTTP 200, all 7 sizes present',
+        scenario: 'Verify active cylinder sizes in Admin catalog',
+        expected: 'HTTP 200, active sizes present',
         actual: `Found sizes: ${foundSizes.join(', ')}`,
         evidence: JSON.stringify(prodsRes.data),
         status: 'FAIL',
@@ -354,11 +354,15 @@ async function runAudit() {
   // -------------------------------------------------------------
   // MODULE 2: CUSTOMER WORKFLOW, VALIDATION & PRICE SECURITY
   // -------------------------------------------------------------
-  const prod5kg = await prisma.product.findFirst({ where: { sizeKg: 5 } });
-  const prod19kg = await prisma.product.findFirst({ where: { sizeKg: 19.2 } });
+  const prodDomestic =
+    (await prisma.product.findFirst({ where: { sizeKg: 12 } })) ||
+    (await prisma.product.findFirst({ where: { isCommercial: false } }));
+  const prod19kg =
+    (await prisma.product.findFirst({ where: { sizeKg: 19.2 } })) ||
+    (await prisma.product.findFirst({ where: { isCommercial: true } }));
 
-  if (!prod5kg || !prod19kg) {
-    throw new Error('Required 5kg and 19.2kg products not found in database');
+  if (!prodDomestic || !prod19kg) {
+    throw new Error('Required domestic and 19.2kg products not found in database');
   }
 
   try {
@@ -492,8 +496,8 @@ async function runAudit() {
         id: 'CUST-CAT-01',
         module: 'Customer',
         scenario: 'Retrieve active cylinder products catalog with pricing and limits',
-        expected: 'HTTP 200 with domestic 5kg and commercial 19.2kg cylinder details',
-        actual: `5kg: ₹${prod5kg.price} (min ${prod5kg.minQuantity}, max ${prod5kg.maxQuantity}), 19.2kg: ₹${prod19kg.price}`,
+        expected: 'HTTP 200 with domestic and commercial 19.2kg cylinder details',
+        actual: `Domestic: ₹${prodDomestic.price} (min ${prodDomestic.minQuantity}, max ${prodDomestic.maxQuantity}), 19.2kg: ₹${prod19kg.price}`,
         evidence: `Catalog count: ${pubProducts.data?.data?.length} items`,
         status: 'PASS',
       });
@@ -504,7 +508,7 @@ async function runAudit() {
       method: 'POST',
       headers: { Authorization: `Bearer ${customer1Token}` },
       body: JSON.stringify({
-        items: [{ productId: prod5kg.id, quantity: 999 }], // Exceeds maxQuantity 10
+        items: [{ productId: prodDomestic.id, quantity: 999 }], // Exceeds maxQuantity
         deliveryName: 'Rahul Deshmukh',
         deliveryPhone: '9822001122',
         deliveryAddress: 'Plot 45, Vidyanagar',
@@ -557,11 +561,15 @@ async function runAudit() {
 
   try {
     // 1. Customer Places Order A (COD)
+    const unitPrice = Number(prodDomestic.price);
+    const deliveryFee = Number(prodDomestic.deliveryCharge) || 50;
+    const expectedTotal = unitPrice * 2 + deliveryFee;
+
     const orderCreate = await request('/orders', {
       method: 'POST',
       headers: { Authorization: `Bearer ${customer1Token}` },
       body: JSON.stringify({
-        items: [{ productId: prod5kg.id, quantity: 2 }], // 2 * 420 = 840 + 50 delivery = 890
+        items: [{ productId: prodDomestic.id, quantity: 2 }],
         deliveryName: 'Rahul Deshmukh',
         deliveryPhone: '9822001122',
         deliveryAddress: 'Shop 12, Main Road',
@@ -576,7 +584,6 @@ async function runAudit() {
       const ord = orderCreate.data.data.order;
       happyOrderId = ord.id;
       happyOrderNumber = ord.orderNumber;
-      const expectedTotal = 420 * 2 + 50; // 890
       const actualTotal = Number(ord.totalAmount);
 
       if (actualTotal === expectedTotal && ord.orderNumber.startsWith('DSG-')) {
@@ -584,7 +591,7 @@ async function runAudit() {
           id: 'CUST-ORD-01',
           module: 'Customer',
           scenario: 'Cylinder order creation with server-side price calculation & unique order number',
-          expected: `HTTP 201, Total ₹${expectedTotal} (Subtotal ₹840 + ₹50 Delivery), Order # DSG-YYYYMMDD-XXXX`,
+          expected: `HTTP 201, Total ₹${expectedTotal} (Subtotal ₹${unitPrice * 2} + ₹${deliveryFee} Delivery), Order # DSG-YYYYMMDD-XXXX`,
           actual: `HTTP ${orderCreate.status}, orderNumber=${ord.orderNumber}, subtotal=₹${ord.subtotal}, delivery=₹${ord.deliveryCharges}, total=₹${ord.totalAmount}`,
           evidence: `Order ID: ${ord.id}, Status: ${ord.status}, PaymentStatus: ${ord.paymentStatus}`,
           status: 'PASS',
@@ -947,53 +954,11 @@ async function runAudit() {
       });
     }
 
-    // 18. Complete Delivery with Verified OTP
-    const completeDeliveryRes = await request(`/rider/orders/${happyOrderId}/complete`, {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${rider2Token}` },
-    });
-    const rdr2DbAfterComplete = await prisma.rider.findUnique({ where: { id: rider2Id } });
-
-    if (
-      completeDeliveryRes.status === 200 &&
-      completeDeliveryRes.data?.data?.status === 'DELIVERED' &&
-      completeDeliveryRes.data?.data?.deliveredAt &&
-      rdr2DbAfterComplete?.isAvailable === true
-    ) {
-      record({
-        id: 'RDR-DEL-01',
-        module: 'Rider',
-        scenario: 'Delivery completed successfully with verified OTP, deliveredAt saved, Rider freed',
-        expected: 'HTTP 200, status=DELIVERED, deliveredAt recorded, rider isAvailable=true',
-        actual: `HTTP 200, status=${completeDeliveryRes.data?.data?.status}, deliveredAt=${completeDeliveryRes.data?.data?.deliveredAt}, Rider isAvailable=${rdr2DbAfterComplete?.isAvailable}`,
-        evidence: `Delivered order ID: ${happyOrderId}`,
-        status: 'PASS',
-      });
-    }
-
-    // 19. Rider Completed Deliveries History
-    const rdrCompletedList = await request('/rider/completed', {
-      headers: { Authorization: `Bearer ${rider2Token}` },
-    });
-    const hasCompletedOrder = rdrCompletedList.data?.data?.some((o: any) => o.id === happyOrderId);
-
-    if (rdrCompletedList.status === 200 && hasCompletedOrder) {
-      record({
-        id: 'RDR-HST-01',
-        module: 'Rider',
-        scenario: 'Delivered order appears in rider completed history',
-        expected: 'HTTP 200, delivered order present in completed list',
-        actual: `HTTP 200, completed count=${rdrCompletedList.data?.data?.length}, contains order: ${hasCompletedOrder}`,
-        evidence: `Order ${happyOrderNumber} in completed deliveries`,
-        status: 'PASS',
-      });
-    }
-
-    // 20. Rider Records Cash On Delivery (COD) Payment
+    // 18. Rider Records Cash On Delivery (COD) Payment
     const codCollectRes = await request(`/rider/orders/${happyOrderId}/collect-payment`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${rider2Token}` },
-      body: JSON.stringify({ amount: 890, transactionId: `CASH-KARAD-${Date.now()}` }),
+      body: JSON.stringify({ amount: expectedTotal, transactionId: `CASH-KARAD-${Date.now()}` }),
     });
 
     const dbPayment = await prisma.payment.findFirst({
@@ -1020,11 +985,11 @@ async function runAudit() {
       });
     }
 
-    // 21. Duplicate Payment Collection Prevention
+    // 19. Duplicate Payment Collection Prevention
     const duplicatePaymentRes = await request(`/rider/orders/${happyOrderId}/collect-payment`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${rider2Token}` },
-      body: JSON.stringify({ amount: 890 }),
+      body: JSON.stringify({ amount: expectedTotal }),
     });
     if (duplicatePaymentRes.status === 400 && duplicatePaymentRes.data?.message?.includes('already marked as paid')) {
       record({
@@ -1034,6 +999,48 @@ async function runAudit() {
         expected: 'HTTP 400 Bad Request with already paid error',
         actual: `HTTP ${duplicatePaymentRes.status}, message="${duplicatePaymentRes.data?.message}"`,
         evidence: JSON.stringify(duplicatePaymentRes.data),
+        status: 'PASS',
+      });
+    }
+
+    // 20. Complete Delivery with Verified OTP
+    const completeDeliveryRes = await request(`/rider/orders/${happyOrderId}/complete`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${rider2Token}` },
+    });
+    const rdr2DbAfterComplete = await prisma.rider.findUnique({ where: { id: rider2Id } });
+
+    if (
+      completeDeliveryRes.status === 200 &&
+      completeDeliveryRes.data?.data?.status === 'DELIVERED' &&
+      completeDeliveryRes.data?.data?.deliveredAt &&
+      rdr2DbAfterComplete?.isAvailable === true
+    ) {
+      record({
+        id: 'RDR-DEL-01',
+        module: 'Rider',
+        scenario: 'Delivery completed successfully with verified OTP, deliveredAt saved, Rider freed',
+        expected: 'HTTP 200, status=DELIVERED, deliveredAt recorded, rider isAvailable=true',
+        actual: `HTTP 200, status=${completeDeliveryRes.data?.data?.status}, deliveredAt=${completeDeliveryRes.data?.data?.deliveredAt}, Rider isAvailable=${rdr2DbAfterComplete?.isAvailable}`,
+        evidence: `Delivered order ID: ${happyOrderId}`,
+        status: 'PASS',
+      });
+    }
+
+    // 21. Rider Completed Deliveries History
+    const rdrCompletedList = await request('/rider/completed', {
+      headers: { Authorization: `Bearer ${rider2Token}` },
+    });
+    const hasCompletedOrder = rdrCompletedList.data?.data?.some((o: any) => o.id === happyOrderId);
+
+    if (rdrCompletedList.status === 200 && hasCompletedOrder) {
+      record({
+        id: 'RDR-HST-01',
+        module: 'Rider',
+        scenario: 'Delivered order appears in rider completed history',
+        expected: 'HTTP 200, delivered order present in completed list',
+        actual: `HTTP 200, completed count=${rdrCompletedList.data?.data?.length}, contains order: ${hasCompletedOrder}`,
+        evidence: `Order ${happyOrderNumber} in completed deliveries`,
         status: 'PASS',
       });
     }
@@ -1132,7 +1139,7 @@ async function runAudit() {
       method: 'POST',
       headers: { Authorization: `Bearer ${customer1Token}` },
       body: JSON.stringify({
-        items: [{ productId: prod5kg.id, quantity: 1 }],
+        items: [{ productId: prodDomestic.id, quantity: 1 }],
         deliveryName: 'Rahul Deshmukh',
         deliveryPhone: '9822001122',
         deliveryAddress: 'Main Road Karad',
@@ -1233,7 +1240,7 @@ async function runAudit() {
       method: 'POST',
       headers: { Authorization: `Bearer ${customer1Token}` },
       body: JSON.stringify({
-        items: [{ productId: prod5kg.id, quantity: 1 }],
+        items: [{ productId: prodDomestic.id, quantity: 1 }],
         deliveryName: 'Rahul Deshmukh',
         deliveryPhone: '9822001122',
         deliveryAddress: 'Shop 12, Main Road Karad',

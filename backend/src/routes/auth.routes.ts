@@ -12,6 +12,13 @@ const loginSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 });
 
+const registerSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().email('Invalid email address').optional(),
+  phone: z.string().regex(/^[0-9]{10}$/, '10-digit mobile number is required').optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
 const sendOtpSchema = z.object({
   identifier: z.string().trim().min(3, 'Identifier (phone or email) is required').max(254)
     .transform((identifier) => identifier.includes('@') ? identifier.toLowerCase() : identifier),
@@ -29,6 +36,7 @@ const verifyOtpSchema = z.object({
 });
 
 router.post('/login', authLimiter, validate(loginSchema), AuthController.login);
+router.post('/register', authLimiter, validate(registerSchema), AuthController.register);
 router.post('/send-otp', otpLimiter, validate(sendOtpSchema), AuthController.sendOtp);
 router.post('/verify-otp', authLimiter, validate(verifyOtpSchema), AuthController.verifyOtp);
 router.post('/logout', AuthController.logout);

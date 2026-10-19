@@ -141,8 +141,8 @@ export class AuthService {
       throw new UnauthorizedError('Account is deactivated. Please contact support.');
     }
 
-    if (user.role !== Role.ADMIN || !user.passwordHash) {
-      throw new UnauthorizedError('Use one-time-code sign-in for customer or rider accounts.');
+    if (!user.passwordHash) {
+      throw new UnauthorizedError('Use one-time-code sign-in for accounts without password.');
     }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);

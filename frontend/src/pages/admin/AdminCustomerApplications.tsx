@@ -87,6 +87,25 @@ export const AdminCustomerApplications: React.FC = () => {
     }
   };
 
+  const openAadhaar = async (customerId: string) => {
+    setActionId(customerId);
+    setError('');
+    try {
+      const blob = await applicationService.downloadCustomerAadhaarDocument(customerId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (requestError: any) {
+      setError(requestError.response?.data?.message || 'Could not retrieve the protected Aadhaar document.');
+    } finally {
+      setActionId('');
+    }
+  };
+
   const deleteCertificate = async (customerId: string) => {
     if (!window.confirm('Permanently delete this customer’s stored business certificate?')) return;
     setActionId(customerId);
@@ -170,6 +189,14 @@ export const AdminCustomerApplications: React.FC = () => {
                     className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50"
                   >
                     <FileCheck2 className="h-4 w-4" /> Udyam file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void openAadhaar(order.customerId)}
+                    disabled={!!actionId}
+                    className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50"
+                  >
+                    <FileCheck2 className="h-4 w-4" /> Aadhaar file
                   </button>
                   <button
                     type="button"

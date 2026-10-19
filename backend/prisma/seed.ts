@@ -8,38 +8,35 @@ async function main() {
   console.log('Seeding DS Shinde Gas database...');
 
 
-  // Create an administrator only when explicit deployment credentials are provided.
-  const adminEmail = process.env.SEED_ADMIN_EMAIL;
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
-  if (adminEmail && adminPassword) {
-    const passwordHashAdmin = await bcrypt.hash(adminPassword, 12);
-    const adminUser = await prisma.user.upsert({
-      where: { email: adminEmail },
-      update: { passwordHash: passwordHashAdmin },
-      create: {
-        email: adminEmail,
-        phone: process.env.SEED_ADMIN_PHONE || null,
-        name: process.env.SEED_ADMIN_NAME || 'Agency Admin',
-        passwordHash: passwordHashAdmin,
-        role: Role.ADMIN,
-        isActive: true,
-        isVerified: true,
-      },
-    });
-    console.log(`Configured administrator account: ${adminUser.email}`);
-  } else {
-    console.log('Skipping administrator seed; set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD to create one.');
-  }
+  // Create an administrator
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || 'admin@dsshinde.com';
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin@123';
+  const passwordHashAdmin = await bcrypt.hash(adminPassword, 12);
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: { passwordHash: passwordHashAdmin },
+    create: {
+      email: adminEmail,
+      phone: process.env.SEED_ADMIN_PHONE || '9511760208',
+      name: process.env.SEED_ADMIN_NAME || 'Agency Admin',
+      passwordHash: passwordHashAdmin,
+      role: Role.ADMIN,
+      isActive: true,
+      isVerified: true,
+    },
+  });
+  console.log(`Configured administrator account: ${adminUser.email}`);
 
   // 2. Sample Rider User & Rider record
+  const passwordHashRider = await bcrypt.hash('Rider@123', 10);
   const riderUser = await prisma.user.upsert({
     where: { email: 'rider@dsshinde.com' },
-    update: {},
+    update: { passwordHash: passwordHashRider },
     create: {
       email: 'rider@dsshinde.com',
       phone: '9876543210',
       name: 'Ramesh Pawar (Rider)',
-      passwordHash: null,
+      passwordHash: passwordHashRider,
       role: Role.RIDER,
       isActive: true,
       isVerified: true,
@@ -54,20 +51,22 @@ async function main() {
   console.log(`Rider user created/verified: ${riderUser.email}`);
 
   // 3. Sample Customer User & Profile
+  const passwordHashCustomer = await bcrypt.hash('Customer@123', 10);
   const customerUser = await prisma.user.upsert({
     where: { email: 'customer@dsshinde.com' },
-    update: {},
+    update: { passwordHash: passwordHashCustomer },
     create: {
       email: 'customer@dsshinde.com',
       phone: '9822001122',
       name: 'Rahul Deshmukh',
-      passwordHash: null,
+      passwordHash: passwordHashCustomer,
       role: Role.CUSTOMER,
       isActive: true,
       isVerified: true,
       customerProfile: {
         create: {
           alternatePhone: '9822001123',
+          approvalStatus: 'APPROVED',
           addresses: {
             create: {
               fullName: 'Rahul Deshmukh',
@@ -85,6 +84,11 @@ async function main() {
         },
       },
     },
+  });
+  // Ensure existing customer profile has approvalStatus = APPROVED
+  await prisma.customerProfile.updateMany({
+    where: { userId: customerUser.id },
+    data: { approvalStatus: 'APPROVED' },
   });
   console.log(`Sample customer created/verified: ${customerUser.email}`);
 

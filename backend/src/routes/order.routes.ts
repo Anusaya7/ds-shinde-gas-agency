@@ -26,9 +26,9 @@ const createOrderSchema = z.object({
   deliveryPinCode: z.string().regex(/^[0-9]{6}$/, '6-digit postal pin code is required'),
   deliveryLandmark: z.string().optional(),
   deliveryMapLink: z.string().optional(),
-  paymentMethod: z.enum(['ONLINE', 'COD', 'CARD']),
-  bookingDurationDays: z.number().int().min(1).max(31),
-  remindersEnabled: z.boolean(),
+  paymentMethod: z.enum(['ONLINE', 'COD', 'CARD', 'UPI_QR']),
+  bookingDurationDays: z.number().int().min(1).max(31).optional().default(1),
+  remindersEnabled: z.boolean().optional().default(false),
   fsiNumber: z.string().trim().max(40).optional(),
   notes: z.string().optional(),
 });

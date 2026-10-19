@@ -240,6 +240,9 @@ export const AdminOrderDetail: React.FC = () => {
           <div className="space-y-2 text-xs">
             <p className="text-base font-bold text-gray-900">{order.customerName}</p>
             <p className="text-primary font-semibold">📞 {order.customerPhone}</p>
+            {order.deliveryAddress.altPhone && (
+              <p className="text-slate-600 font-medium">📞 Alt: {order.deliveryAddress.altPhone}</p>
+            )}
             {order.customerEmail && <p className="text-gray-500">✉️ {order.customerEmail}</p>}
             <div className="pt-2 border-t border-gray-100">
               <span className="font-bold text-gray-500 uppercase block mb-1">Destination</span>

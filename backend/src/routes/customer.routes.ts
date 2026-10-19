@@ -13,29 +13,31 @@ const router = Router();
 // Ensure customer or admin
 router.use(authenticateToken, requireRole(Role.CUSTOMER, Role.ADMIN));
 
-const udyamUpload = multer({
+const kycUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  limits: { fileSize: 5 * 1024 * 1024, files: 2 },
   fileFilter: (_req, file, callback) => {
     if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
-      callback(new BadRequestError('Udyam certificate must be a PDF, JPEG, PNG, or WebP file.'));
+      callback(new BadRequestError('Uploaded files must be PDF, JPEG, PNG, or WebP.'));
       return;
     }
     callback(null, true);
   },
 });
 
-const udyamDetailsSchema = z.object({
+const kycDetailsSchema = z.object({
   fsiNumber: z.string().trim().max(40).optional(),
   udyamConsent: z.literal('true').optional(),
+  aadhaarNumber: z.string().regex(/^[0-9]{12}$/, 'Aadhaar number must be 12 digits').optional(),
+  aadhaarConsent: z.literal('true').optional(),
 });
 
 const handleUploadError: import('express').ErrorRequestHandler = (error, _req, _res, next) => {
   if (error instanceof multer.MulterError) {
     next(new BadRequestError(
       error.code === 'LIMIT_FILE_SIZE'
-        ? 'Udyam certificate must be 5 MB or smaller.'
-        : 'Upload one Udyam certificate at a time.'
+        ? 'Uploaded documents must be 5 MB or smaller.'
+        : 'Please upload only genuine documents.'
     ));
     return;
   }
@@ -44,11 +46,27 @@ const handleUploadError: import('express').ErrorRequestHandler = (error, _req, _
 
 router.put(
   '/business-details',
-  udyamUpload.single('udyamDocument'),
+  kycUpload.fields([
+    { name: 'udyamDocument', maxCount: 1 },
+    { name: 'aadhaarDocument', maxCount: 1 },
+  ]),
   handleUploadError,
-  validate(udyamDetailsSchema),
+  validate(kycDetailsSchema),
   ApplicationController.saveCustomerDetails
 );
+
+router.put(
+  '/kyc',
+  kycUpload.fields([
+    { name: 'udyamDocument', maxCount: 1 },
+    { name: 'aadhaarDocument', maxCount: 1 },
+  ]),
+  handleUploadError,
+  validate(kycDetailsSchema),
+  ApplicationController.saveCustomerDetails
+);
+
+router.get('/kyc-status', ApplicationController.getCustomerKycStatus);
 
 const updateProfileSchema = z.object({
   name: z.string().min(2).optional(),

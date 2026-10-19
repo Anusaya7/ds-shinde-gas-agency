@@ -40,9 +40,17 @@ model CustomerProfile {
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   alternatePhone String?
   fsiNumber      String?
+  aadhaarNumber  String?
+  aadhaarDocument Bytes?
+  aadhaarMimeType String?
+  aadhaarConsentAt DateTime?
   udyamDocument  Bytes?
   udyamMimeType  String?
   udyamConsentAt DateTime?
+  approvalStatus String         @default("APPROVED")
+  rejectionReason String?
+  reviewedAt     DateTime?
+  reviewedById   String?
   welcomeOfferUsedAt DateTime?
   addresses      SavedAddress[]
   createdAt      DateTime       @default(now())

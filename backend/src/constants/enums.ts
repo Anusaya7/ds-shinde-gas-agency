@@ -21,6 +21,7 @@ export enum PaymentMethod {
   ONLINE = 'ONLINE',
   COD = 'COD',
   CARD = 'CARD',
+  UPI_QR = 'UPI_QR',
 }
 
 export enum PaymentStatus {

@@ -4,79 +4,386 @@
     "module": "Database",
     "scenario": "System health check and database connection ping",
     "expected": "HTTP 200 with database status connected",
-    "actual": "Connection error: fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:71:20)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "actual": "HTTP 200, status=ok, database=connected",
+    "evidence": "{\"status\":\"ok\",\"service\":\"DS Shinde Gas API\",\"timestamp\":\"2026-10-19T18:14:19.840Z\",\"database\":\"connected\"}",
+    "status": "PASS"
   },
   {
-    "id": "ADM-ERR-01",
+    "id": "ADM-AUTH-01",
     "module": "Admin",
-    "scenario": "Admin module execution error",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:112:24)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "scenario": "Admin login with valid authorized credentials",
+    "expected": "HTTP 200, JWT token returned, user role is ADMIN",
+    "actual": "HTTP 200, role=ADMIN, tokenLength=273",
+    "evidence": "User: admin@dsshinde.com, Role: ADMIN",
+    "status": "PASS"
   },
   {
-    "id": "CUST-ERR-01",
+    "id": "ADM-SEC-01",
+    "module": "Security",
+    "scenario": "Direct unauthenticated access to Admin orders endpoint",
+    "expected": "HTTP 401 Unauthorized",
+    "actual": "HTTP 401 (Authentication required. No token provided.)",
+    "evidence": "{\"success\":false,\"message\":\"Authentication required. No token provided.\",\"stack\":\"Error: Authentication required. No token provided.\\n    at authenticateToken (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\middleware\\\\auth.ts:26:13)\\n    at Layer.handle [as handle_request] (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\layer.js:95:5)\\n    at trim_prefix (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:328:13)\\n    at C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:286:9\\n    at Function.process_params (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:346:12)\\n    at next (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:280:10)\\n    at Function.handle (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:175:3)\\n    at router (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:47:12)\\n    at Layer.handle [as handle_request] (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\layer.js:95:5)\\n    at trim_prefix (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:328:13)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-DASH-01",
+    "module": "Admin",
+    "scenario": "Admin dashboard statistics from real database records",
+    "expected": "HTTP 200 with totalOrders, newOrders, accepted, totalCustomers, totalRiders",
+    "actual": "HTTP 200, orders=6, customers=6, riders=2",
+    "evidence": "{\"totalOrders\":6,\"newOrders\":2,\"awaitingReview\":0,\"accepted\":0,\"outForDelivery\":0,\"delivered\":2,\"cancelled\":0,\"pendingPayments\":2,\"totalCollected\":2720,\"totalCustomers\":6,\"totalRiders\":2,\"availableRiders\":2,\"recentOrders\":[{\"id\":\"2964232d-85ad-4d7c-9ec5-3b634fc3bb67\",\"orderNumber\":\"DSG-20261015-ADD4F\",\"customerId\":\"808b4c18-fcc5-47c5-a697-d0a341c3c906\",\"status\":\"ORDER_PLACED\",\"rejectionReason\":null,\"cancellationReason\":null,\"deliveryName\":\"Rahul Deshmukh\",\"deliveryPhone\":\"9822001122\",\"deliveryAltPhone\":null,\"deliveryAddress\":\"Main Road Karad\",\"deliveryArea\":\"Karad\",\"deliveryCity\":\"Karad\",\"deliveryState\":\"Maharashtra\",\"deliveryPinCode\":\"415110\",\"deliveryLandmark\":null,\"deliveryMapLink\":null,\"subtotal\":\"420\",\"deliveryCharges\":\"50\",\"taxes\":\"0\",\"paymentFee\":\"0\",\"totalAmount\":\"470\",\"paymentMethod\":\"ONLINE\",\"paymentStatus\":\"PAID\",\"riderId\":null,\"deliveredAt\":null,\"estimatedDelivery\":null,\"notes\":null,\"bookingDurationDays\":1,\"remindersEnabled\":false,\"nextReminderAt\":null,\"remindersEndAt\":null,\"fsiNumber\":null,\"welcomeOfferDiscount\":\"0\",\"createdAt\":\"2026-10-15T07:58:13.219Z\",\"updatedAt\":\"2026-10-15T07:58:13.346Z\",\"customer\":{\"name\":\"Rahul Deshmukh\",\"phone\":\"9822001122\"},\"items\":[{\"id\":\"5ce6c875-3503-43be-8779-fec1a9bffb13\",\"orderId\":\"2964232d-85ad-4d7c-9ec5-3b634fc3bb67\",\"productId\":\"abdd9b42-8406-428f-a2f1-ca694722a02c\",\"productName\":\"5 KG LPG Cylinder\",\"sizeKg\":5,\"quantity\":1,\"unitPrice\":\"420\",\"totalPrice\":\"420\"}]},{\"id\":\"0dab4631-443e-4c7d-a8f4-55f81613be01\",\"orderNumber\":\"DSG-20261015-D1551\",\"customerId\":\"808b4c18-fcc5-47c5-a697-d0a341c3c906\",\"status\":\"REJECTED\",\"rejectionReason\":\"Commercial quota exceeded for the current billing cycle\",\"cancellationReason\":null,\"deliveryName\":\"Rahul Deshmukh\",\"deliveryPhone\":\"9822001122\",\"deliveryAltPhone\":null,\"deliveryAddress\":\"MIDC Industrial Zone\",\"deliveryArea\":\"Saidapur\",\"deliveryCity\":\"Karad\",\"deliveryState\":\"Maharashtra\",\"deliveryPinCode\":\"415110\",\"deliveryLandmark\":null,\"deliveryMapLink\":null,\"subtotal\":\"1850\",\"deliveryCharges\":\"100\",\"taxes\":\"92.5\",\"paymentFee\":\"0\",\"totalAmount\":\"2042.5\",\"paymentMethod\":\"COD\",\"paymentStatus\":\"PENDING\",\"riderId\":null,\"deliveredAt\":null,\"estimatedDelivery\":null,\"notes\":null,\"bookingDurationDays\":1,\"remindersEnabled\":false,\"nextReminderAt\":null,\"remindersEndAt\":null,\"fsiNumber\":null,\"welcomeOfferDiscount\":\"0\",\"createdAt\":\"2026-10-15T07:58:11.907Z\",\"updatedAt\":\"2026-10-15T07:58:12.115Z\",\"customer\":{\"name\":\"Rahul Deshmukh\",\"phone\":\"9822001122\"},\"items\":[{\"id\":\"529a1f7a-8426-4eff-a896-659a8731bbd4\",\"orderId\":\"0dab4631-443e-4c7d-a8f4-55f81613be01\",\"productId\":\"441515db-132c-4dbe-8db0-208653a3c664\",\"productName\":\"19.2 KG Commercial Cylinder\",\"sizeKg\":19.2,\"quantity\":1,\"unitPrice\":\"1850\",\"totalPrice\":\"1850\"}]},{\"id\":\"57c29149-21a8-47a7-9b8a-249b992d5b9c\",\"orderNumber\":\"DSG-20261015-E02D0\",\"customerId\":\"808b4c18-fcc5-47c5-a697-d0a341c3c906\",\"status\":\"DELIVERED\",\"rejectionReason\":null,\"cancellationReason\":null,\"deliveryName\":\"Rahul Deshmukh\",\"deliveryPhone\":\"9822001122\",\"deliveryAltPhone\":null,\"deliveryAddress\":\"Shop 12, Main Road\",\"deliveryArea\":\"Karad\",\"deliveryCity\":\"Karad\",\"deliveryState\":\"Maharashtra\",\"deliveryPinCode\":\"415110\",\"deliveryLandmark\":null,\"deliveryMapLink\":null,\"subtotal\":\"840\",\"deliveryCharges\":\"50\",\"taxes\":\"0\",\"paymentFee\":\"0\",\"totalAmount\":\"890\",\"paymentMethod\":\"COD\",\"paymentStatus\":\"PAID\",\"riderId\":\"2540fbfd-ec20-442b-8eba-181110d149a0\",\"deliveredAt\":\"2026-10-15T07:58:11.714Z\",\"estimatedDelivery\":null,\"notes\":null,\"bookingDurationDays\":1,\"remindersEnabled\":false,\"nextReminderAt\":null,\"remindersEndAt\":null,\"fsiNumber\":null,\"welcomeOfferDiscount\":\"0\",\"createdAt\":\"2026-10-15T07:58:06.851Z\",\"updatedAt\":\"2026-10-15T07:58:11.822Z\",\"customer\":{\"name\":\"Rahul Deshmukh\",\"phone\":\"9822001122\"},\"items\":[{\"id\":\"542cba63-cba6-4fda-8ff0-81c5536c22b6\",\"orderId\":\"57c29149-21a8-47a7-9b8a-249b992d5b9c\",\"productId\":\"abdd9b42-8406-428f-a2f1-ca694722a02c\",\"productName\":\"5 KG LPG Cylinder\",\"sizeKg\":5,\"quantity\":2,\"unitPrice\":\"420\",\"totalPrice\":\"840\"}]},{\"id\":\"d9b680b3-f107-40cb-9b6b-7c8530f9d0f4\",\"orderNumber\":\"DSG-20261015-BD93D\",\"customerId\":\"808b4c18-fcc5-47c5-a697-d0a341c3c906\",\"status\":\"ORDER_PLACED\",\"rejectionReason\":null,\"cancellationReason\":null,\"deliveryName\":\"Rahul Deshmukh\",\"deliveryPhone\":\"9822001122\",\"deliveryAltPhone\":null,\"deliveryAddress\":\"Main Road Karad\",\"deliveryArea\":\"Karad\",\"deliveryCity\":\"Karad\",\"deliveryState\":\"Maharashtra\",\"deliveryPinCode\":\"415110\",\"deliveryLandmark\":null,\"deliveryMapLink\":null,\"subtotal\":\"420\",\"deliveryCharges\":\"50\",\"taxes\":\"0\",\"paymentFee\":\"0\",\"totalAmount\":\"470\",\"paymentMethod\":\"ONLINE\",\"paymentStatus\":\"PAID\",\"riderId\":null,\"deliveredAt\":null,\"estimatedDelivery\":null,\"notes\":null,\"bookingDurationDays\":1,\"remindersEnabled\":false,\"nextReminderAt\":null,\"remindersEndAt\":null,\"fsiNumber\":null,\"welcomeOfferDiscount\":\"0\",\"createdAt\":\"2026-10-15T07:50:26.057Z\",\"updatedAt\":\"2026-10-15T07:50:26.176Z\",\"customer\":{\"name\":\"Rahul Deshmukh\",\"phone\":\"9822001122\"},\"items\":[{\"id\":\"d8767f70-7f02-4233-af09-105740c71133\",\"orderId\":\"d9b680b3-f107-40cb-9b6b-7c8530f9d0f4\",\"productId\":\"abdd9b42-8406-428f-a2f1-ca694722a02c\",\"productName\":\"5 KG LPG Cylinder\",\"sizeKg\":5,\"quantity\":1,\"unitPrice\":\"420\",\"totalPrice\":\"420\"}]},{\"id\":\"6c71b7fc-d658-43f0-85ea-1aed6b978335\",\"orderNumber\":\"DSG-20261015-2C5E6\",\"customerId\":\"808b4c18-fcc5-47c5-a697-d0a341c3c906\",\"status\":\"REJECTED\",\"rejectionReason\":\"Commercial quota exceeded for the current billing cycle\",\"cancellationReason\":null,\"deliveryName\":\"Rahul Deshmukh\",\"deliveryPhone\":\"9822001122\",\"deliveryAltPhone\":null,\"deliveryAddress\":\"MIDC Industrial Zone\",\"deliveryArea\":\"Saidapur\",\"deliveryCity\":\"Karad\",\"deliveryState\":\"Maharashtra\",\"deliveryPinCode\":\"415110\",\"deliveryLandmark\":null,\"deliveryMapLink\":null,\"subtotal\":\"1850\",\"deliveryCharges\":\"100\",\"taxes\":\"92.5\",\"paymentFee\":\"0\",\"totalAmount\":\"2042.5\",\"paymentMethod\":\"COD\",\"paymentStatus\":\"PENDING\",\"riderId\":null,\"deliveredAt\":null,\"estimatedDelivery\":null,\"notes\":null,\"bookingDurationDays\":1,\"remindersEnabled\":false,\"nextReminderAt\":null,\"remindersEndAt\":null,\"fsiNumber\":null,\"welcomeOfferDiscount\":\"0\",\"createdAt\":\"2026-10-15T07:50:22.089Z\",\"updatedAt\":\"2026-10-15T07:50:22.541Z\",\"customer\":{\"name\":\"Rahul Deshmukh\",\"phone\":\"9822001122\"},\"items\":[{\"id\":\"0a6fe433-666c-4f09-b7a4-863fafafe406\",\"orderId\":\"6c71b7fc-d658-43f0-85ea-1aed6b978335\",\"productId\":\"441515db-132c-4dbe-8db0-208653a3c664\",\"productName\":\"19.2 KG Commercial Cylinder\",\"sizeKg\":19.2,\"quantity\":1,\"unitPrice\":\"1850\",\"totalPrice\":\"1850\"}]}]}",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-RDR-01",
+    "module": "Admin",
+    "scenario": "Admin rider management & active rider creation",
+    "expected": "HTTP 200/201, both test riders available in system",
+    "actual": "Rider 1 ID: b92a421e-e972-4106-b4bd-3069a2fa26ca, Rider 2 ID: 2540fbfd-ec20-442b-8eba-181110d149a0",
+    "evidence": "Riders: b92a421e-e972-4106-b4bd-3069a2fa26ca, 2540fbfd-ec20-442b-8eba-181110d149a0",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-PROD-01",
+    "module": "Admin",
+    "scenario": "Verify all 8 active Gaspoint cylinder sizes in Admin catalog (12, 15, 17, 19.2, 21, 33, 50, 425 KG)",
+    "expected": "HTTP 200, all active sizes present in catalog",
+    "actual": "Found sizes: 5, 12, 15, 17, 19.2, 21, 33, 50, 425 KG",
+    "evidence": "Count: 9 products",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-SET-01",
+    "module": "Admin",
+    "scenario": "Admin settings read & structured update validation",
+    "expected": "HTTP 200 with deliveryAreas array and agency contact numbers",
+    "actual": "Agency: DS Shinde Gas, Phones: 9511760208 / 9975300929, Areas: 6",
+    "evidence": "Settings updated successfully with 0% online fee and default delivery fee ₹50",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-RPT-01",
+    "module": "Admin",
+    "scenario": "Admin reports generation (Orders, Payments, Riders) & CSV Export",
+    "expected": "HTTP 200 for all report endpoints and valid CSV text output",
+    "actual": "Orders: 6, Payments: 10, Riders: 2, CSV bytes: 1280",
+    "evidence": "CSV header: Order Number,Customer Name,Phone,Status,Address,PinCode,Payment Method,Payment Status,Subtotal,Delivery Charge,Taxes,Total Amount,Items,Date",
+    "status": "PASS"
+  },
+  {
+    "id": "CUST-REG-01",
     "module": "Customer",
-    "scenario": "Customer workflow execution",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:367:21)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "scenario": "New customer registration with phone, email, and password",
+    "expected": "HTTP 201 Created with user record",
+    "actual": "HTTP 201, userId=07466e54-c8b0-46e8-8d22-d960aa87d4c3, phone=9883300183",
+    "evidence": "Created user Pooja Kadam 659756",
+    "status": "PASS"
   },
   {
-    "id": "LIFECYCLE-ERR",
-    "module": "Rider",
-    "scenario": "Happy path lifecycle execution",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:560:25)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "id": "CUST-OTP-01",
+    "module": "Customer",
+    "scenario": "OTP dispatch and rejection of invalid 6-digit OTP",
+    "expected": "HTTP 200 for send-otp, HTTP 400 for invalid verify-otp",
+    "actual": "send-otp HTTP 200, verify-otp HTTP 400 (Invalid OTP entered. Please try again.)",
+    "evidence": "{\"success\":false,\"message\":\"Invalid OTP entered. Please try again.\",\"stack\":\"Error: Invalid OTP entered. Please try again.\\n    at Function.verifyAuthOtp (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\auth.service.ts:316:13)\\n    at async verifyOtp (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\auth.controller.ts:68:22)\"}",
+    "status": "PASS"
   },
   {
-    "id": "REJ-ERR-01",
+    "id": "CUST-AUTH-01",
+    "module": "Customer",
+    "scenario": "Customer login with verified credentials",
+    "expected": "HTTP 200, JWT token returned with CUSTOMER role",
+    "actual": "HTTP 200, userId=808b4c18-fcc5-47c5-a697-d0a341c3c906, role=CUSTOMER",
+    "evidence": "Token length: 281",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-RBAC-01",
+    "module": "Security",
+    "scenario": "Customer forbidden from accessing Admin endpoints",
+    "expected": "HTTP 403 Forbidden",
+    "actual": "HTTP 403 (Access forbidden: required role ADMIN but you are CUSTOMER)",
+    "evidence": "{\"success\":false,\"message\":\"Access forbidden: required role ADMIN but you are CUSTOMER\",\"stack\":\"Error: Access forbidden: required role ADMIN but you are CUSTOMER\\n    at <anonymous> (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\middleware\\\\auth.ts:69:9)\\n    at Layer.handle [as handle_request] (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\layer.js:95:5)\\n    at trim_prefix (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:328:13)\\n    at C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:286:9\\n    at Function.process_params (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:346:12)\\n    at next (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:280:10)\\n    at authenticateToken (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\middleware\\\\auth.ts:55:5)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "CUST-CAT-01",
+    "module": "Customer",
+    "scenario": "Retrieve active cylinder products catalog with pricing and limits",
+    "expected": "HTTP 200 with domestic and commercial 19.2kg cylinder details",
+    "actual": "Domestic: ₹850 (min 1, max 10), 19.2kg: ₹1850",
+    "evidence": "Catalog count: 8 items",
+    "status": "PASS"
+  },
+  {
+    "id": "CUST-VAL-01",
+    "module": "Customer",
+    "scenario": "Quantity validation - reject quantities exceeding product maximum limit",
+    "expected": "HTTP 400 Bad Request with maximum quantity message",
+    "actual": "HTTP 400, message=\"Maximum quantity for Gaspoint 12 KG Cylinder is 10\"",
+    "evidence": "{\"success\":false,\"message\":\"Maximum quantity for Gaspoint 12 KG Cylinder is 10\",\"stack\":\"Error: Maximum quantity for Gaspoint 12 KG Cylinder is 10\\n    at <anonymous> (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\order.service.ts:103:15)\\n    at Array.map (<anonymous>)\\n    at Function.createOrder (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\order.service.ts:94:38)\\n    at async createOrder (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\order.controller.ts:13:22)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "CUST-ORD-01",
+    "module": "Customer",
+    "scenario": "Cylinder order creation with server-side price calculation & unique order number",
+    "expected": "HTTP 201, Total ₹1750 (Subtotal ₹1700 + ₹50 Delivery), Order # DSG-YYYYMMDD-XXXX",
+    "actual": "HTTP 201, orderNumber=DSG-20261019-3F583, subtotal=₹1700, delivery=₹50, total=₹1750",
+    "evidence": "Order ID: d41d773e-8fd9-4c92-bac2-460fd33c0796, Status: AWAITING_REVIEW, PaymentStatus: PENDING",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-ISOL-01",
+    "module": "Security",
+    "scenario": "Cross-customer data isolation - Customer A cannot view Customer B private order",
+    "expected": "HTTP 404 Not Found or HTTP 403 Forbidden",
+    "actual": "HTTP 404 (Order not found)",
+    "evidence": "{\"success\":false,\"message\":\"Order not found\",\"stack\":\"Error: Order not found\\n    at Function.getCustomerOrderDetail (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\order.service.ts:324:13)\\n    at async getOrderDetail (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\order.controller.ts:46:21)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-ORD-01",
     "module": "Admin",
-    "scenario": "Rejection flow execution",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:1059:31)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "scenario": "Admin order detail retrieval & customer data verification",
+    "expected": "HTTP 200 with complete customer name, phone, address, and cylinder line items",
+    "actual": "HTTP 200, Customer=Rahul Deshmukh, Items=1",
+    "evidence": "Order DSG-20261019-3F583, Amount ₹1750",
+    "status": "PASS"
   },
   {
-    "id": "PAY-ERR-01",
+    "id": "ADM-ORD-02",
+    "module": "Admin",
+    "scenario": "Admin accepts customer order",
+    "expected": "HTTP 200, status updated to ACCEPTED",
+    "actual": "HTTP 200, status=ACCEPTED",
+    "evidence": "{\"success\":true,\"message\":\"Order accepted successfully\",\"data\":{\"id\":\"d41d773e-8fd9-4c92-bac2-460fd33c0796\",\"orderNumber\":\"DSG-20261019-3F583\",\"customerId\":\"808b4c18-fcc5-47c5-a697-d0a341c3c906\",\"status\":\"ACCEPTED\",\"rejectionReason\":null,\"cancellationReason\":null,\"deliveryName\":\"Rahul Deshmukh\",\"deliveryPhone\":\"9822001122\",\"deliveryAltPhone\":null,\"deliveryAddress\":\"Shop 12, Main Road\",\"deliveryArea\":\"Karad\",\"deliveryCity\":\"Karad\",\"deliveryState\":\"Maharashtra\",\"deliveryPinCode\":\"415110\",\"deliveryLandmark\":null,\"deliveryMapLink\":null,\"subtotal\":\"1700\",\"deliveryCharges\":\"50\",\"taxes\":\"0\",\"paymentFee\":\"0\",\"totalAmount\":\"1750\",\"paymentMethod\":\"COD\",\"paymentStatus\":\"PENDING\",\"riderId\":null,\"deliveredAt\":null,\"estimatedDelivery\":null,\"notes\":null,\"bookingDurationDays\":1,\"remindersEnabled\":false,\"nextReminderAt\":null,\"remindersEndAt\":null,\"fsiNumber\":null,\"welcomeOfferDiscount\":\"0\",\"createdAt\":\"2026-10-19T18:14:21.059Z\",\"updatedAt\":\"2026-10-19T18:14:21.158Z\"}}",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-ORD-03",
+    "module": "Admin",
+    "scenario": "Admin assigns delivery partner (Rider 1)",
+    "expected": "HTTP 200, status updated to RIDER_ASSIGNED, riderId linked",
+    "actual": "HTTP 200, status=RIDER_ASSIGNED, riderId=b92a421e-e972-4106-b4bd-3069a2fa26ca",
+    "evidence": "Assigned to: Ramesh Pawar (Rider)",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-ORD-04",
+    "module": "Admin",
+    "scenario": "Admin reassigns order to Rider 2; previous Rider 1 freed & notified",
+    "expected": "HTTP 200, riderId updated to Rider 2, Rider 1 isAvailable=true, Rider 2 isAvailable=false",
+    "actual": "HTTP 200, riderId=2540fbfd-ec20-442b-8eba-181110d149a0, Rider 1 isAvailable=true, Rider 2 isAvailable=false",
+    "evidence": "Reassignment confirmed in DB with previous rider released",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-AUTH-01",
+    "module": "Rider",
+    "scenario": "Rider authentication & token issuance",
+    "expected": "HTTP 200 with RIDER role",
+    "actual": "HTTP 200, role=RIDER, tokenLength=275",
+    "evidence": "Logged in as Rider 2 (Suresh Patil (Rider 2))",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-RBAC-02",
+    "module": "Security",
+    "scenario": "Rider blocked from accessing Admin endpoints",
+    "expected": "HTTP 403 Forbidden",
+    "actual": "HTTP 403",
+    "evidence": "{\"success\":false,\"message\":\"Access forbidden: required role ADMIN but you are RIDER\",\"stack\":\"Error: Access forbidden: required role ADMIN but you are RIDER\\n    at <anonymous> (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\middleware\\\\auth.ts:69:9)\\n    at Layer.handle [as handle_request] (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\layer.js:95:5)\\n    at trim_prefix (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:328:13)\\n    at C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:286:9\\n    at Function.process_params (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:346:12)\\n    at next (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\node_modules\\\\express\\\\lib\\\\router\\\\index.js:280:10)\\n    at authenticateToken (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\middleware\\\\auth.ts:55:5)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-ORD-01",
+    "module": "Rider",
+    "scenario": "Rider views only assigned orders with customer address & phone",
+    "expected": "HTTP 200, assigned test order present",
+    "actual": "HTTP 200, total assigned orders=1, contains test order: true",
+    "evidence": "Assigned Order: DSG-20261019-3F583",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-ISOL-02",
+    "module": "Security",
+    "scenario": "Cross-rider data isolation - Rider A cannot view or manipulate Rider B order",
+    "expected": "HTTP 404 Not Found or 403 Forbidden",
+    "actual": "HTTP 404 (Order not found or not assigned to you)",
+    "evidence": "{\"success\":false,\"message\":\"Order not found or not assigned to you\",\"stack\":\"Error: Order not found or not assigned to you\\n    at getOrderDetail (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\rider.controller.ts:140:15)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-ST-01",
+    "module": "Rider",
+    "scenario": "Rider marks cylinder order Out for Delivery",
+    "expected": "HTTP 200, status updated to OUT_FOR_DELIVERY",
+    "actual": "HTTP 200, status=OUT_FOR_DELIVERY",
+    "evidence": "Status history recorded actor: Rider 2",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-ST-02",
+    "module": "Rider",
+    "scenario": "Rider marks arrived at customer doorstep",
+    "expected": "HTTP 200, status updated to ARRIVED",
+    "actual": "HTTP 200, status=ARRIVED",
+    "evidence": "Customer notified delivery partner has arrived",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-OTP-01",
+    "module": "Security",
+    "scenario": "Attempting to complete delivery without OTP verification is strictly rejected",
+    "expected": "HTTP 400 Bad Request with OTP verification requirement error",
+    "actual": "HTTP 400, message=\"Delivery OTP must be verified before marking delivery as completed.\"",
+    "evidence": "{\"success\":false,\"message\":\"Delivery OTP must be verified before marking delivery as completed.\",\"stack\":\"Error: Delivery OTP must be verified before marking delivery as completed.\\n    at Function.completeDelivery (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\delivery.service.ts:336:13)\\n    at async completeDelivery (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\rider.controller.ts:257:21)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-OTP-01",
+    "module": "Rider",
+    "scenario": "Generate and dispatch Delivery OTP with Bcrypt Hash storage",
+    "expected": "HTTP 200, DeliveryOtp row created with bcrypt hash, plain OTP never saved to DB",
+    "actual": "HTTP 200, hashPrefix=$2a$10$, maxAttempts=5, isUsed=false",
+    "evidence": "Message: Delivery OTP dispatched to customer 9822001122",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-OTP-02",
+    "module": "Security",
+    "scenario": "Delivery OTP hash/secret is never exposed in Rider responses or logs",
+    "expected": "HTTP 200 without exposing OTP plaintext or hash to rider",
+    "actual": "deliveryOtp fields exposed: {\"isUsed\":false,\"attempts\":0,\"expiresAt\":\"2026-10-19T18:24:21.800Z\"}",
+    "evidence": "Exposed keys: isUsed, attempts, expiresAt",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-OTP-02",
+    "module": "Rider",
+    "scenario": "Invalid Delivery OTP rejected and attempt counter incremented in DB",
+    "expected": "HTTP 400 Bad Request, attempts=1 in DB",
+    "actual": "HTTP 400, message=\"Invalid OTP entered. Please verify with customer.\", DB attempts=1",
+    "evidence": "{\"success\":false,\"message\":\"Invalid OTP entered. Please verify with customer.\",\"stack\":\"Error: Invalid OTP entered. Please verify with customer.\\n    at Function.verifyDeliveryOtp (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\delivery.service.ts:310:13)\\n    at async verifyDeliveryOtp (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\rider.controller.ts:242:22)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-OTP-03",
+    "module": "Rider",
+    "scenario": "Valid customer Delivery OTP verification marks isUsed=true",
+    "expected": "HTTP 200 with verification success message and DB isUsed=true",
+    "actual": "HTTP 200, verified=true, DB isUsed=true",
+    "evidence": "{\"success\":true,\"message\":\"Delivery OTP verified successfully. You may now complete the delivery.\",\"data\":{\"verified\":true,\"message\":\"Delivery OTP verified successfully. You may now complete the delivery.\"}}",
+    "status": "PASS"
+  },
+  {
+    "id": "PAY-COD-02",
     "module": "Payment",
-    "scenario": "Online payment module execution",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:1131:28)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "scenario": "Duplicate payment collection rejected for already settled order",
+    "expected": "HTTP 400 Bad Request with already paid error",
+    "actual": "HTTP 400, message=\"This order is already marked as paid\"",
+    "evidence": "{\"success\":false,\"message\":\"This order is already marked as paid\",\"stack\":\"Error: This order is already marked as paid\\n    at Function.recordCodPayment (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\services\\\\payment.service.ts:317:13)\\n    at async collectPayment (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\controllers\\\\rider.controller.ts:273:23)\"}",
+    "status": "PASS"
   },
   {
-    "id": "NOTIF-ERR-01",
+    "id": "RDR-DEL-01",
+    "module": "Rider",
+    "scenario": "Delivery completed successfully with verified OTP, deliveredAt saved, Rider freed",
+    "expected": "HTTP 200, status=DELIVERED, deliveredAt recorded, rider isAvailable=true",
+    "actual": "HTTP 200, status=DELIVERED, deliveredAt=2026-10-19T18:14:22.263Z, Rider isAvailable=true",
+    "evidence": "Delivered order ID: d41d773e-8fd9-4c92-bac2-460fd33c0796",
+    "status": "PASS"
+  },
+  {
+    "id": "RDR-HST-01",
+    "module": "Rider",
+    "scenario": "Delivered order appears in rider completed history",
+    "expected": "HTTP 200, delivered order present in completed list",
+    "actual": "HTTP 200, completed count=3, contains order: true",
+    "evidence": "Order DSG-20261019-3F583 in completed deliveries",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-REJ-01",
+    "module": "Admin",
+    "scenario": "Reject order requires mandatory non-empty reason",
+    "expected": "HTTP 400 Bad Request when reason is empty",
+    "actual": "HTTP 400 (Validation failed)",
+    "evidence": "{\"success\":false,\"message\":\"Validation failed\",\"errors\":[{\"field\":\"reason\",\"message\":\"Rejection reason is required\"}],\"stack\":\"Error: Validation failed\\n    at <anonymous> (C:\\\\Users\\\\Anu\\\\OneDrive\\\\Desktop\\\\DS_Gas\\\\backend\\\\src\\\\middleware\\\\validate.ts:37:14)\"}",
+    "status": "PASS"
+  },
+  {
+    "id": "ADM-REJ-02",
+    "module": "Admin",
+    "scenario": "Admin successfully rejects order with recorded audit reason",
+    "expected": "HTTP 200, status updated to REJECTED, reason persisted in DB",
+    "actual": "HTTP 200, status=REJECTED, reason=\"Commercial quota exceeded for the current billing cycle\"",
+    "evidence": "Order rejected reason: Commercial quota exceeded for the current billing cycle",
+    "status": "PASS"
+  },
+  {
+    "id": "PAY-FEE-01",
+    "module": "Payment",
+    "scenario": "Card payment fee verification (3% credit card surcharge per user requirement)",
+    "expected": "onlinePaymentFee set to 3% for card payments",
+    "actual": "Configured fee: 3%",
+    "evidence": "onlinePaymentFee = 3",
+    "status": "PASS"
+  },
+  {
+    "id": "PAY-FEE-02",
+    "module": "Payment",
+    "scenario": "Actual card order includes 3% MDR surcharge in total amount",
+    "expected": "paymentFee=₹27 (3% of ₹900), Total=₹927",
+    "actual": "paymentFee=₹27, totalFeeBase=₹900, Total=₹927, method=CARD",
+    "evidence": "Subtotal=₹850, Delivery=₹50, Taxes=₹0, Fee=₹27, Total=₹927",
+    "status": "PASS"
+  },
+  {
+    "id": "NOTIF-ADM-01",
     "module": "Notification",
-    "scenario": "Notification audit execution",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:1286:25)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "scenario": "Admin receives in-app notifications on order creation, assignment, and delivery",
+    "expected": "HTTP 200 with notification records for admin",
+    "actual": "HTTP 200, admin notifications count=15, contains test order: true",
+    "evidence": "Recent notification: \"New Cylinder Order Placed\" - New booking DSG-20261019-CE91F is awaiting review for ₹927 by Rahul Deshmukh.",
+    "status": "PASS"
   },
   {
-    "id": "DATA-ERR-01",
+    "id": "NOTIF-CUST-01",
+    "module": "Notification",
+    "scenario": "Customer receives notifications and markAllAsRead resets unread count to 0",
+    "expected": "HTTP 200, unread count resets from >0 to 0",
+    "actual": "Before: 12, After readAll: 0",
+    "evidence": "Notifications count: undefined",
+    "status": "PASS"
+  },
+  {
+    "id": "SEC-NOTIF-01",
+    "module": "Security",
+    "scenario": "No passwords or confidential credentials leaked in notification messages",
+    "expected": "Zero notification records containing passwords or auth secrets",
+    "actual": "Checked 20 notification records, 0 sensitive secrets detected",
+    "evidence": "Verified across all notification types",
+    "status": "PASS"
+  },
+  {
+    "id": "DATA-HST-01",
     "module": "Database",
-    "scenario": "Data consistency execution",
-    "expected": "No uncaught exceptions",
-    "actual": "fetch failed",
-    "evidence": "TypeError: fetch failed\n    at node:internal/deps/undici/undici:13510:13\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async request (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:33:15)\n    at async runAudit (C:\\Users\\Anu\\OneDrive\\Desktop\\DS_Gas\\backend\\tests\\comprehensive_audit.ts:1395:26)",
-    "status": "FAIL",
-    "issue": "fetch failed"
+    "scenario": "Order status audit timeline persistence with actors and timestamps",
+    "expected": "At least 4 status transitions recorded (ORDER_PLACED -> ACCEPTED -> RIDER_ASSIGNED -> DELIVERED)",
+    "actual": "Recorded transitions: AWAITING_REVIEW -> ACCEPTED -> RIDER_ASSIGNED -> RIDER_ASSIGNED -> OUT_FOR_DELIVERY -> ARRIVED -> OTP_PENDING -> DELIVERED (8 audit entries)",
+    "evidence": "Entries: AWAITING_REVIEW (Booking submitted by customer and awaiting admin review) | ACCEPTED (Order reviewed and accepted by administration) | RIDER_ASSIGNED (Assigned to delivery partner Ramesh Pawar (Rider) (MH-50-AB-1234)) | RIDER_ASSIGNED (Order reassigned to delivery partner Suresh Patil (Rider 2) (MH-50-CD-5678)) | OUT_FOR_DELIVERY (Cylinder is out for delivery with rider) | ARRIVED (Rider has arrived at the customer delivery location) | OTP_PENDING (Cash on Delivery of ₹1750 collected by rider) | DELIVERED (Cylinder safely delivered and confirmed with OTP verification)",
+    "status": "PASS"
+  },
+  {
+    "id": "DATA-AGG-01",
+    "module": "Database",
+    "scenario": "Admin dashboard statistical aggregation matches direct database count exactly",
+    "expected": "Exact match: totalOrders=10, delivered=3, pendingPay=5, riders=2",
+    "actual": "Dashboard: totalOrders=10, delivered=3, pendingPay=5, riders=2",
+    "evidence": "Zero discrepancy detected between dashboard API and SQLite database tables",
+    "status": "PASS"
   }
 ]

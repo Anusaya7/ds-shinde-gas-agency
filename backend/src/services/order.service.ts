@@ -39,6 +39,17 @@ export class OrderService {
       throw new BadRequestError('Order must contain at least one item');
     }
 
+    // 0. Verify customer KYC approval status
+    const customerProfile = await prisma.customerProfile.findUnique({
+      where: { userId: customerId },
+      select: { approvalStatus: true, rejectionReason: true },
+    });
+    if (customerProfile?.approvalStatus === 'REJECTED') {
+      throw new BadRequestError(
+        `Your account KYC was rejected (${customerProfile.rejectionReason || 'Contact agency'}). Please update your verification documents.`
+      );
+    }
+
     // 1. Fetch products from database to ensure price integrity
     const productIds = dto.items.map((i) => i.productId);
     const dbProducts = await prisma.product.findMany({

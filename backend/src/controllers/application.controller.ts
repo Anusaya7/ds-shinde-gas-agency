@@ -41,50 +41,153 @@ function isValidPdf(buffer: Buffer): boolean {
 export class ApplicationController {
   static async saveCustomerDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const file = req.file;
-      if (file && req.body.udyamConsent !== 'true') {
+      const files = req.files as Record<string, Express.Multer.File[]> | undefined;
+      const udyamFile = files?.['udyamDocument']?.[0] || (req.file?.fieldname === 'udyamDocument' ? req.file : undefined);
+      const aadhaarFile = files?.['aadhaarDocument']?.[0] || (req.file?.fieldname === 'aadhaarDocument' ? req.file : undefined);
+
+      if (udyamFile && req.body.udyamConsent !== 'true') {
         throw new BadRequestError('Consent is required before uploading a Udyam certificate.');
       }
-      let encryptedDocument: Buffer | undefined;
-      if (file) {
-        const validImage = file.mimetype.startsWith('image/') && isValidImage(file.buffer);
-        const validPdf = file.mimetype === 'application/pdf' && isValidPdf(file.buffer);
+      if (aadhaarFile && req.body.aadhaarConsent !== 'true') {
+        throw new BadRequestError('Consent is required before uploading an Aadhaar document.');
+      }
+
+      let encryptedUdyam: Buffer | undefined;
+      if (udyamFile) {
+        const validImage = udyamFile.mimetype.startsWith('image/') && isValidImage(udyamFile.buffer);
+        const validPdf = udyamFile.mimetype === 'application/pdf' && isValidPdf(udyamFile.buffer);
         if (!validImage && !validPdf) {
           throw new BadRequestError('Upload a genuine PDF, JPEG, PNG, or WebP Udyam certificate.');
         }
-        encryptedDocument = encryptDocument(file.buffer);
+        encryptedUdyam = encryptDocument(udyamFile.buffer);
       }
+
+      let encryptedAadhaar: Buffer | undefined;
+      if (aadhaarFile) {
+        const validImage = aadhaarFile.mimetype.startsWith('image/') && isValidImage(aadhaarFile.buffer);
+        const validPdf = aadhaarFile.mimetype === 'application/pdf' && isValidPdf(aadhaarFile.buffer);
+        if (!validImage && !validPdf) {
+          throw new BadRequestError('Upload a genuine PDF, JPEG, PNG, or WebP Aadhaar document.');
+        }
+        encryptedAadhaar = encryptDocument(aadhaarFile.buffer);
+      }
+
+      const aadhaarNumber = req.body.aadhaarNumber ? req.body.aadhaarNumber.toString().replace(/\D/g, '') : undefined;
+      if (aadhaarNumber && aadhaarNumber.length !== 12) {
+        throw new BadRequestError('Aadhaar number must be exactly 12 digits.');
+      }
+
+      const isSubmittingKyc = Boolean(encryptedAadhaar || aadhaarNumber || encryptedUdyam);
 
       const profile = await prisma.customerProfile.upsert({
         where: { userId: req.user!.id },
         update: {
           ...(req.body.fsiNumber !== undefined && { fsiNumber: req.body.fsiNumber.trim() || null }),
-          ...(encryptedDocument && {
-            udyamDocument: encryptedDocument,
-            udyamMimeType: file!.mimetype,
+          ...(aadhaarNumber && { aadhaarNumber }),
+          ...(encryptedAadhaar && {
+            aadhaarDocument: encryptedAadhaar,
+            aadhaarMimeType: aadhaarFile!.mimetype,
+            aadhaarConsentAt: new Date(),
+          }),
+          ...(encryptedUdyam && {
+            udyamDocument: encryptedUdyam,
+            udyamMimeType: udyamFile!.mimetype,
             udyamConsentAt: new Date(),
+          }),
+          ...(isSubmittingKyc && {
+            approvalStatus: 'PENDING',
+            rejectionReason: null,
           }),
         },
         create: {
           userId: req.user!.id,
           fsiNumber: req.body.fsiNumber?.trim() || null,
-          ...(encryptedDocument && {
-            udyamDocument: encryptedDocument,
-            udyamMimeType: file!.mimetype,
+          aadhaarNumber: aadhaarNumber || null,
+          ...(encryptedAadhaar && {
+            aadhaarDocument: encryptedAadhaar,
+            aadhaarMimeType: aadhaarFile!.mimetype,
+            aadhaarConsentAt: new Date(),
+          }),
+          ...(encryptedUdyam && {
+            udyamDocument: encryptedUdyam,
+            udyamMimeType: udyamFile!.mimetype,
             udyamConsentAt: new Date(),
           }),
+          approvalStatus: isSubmittingKyc ? 'PENDING' : 'APPROVED',
         },
-        select: { fsiNumber: true, udyamMimeType: true },
+        select: {
+          fsiNumber: true,
+          udyamMimeType: true,
+          aadhaarMimeType: true,
+          approvalStatus: true,
+          rejectionReason: true,
+        },
       });
+
       await recordAuditLog(prisma, {
         userId: req.user!.id,
         action: 'CUSTOMER_PROFILE_UPDATE',
         entity: 'CustomerProfile',
         entityId: req.user!.id,
-        details: `Business details updated; Udyam document ${encryptedDocument ? 'uploaded' : 'not changed'}.`,
+        details: `Customer KYC details updated; Aadhaar: ${encryptedAadhaar ? 'uploaded' : 'unchanged'}, Udyam: ${encryptedUdyam ? 'uploaded' : 'unchanged'}.`,
         ipAddress: req.ip,
       });
-      ApiResponse.success(res, profile, 'Optional business details saved securely.');
+
+      if (isSubmittingKyc) {
+        const user = await prisma.user.findUnique({
+          where: { id: req.user!.id },
+          select: { name: true, phone: true },
+        });
+        await NotificationService.notifyAdmins({
+          title: 'Customer KYC Submitted',
+          message: `${user?.name || user?.phone || 'A customer'} submitted verification documents for review.`,
+        });
+        await NotificationService.createNotification({
+          userId: req.user!.id,
+          title: 'KYC Submitted',
+          message: 'Your verification details have been received and are pending agency review.',
+          type: NotificationType.SYSTEM,
+        });
+      }
+
+      ApiResponse.success(res, profile, 'Customer details saved successfully.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCustomerKycStatus(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const profile = await prisma.customerProfile.findUnique({
+        where: { userId: req.user!.id },
+        select: {
+          approvalStatus: true,
+          rejectionReason: true,
+          fsiNumber: true,
+          aadhaarNumber: true,
+          aadhaarMimeType: true,
+          udyamMimeType: true,
+          reviewedAt: true,
+        },
+      });
+
+      const maskedAadhaar = profile?.aadhaarNumber
+        ? `XXXX-XXXX-${profile.aadhaarNumber.slice(-4)}`
+        : null;
+
+      ApiResponse.success(
+        res,
+        {
+          approvalStatus: profile?.approvalStatus || 'APPROVED',
+          rejectionReason: profile?.rejectionReason || null,
+          fsiNumber: profile?.fsiNumber || null,
+          maskedAadhaar,
+          hasAadhaarDocument: Boolean(profile?.aadhaarMimeType),
+          hasUdyamDocument: Boolean(profile?.udyamMimeType),
+          reviewedAt: profile?.reviewedAt || null,
+        },
+        'Customer KYC status retrieved.'
+      );
     } catch (error) {
       next(error);
     }
@@ -119,11 +222,167 @@ export class ApplicationController {
     }
   }
 
+  static async getCustomerAadhaarDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const profile = await prisma.customerProfile.findUnique({
+        where: { userId: req.params.customerId },
+        select: { aadhaarDocument: true, aadhaarMimeType: true },
+      });
+      if (!profile?.aadhaarDocument || !profile.aadhaarMimeType) {
+        throw new NotFoundError('No Aadhaar document is available.');
+      }
+      const bytes = decryptDocument(profile.aadhaarDocument);
+      await recordAuditLog(prisma, {
+        userId: req.user!.id,
+        action: 'DOCUMENT_VIEW',
+        entity: 'CustomerProfile',
+        entityId: req.params.customerId,
+        details: 'Viewed Aadhaar document.',
+        ipAddress: req.ip,
+      });
+      res.setHeader('Content-Type', profile.aadhaarMimeType);
+      res.setHeader('Content-Length', bytes.length);
+      res.setHeader('Content-Disposition', 'inline; filename="aadhaar-document"');
+      res.setHeader('Cache-Control', 'private, no-store, max-age=0');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.status(200).send(bytes);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listCustomerApplications(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const status = typeof req.query.status === 'string' ? req.query.status.toUpperCase() : undefined;
+      const profiles = await prisma.customerProfile.findMany({
+        where: status
+          ? { approvalStatus: status }
+          : {
+              OR: [
+                { approvalStatus: 'PENDING' },
+                { aadhaarNumber: { not: null } },
+                { aadhaarMimeType: { not: null } },
+                { udyamMimeType: { not: null } },
+              ],
+            },
+        select: {
+          id: true,
+          userId: true,
+          fsiNumber: true,
+          aadhaarNumber: true,
+          aadhaarMimeType: true,
+          udyamMimeType: true,
+          approvalStatus: true,
+          rejectionReason: true,
+          reviewedAt: true,
+          createdAt: true,
+          updatedAt: true,
+          user: {
+            select: {
+              name: true,
+              email: true,
+              phone: true,
+              isActive: true,
+            },
+          },
+        },
+        orderBy: [{ approvalStatus: 'asc' }, { updatedAt: 'desc' }],
+        take: 100,
+      });
+
+      const formatted = profiles.map((p) => ({
+        id: p.id,
+        customerId: p.userId,
+        customerName: p.user.name,
+        customerPhone: p.user.phone,
+        customerEmail: p.user.email,
+        fsiNumber: p.fsiNumber,
+        maskedAadhaar: p.aadhaarNumber ? `XXXX-XXXX-${p.aadhaarNumber.slice(-4)}` : null,
+        hasAadhaarDocument: Boolean(p.aadhaarMimeType),
+        hasUdyamDocument: Boolean(p.udyamMimeType),
+        approvalStatus: p.approvalStatus,
+        rejectionReason: p.rejectionReason,
+        reviewedAt: p.reviewedAt,
+        createdAt: p.createdAt,
+      }));
+
+      ApiResponse.success(res, formatted, 'Customer applications retrieved.');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async reviewCustomerApplication(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { status, reason } = req.body as { status: 'APPROVED' | 'REJECTED'; reason?: string };
+      const { customerId } = req.params;
+
+      const profile = await prisma.customerProfile.findUnique({
+        where: { userId: customerId },
+        include: { user: true },
+      });
+      if (!profile) throw new NotFoundError('Customer profile not found.');
+
+      const reviewedAt = new Date();
+      const updated = await prisma.customerProfile.update({
+        where: { userId: customerId },
+        data: {
+          approvalStatus: status,
+          rejectionReason: status === 'REJECTED' ? reason?.trim() || 'Verification criteria not met' : null,
+          reviewedAt,
+          reviewedById: req.user!.id,
+        },
+      });
+
+      await recordAuditLog(prisma, {
+        userId: req.user!.id,
+        action: `CUSTOMER_KYC_${status}`,
+        entity: 'CustomerProfile',
+        entityId: profile.id,
+        details: status === 'REJECTED' ? `Rejection reason: ${reason?.trim()}` : 'Customer KYC approved.',
+        ipAddress: req.ip,
+      });
+
+      const message =
+        status === 'APPROVED'
+          ? 'Your customer KYC has been approved. Cylinder booking is now fully unlocked.'
+          : `Your customer KYC application was not approved. Reason: ${reason?.trim() || 'Details could not be verified'}`;
+
+      await NotificationService.createNotification({
+        userId: customerId,
+        title: `KYC Application ${status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
+        message,
+        type: NotificationType.SYSTEM,
+      });
+
+      if (profile.user.phone) {
+        await sendSms({ phone: profile.user.phone, message });
+      }
+      if (profile.user.email) {
+        await sendEmail({
+          to: profile.user.email,
+          subject: `DS Shinde Gas KYC ${status.toLowerCase()}`,
+          text: message,
+          html: `<p>${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`,
+        });
+      }
+
+      ApiResponse.success(res, updated, `Customer KYC ${status.toLowerCase()}.`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async deleteCustomerDocuments(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const profile = await prisma.customerProfile.updateMany({
         where: { userId: req.params.customerId },
-        data: { udyamDocument: null, udyamMimeType: null },
+        data: {
+          udyamDocument: null,
+          udyamMimeType: null,
+          aadhaarDocument: null,
+          aadhaarMimeType: null,
+        },
       });
       if (profile.count === 0) throw new NotFoundError('Customer profile not found.');
       await recordAuditLog(prisma, {
@@ -131,7 +390,7 @@ export class ApplicationController {
         action: 'DOCUMENT_DELETE',
         entity: 'CustomerProfile',
         entityId: req.params.customerId,
-        details: 'Deleted stored Udyam certificate.',
+        details: 'Deleted stored KYC documents.',
         ipAddress: req.ip,
       });
       ApiResponse.success(res, null, 'Customer documents securely deleted.');

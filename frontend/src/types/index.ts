@@ -54,7 +54,35 @@ export type OrderStatus =
   | 'REJECTED';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
-export type PaymentMethod = 'ONLINE' | 'COD' | 'CARD';
+export type PaymentMethod = 'ONLINE' | 'COD' | 'CARD' | 'UPI_QR';
+
+export type CustomerApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface CustomerKycStatus {
+  approvalStatus: CustomerApprovalStatus;
+  rejectionReason?: string | null;
+  fsiNumber?: string | null;
+  maskedAadhaar?: string | null;
+  hasAadhaarDocument: boolean;
+  hasUdyamDocument: boolean;
+  reviewedAt?: string | null;
+}
+
+export interface CustomerApplication {
+  id: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  fsiNumber?: string | null;
+  maskedAadhaar?: string | null;
+  hasAadhaarDocument: boolean;
+  hasUdyamDocument: boolean;
+  approvalStatus: CustomerApprovalStatus;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+}
 
 export interface OrderItem {
   id?: string;

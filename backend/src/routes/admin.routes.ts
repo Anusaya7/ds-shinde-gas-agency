@@ -85,7 +85,19 @@ router.put('/riders/:id/toggle-status', AdminController.toggleRiderStatus);
 // Customers
 router.get('/customers', AdminController.listCustomers);
 router.get('/customers/:id', AdminController.getCustomerDetail);
+router.get('/customer-applications', ApplicationController.listCustomerApplications);
+router.patch(
+  '/customer-applications/:customerId/review',
+  validate(
+    z.discriminatedUnion('status', [
+      z.object({ status: z.literal('APPROVED') }),
+      z.object({ status: z.literal('REJECTED'), reason: z.string().trim().min(3).max(500).optional() }),
+    ])
+  ),
+  ApplicationController.reviewCustomerApplication
+);
 router.get('/customers/:customerId/udyam-certificate', ApplicationController.getCustomerUdyamDocument);
+router.get('/customers/:customerId/aadhaar-document', ApplicationController.getCustomerAadhaarDocument);
 router.delete('/customers/:customerId/documents', ApplicationController.deleteCustomerDocuments);
 
 // Products

@@ -6,6 +6,8 @@ import {
   Minus,
   CreditCard,
   Banknote,
+  QrCode,
+  FileCheck2,
   ShieldCheck,
   CheckCircle2,
   AlertCircle,
@@ -24,7 +26,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { customerService } from '../../services/customer.service';
 import { productService } from '../../services/product.service';
 import { orderService } from '../../services/order.service';
-import { Address, Product, PaymentMethod, Order } from '../../types';
+import { Address, Product, PaymentMethod, Order, CustomerKycStatus } from '../../types';
 import {
   clearCustomerBookingCoordinates,
   getCustomerBookingMapLink,
@@ -52,6 +54,11 @@ export const NewOrder: React.FC = () => {
   const [fsiNumber, setFsiNumber] = useState('');
   const [udyamDocument, setUdyamDocument] = useState<File | undefined>();
   const [udyamConsent, setUdyamConsent] = useState(false);
+  const [aadhaarNumber, setAadhaarNumber] = useState('');
+  const [aadhaarDocument, setAadhaarDocument] = useState<File | undefined>();
+  const [aadhaarConsent, setAadhaarConsent] = useState(false);
+  const [kycStatus, setKycStatus] = useState<CustomerKycStatus | null>(null);
+  const [submittingKyc, setSubmittingKyc] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [signupLocationMapLink, setSignupLocationMapLink] = useState('');
 
@@ -111,8 +118,9 @@ export const NewOrder: React.FC = () => {
     Promise.all([
       customerService.getAddresses().catch(() => []),
       productService.getProducts(true),
+      customerService.getKycStatus().catch(() => null),
     ])
-      .then(([addresses, prods]) => {
+      .then(([addresses, prods, kyc]) => {
         if (addresses && addresses.length > 0) {
           setSavedAddresses(addresses);
           const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
@@ -131,6 +139,12 @@ export const NewOrder: React.FC = () => {
             mapLink: defaultAddr.mapLink || '',
             isDefault: !!defaultAddr.isDefault,
           });
+        }
+        if (kyc) {
+          setKycStatus(kyc);
+          if (kyc.fsiNumber) setFsiNumber(kyc.fsiNumber);
+        } else {
+          setKycStatus({ approvalStatus: 'APPROVED', hasAadhaarDocument: false, hasUdyamDocument: false });
         }
         setProducts(prods.filter((p) => p.inStock && p.isActive));
 
@@ -187,6 +201,62 @@ export const NewOrder: React.FC = () => {
       return;
     }
     setUdyamDocument(file);
+  };
+
+  const handleAadhaarDocument = (file?: File) => {
+    if (!file) {
+      setAadhaarDocument(undefined);
+      return;
+    }
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Choose a PDF, JPEG, PNG, or WebP Aadhaar document.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('The Aadhaar document must be 5 MB or smaller.');
+      return;
+    }
+    setAadhaarDocument(file);
+  };
+
+  const handleKycSubmit = async () => {
+    const cleanAadhaar = aadhaarNumber.replace(/\D/g, '');
+    if (cleanAadhaar && cleanAadhaar.length !== 12) {
+      toast.error('Aadhaar number must be exactly 12 digits');
+      return;
+    }
+    if (aadhaarDocument && !aadhaarConsent) {
+      toast.error('Consent is required to store your Aadhaar document securely.');
+      return;
+    }
+    if (udyamDocument && !udyamConsent) {
+      toast.error('Consent is required to upload your Udyam certificate.');
+      return;
+    }
+    if (!cleanAadhaar && !aadhaarDocument && !udyamDocument && !fsiNumber.trim()) {
+      toast.error('Please enter your Aadhaar number or select an Aadhaar document to submit KYC.');
+      return;
+    }
+
+    setSubmittingKyc(true);
+    try {
+      await customerService.submitKyc({
+        fsiNumber: fsiNumber.trim() || undefined,
+        udyamDocument,
+        udyamConsent: udyamDocument ? udyamConsent : undefined,
+        aadhaarNumber: cleanAadhaar || undefined,
+        aadhaarDocument,
+        aadhaarConsent: aadhaarDocument ? aadhaarConsent : undefined,
+      });
+      toast.success('KYC details submitted for administrator review.');
+      const updated = await customerService.getKycStatus();
+      setKycStatus(updated);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Could not submit KYC details.');
+    } finally {
+      setSubmittingKyc(false);
+    }
   };
 
   // Handle pre-selected cylinder from homepage or other entry points
@@ -337,7 +407,17 @@ export const NewOrder: React.FC = () => {
   };
 
   const handleNext = () => {
-    if (currentStep === 1 && !validateStep1()) return;
+    if (currentStep === 1) {
+      if (!validateStep1()) return;
+      if (kycStatus && kycStatus.approvalStatus !== 'APPROVED') {
+        toast.error(
+          kycStatus.approvalStatus === 'PENDING'
+            ? 'Your customer KYC is pending verification by DS Shinde Gas admin. Cylinder selection is locked until approved.'
+            : `Your customer KYC was not approved (${kycStatus.rejectionReason || 'Please resubmit your details'}).`
+        );
+        return;
+      }
+    }
     if (currentStep === 2 && !validateStep2()) return;
     setCurrentStep((s) => s + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -355,14 +435,21 @@ export const NewOrder: React.FC = () => {
       toast.error('Consent is required before uploading the optional Udyam certificate.');
       return;
     }
+    if (aadhaarDocument && !aadhaarConsent) {
+      toast.error('Consent is required before uploading the Aadhaar document.');
+      return;
+    }
     setSubmitting(true);
 
     try {
-      if (udyamDocument || fsiNumber.trim()) {
+      if (udyamDocument || fsiNumber.trim() || aadhaarNumber.trim() || aadhaarDocument) {
         await customerService.saveBusinessDetails({
           ...(fsiNumber.trim() && { fsiNumber: fsiNumber.trim() }),
           ...(udyamDocument && { udyamDocument }),
           ...(udyamDocument && { udyamConsent }),
+          ...(aadhaarNumber.trim() && { aadhaarNumber: aadhaarNumber.trim().replace(/\D/g, '') }),
+          ...(aadhaarDocument && { aadhaarDocument }),
+          ...(aadhaarDocument && { aadhaarConsent }),
         });
       }
 
@@ -750,50 +837,137 @@ export const NewOrder: React.FC = () => {
                 </label>
               </fieldset>
 
-              <details className="rounded-xl border border-slate-200 p-4">
-                <summary className="cursor-pointer text-sm font-semibold text-slate-800">
-                  Optional business information
-                </summary>
-                <div className="mt-4 space-y-4">
-                  <Input
-                    label="FSI number (optional, if applicable)"
-                    maxLength={40}
-                    value={fsiNumber}
-                    onChange={(event) => setFsiNumber(event.target.value)}
-                  />
+              {/* KYC & Identity Verification Section */}
+              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-3">
                   <div>
-                    <label htmlFor="udyam-document" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                      Udyam certificate (optional; upload only if required)
-                    </label>
-                    <input
-                      id="udyam-document"
-                      type="file"
-                      accept=".pdf,image/jpeg,image/png,image/webp"
-                      onChange={(event) => handleUdyamDocument(event.target.files?.[0])}
-                      aria-describedby="udyam-file-hint"
-                      className="block w-full rounded-xl border border-slate-300 p-2 text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2 file:py-2 file:font-bold file:text-[#10284A]"
-                    />
-                    <p id="udyam-file-hint" className="mt-1 text-xs leading-5 text-slate-500">
-                      PDF, JPEG, PNG or WebP; maximum 5 MB. The file is encrypted and only administrators can view it.
+                    <h3 className="text-base font-extrabold text-[#10284A] flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-primary" /> Customer KYC & Business Verification
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Government compliance & verified commercial/domestic connection record
                     </p>
-                    {udyamDocument && (
-                      <p className="mt-1 text-xs font-semibold text-emerald-700">{udyamDocument.name}</p>
-                    )}
-                    <label className="mt-3 flex items-start gap-2 text-xs leading-5 text-slate-700">
-                      <input
-                        type="checkbox"
-                        checked={udyamConsent}
-                        onChange={(event) => setUdyamConsent(event.target.checked)}
-                        className="mt-1 h-4 w-4"
-                      />
-                      <span>
-                        I consent to storing this certificate encrypted and allowing restricted agency administrators
-                        to access it for booking review. I may choose not to provide it.
-                      </span>
-                    </label>
                   </div>
+                  {kycStatus?.approvalStatus === 'APPROVED' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" /> KYC Verified ✓
+                    </span>
+                  ) : kycStatus?.approvalStatus === 'PENDING' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+                      <AlertCircle className="w-4 h-4 text-amber-600" /> Pending Admin Review
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-800">
+                      <AlertCircle className="w-4 h-4 text-red-600" /> Verification Required
+                    </span>
+                  )}
                 </div>
-              </details>
+
+                {kycStatus?.approvalStatus === 'PENDING' && (
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 leading-relaxed">
+                    Your KYC details have been submitted and are currently awaiting review by DS Shinde Gas agency administrators. You may update or add documents below.
+                  </div>
+                )}
+
+                {kycStatus?.approvalStatus === 'REJECTED' && (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-900 leading-relaxed">
+                    <strong>KYC Rejection Reason:</strong> {kycStatus.rejectionReason || 'Details could not be verified'}. Please provide valid Aadhaar / certificate details below and click Submit for Review.
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="Aadhaar Card Number"
+                      placeholder="12-digit Aadhaar number"
+                      maxLength={12}
+                      value={aadhaarNumber}
+                      onChange={(e) => setAadhaarNumber(e.target.value.replace(/\D/g, ''))}
+                    />
+                    <Input
+                      label="FSI / GST Number (Optional)"
+                      placeholder="e.g. FSI number or GSTIN"
+                      maxLength={40}
+                      value={fsiNumber}
+                      onChange={(e) => setFsiNumber(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="aadhaar-document" className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-700">
+                        Aadhaar Document Photo / PDF
+                      </label>
+                      <input
+                        id="aadhaar-document"
+                        type="file"
+                        accept=".pdf,image/jpeg,image/png,image/webp"
+                        onChange={(e) => handleAadhaarDocument(e.target.files?.[0])}
+                        className="block w-full rounded-xl border border-slate-300 p-2 text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2.5 file:py-1.5 file:font-bold file:text-[#10284A]"
+                      />
+                      {aadhaarDocument ? (
+                        <p className="mt-1 text-xs font-semibold text-emerald-700">{aadhaarDocument.name}</p>
+                      ) : kycStatus?.hasAadhaarDocument ? (
+                        <p className="mt-1 text-xs text-emerald-600 font-medium">✓ Aadhaar file currently on record (encrypted)</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-slate-500">PDF, JPEG, PNG or WebP up to 5 MB</p>
+                      )}
+                      <label className="mt-2 flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={aadhaarConsent}
+                          onChange={(e) => setAadhaarConsent(e.target.checked)}
+                          className="mt-0.5 h-3.5 w-3.5"
+                        />
+                        <span>I consent to securely encrypting and storing my Aadhaar for agency verification.</span>
+                      </label>
+                    </div>
+
+                    <div>
+                      <label htmlFor="udyam-document" className="mb-1 block text-xs font-bold uppercase tracking-wider text-gray-700">
+                        Udyam Certificate (Commercial / Optional)
+                      </label>
+                      <input
+                        id="udyam-document"
+                        type="file"
+                        accept=".pdf,image/jpeg,image/png,image/webp"
+                        onChange={(e) => handleUdyamDocument(e.target.files?.[0])}
+                        className="block w-full rounded-xl border border-slate-300 p-2 text-xs file:mr-2 file:rounded-lg file:border-0 file:bg-blue-50 file:px-2.5 file:py-1.5 file:font-bold file:text-[#10284A]"
+                      />
+                      {udyamDocument ? (
+                        <p className="mt-1 text-xs font-semibold text-emerald-700">{udyamDocument.name}</p>
+                      ) : kycStatus?.hasUdyamDocument ? (
+                        <p className="mt-1 text-xs text-emerald-600 font-medium">✓ Udyam file currently on record (encrypted)</p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-slate-500">PDF or image up to 5 MB for commercial users</p>
+                      )}
+                      <label className="mt-2 flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={udyamConsent}
+                          onChange={(e) => setUdyamConsent(e.target.checked)}
+                          className="mt-0.5 h-3.5 w-3.5"
+                        />
+                        <span>I consent to storing this business certificate for booking approval.</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {(aadhaarNumber || aadhaarDocument || udyamDocument || fsiNumber) && (
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={submittingKyc}
+                        onClick={handleKycSubmit}
+                      >
+                        {submittingKyc ? 'Submitting KYC...' : 'Submit Verification Details'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {selectedAddressId === 'new' && (
                 <label className="flex items-center gap-2 pt-2 text-xs text-gray-700 cursor-pointer">
@@ -820,7 +994,29 @@ export const NewOrder: React.FC = () => {
       {/* STEP 2: SELECT CYLINDER */}
       {currentStep === 2 && (
         <div className="space-y-6">
-          <Card title="Step 2: Select Cylinder Size (12 kg - 425 kg) & Quantity">
+          {kycStatus?.approvalStatus && kycStatus.approvalStatus !== 'APPROVED' ? (
+            <Card title="Step 2: Cylinder Selection Restricted">
+              <div className="p-8 text-center space-y-4">
+                <AlertCircle className="w-12 h-12 text-amber-500 mx-auto" />
+                <h3 className="text-xl font-bold text-gray-900">
+                  {kycStatus.approvalStatus === 'PENDING'
+                    ? 'Customer KYC Awaiting Administrator Approval'
+                    : 'Customer KYC Verification Required'}
+                </h3>
+                <p className="text-sm text-gray-600 max-w-lg mx-auto">
+                  {kycStatus.approvalStatus === 'PENDING'
+                    ? 'Your identification details are currently pending review by DS Shinde Gas agency administrators. In accordance with safety regulations, cylinder selection and booking are unlocked once approved.'
+                    : `Verification details were rejected: ${kycStatus.rejectionReason || 'Please resubmit your Aadhaar and details'}.`}
+                </p>
+                <div className="pt-2">
+                  <Button variant="primary" size="md" onClick={() => setCurrentStep(1)}>
+                    Return to Step 1 & Update Details
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          ) : (
+            <Card title="Step 2: Select Cylinder Size (12 kg - 425 kg) & Quantity">
             <div className="space-y-6">
               <p className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-[#B94A0B]">
                 Tap a Gaspoint cylinder size to select it, then adjust the refill quantity.
@@ -936,6 +1132,7 @@ export const NewOrder: React.FC = () => {
               </div>
             </div>
           </Card>
+          )}
         </div>
       )}
 
@@ -946,7 +1143,7 @@ export const NewOrder: React.FC = () => {
             <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
               This records your preferred payment method. Payment is collected only after agency approval.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Online Payment */}
               <div
                 onClick={() => setPaymentMethod('ONLINE')}
@@ -961,6 +1158,25 @@ export const NewOrder: React.FC = () => {
                 </div>
                 <h4 className="font-bold text-gray-900 text-sm">Online UPI / NetBanking</h4>
                 <p className="text-xs text-gray-500 mt-1">Pay after approval via Razorpay UPI or net banking options.</p>
+                <span className="inline-block mt-3 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                  0% Additional Fees
+                </span>
+              </div>
+
+              {/* UPI QR Scanner Payment */}
+              <div
+                onClick={() => setPaymentMethod('UPI_QR')}
+                className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+                  paymentMethod === 'UPI_QR'
+                    ? 'border-primary bg-blue-50/60 ring-2 ring-primary/20 shadow'
+                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                }`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-orange-100 text-[#F47721] flex items-center justify-center mb-3">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <h4 className="font-bold text-gray-900 text-sm">UPI QR Scanner</h4>
+                <p className="text-xs text-gray-500 mt-1">Scan dynamic agency QR code on delivery partner app at handover.</p>
                 <span className="inline-block mt-3 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                   0% Additional Fees
                 </span>
@@ -1001,9 +1217,9 @@ export const NewOrder: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Pay through secure Razorpay checkout after approval. Card details are not stored by DS Shinde Gas.
                 </p>
-<span className="inline-block mt-3 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-                   {settings.onlinePaymentFee || 3}% MDR surcharge applies
-                 </span>
+                <span className="inline-block mt-3 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
+                  {settings.onlinePaymentFee || 3}% MDR surcharge applies
+                </span>
               </div>
             </div>
 

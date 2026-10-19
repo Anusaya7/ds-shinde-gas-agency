@@ -23,6 +23,12 @@ export class CustomerController {
               id: true,
               alternatePhone: true,
               fsiNumber: true,
+              approvalStatus: true,
+              rejectionReason: true,
+              aadhaarNumber: true,
+              aadhaarMimeType: true,
+              udyamMimeType: true,
+              reviewedAt: true,
               addresses: {
                 orderBy: { isDefault: 'desc' },
               },

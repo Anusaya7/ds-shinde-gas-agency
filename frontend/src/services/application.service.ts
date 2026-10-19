@@ -84,4 +84,30 @@ export const applicationService = {
     });
     return response.data as Blob;
   },
+
+  async downloadCustomerAadhaarDocument(customerId: string): Promise<Blob> {
+    const response = await api.get(`/admin/customers/${customerId}/aadhaar-document`, {
+      responseType: 'blob',
+    });
+    return response.data as Blob;
+  },
+
+  async listCustomerApplications(status?: string): Promise<any[]> {
+    const response = await api.get<{ data: any[] }>('/admin/customer-applications', {
+      params: status ? { status } : undefined,
+    });
+    return response.data.data;
+  },
+
+  async reviewCustomerApplication(
+    customerId: string,
+    status: 'APPROVED' | 'REJECTED',
+    reason?: string
+  ): Promise<any> {
+    const response = await api.patch<{ data: any }>(
+      `/admin/customer-applications/${customerId}/review`,
+      { status, ...(reason ? { reason } : {}) }
+    );
+    return response.data.data;
+  },
 };

@@ -4,19 +4,19 @@ import {
   ArrowLeft,
   Navigation,
   Phone,
+  Mail,
   CheckCircle2,
   Truck,
   Home,
   KeyRound,
-  ShieldCheck,
   CreditCard,
-  IndianRupee,
-  MapPin,
-  Clock,
-  AlertCircle,
+  Banknote,
+  QrCode,
+  Smartphone,
 } from 'lucide-react';
 import { riderService } from '../../services/rider.service';
-import { Order, OrderStatus } from '../../types';
+import { paymentService } from '../../services/payment.service';
+import { Order, PaymentMethod } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -38,19 +38,25 @@ export const RiderOrderDetail: React.FC = () => {
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  // COD Payment collection state
   const [amountCollected, setAmountCollected] = useState<number>(0);
+  const [collectionMethod, setCollectionMethod] = useState<PaymentMethod>('COD');
+  const [transactionId, setTransactionId] = useState('');
+  const [razorpayLoading, setRazorpayLoading] = useState(false);
+
+  const loadOrder = async () => {
+    if (!id) return null;
+    const data = await riderService.getOrderDetail(id);
+    setOrder(data);
+    setAmountCollected(data.totalAmount);
+    setCollectionMethod(data.paymentMethod || 'COD');
+    if (data.isOtpVerified) setOtpVerified(true);
+    return data;
+  };
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    riderService
-      .getOrderDetail(id)
-      .then((data) => {
-        setOrder(data);
-        setAmountCollected(data.totalAmount);
-        if (data.isOtpVerified) setOtpVerified(true);
-      })
+    loadOrder()
       .catch((error: any) => {
         setOrder(null);
         toast.error(error.response?.data?.message || 'Could not load this assigned delivery.');
@@ -63,9 +69,9 @@ export const RiderOrderDetail: React.FC = () => {
     if (!order) return;
     setActionLoading(true);
     try {
-      const updated = await riderService.acceptAssignment(order.id);
-      setOrder(updated);
-      toast.success('Assignment accepted! Ready to begin trip.');
+      await riderService.acceptAssignment(order.id);
+      await loadOrder();
+      toast.success('Assignment accepted. Next: start the trip to the customer.');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not accept this delivery assignment.');
     } finally {
@@ -78,9 +84,9 @@ export const RiderOrderDetail: React.FC = () => {
     if (!order) return;
     setActionLoading(true);
     try {
-      const updated = await riderService.startDelivery(order.id);
-      setOrder(updated);
-      toast.success('Marked as Out for Delivery!');
+      await riderService.startDelivery(order.id);
+      await loadOrder();
+      toast.success('Trip started. Next: mark arrived when you reach the customer.');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not update delivery status.');
     } finally {
@@ -93,9 +99,9 @@ export const RiderOrderDetail: React.FC = () => {
     if (!order) return;
     setActionLoading(true);
     try {
-      const updated = await riderService.markArrived(order.id);
-      setOrder(updated);
-      toast.success('Marked Arrived at Customer Doorstep!');
+      await riderService.markArrived(order.id);
+      await loadOrder();
+      toast.success('Arrived. Next: send or enter the customer handover OTP.');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not update delivery status.');
     } finally {
@@ -109,7 +115,7 @@ export const RiderOrderDetail: React.FC = () => {
     setOtpSending(true);
     try {
       const res = await riderService.sendDeliveryOtp(order.id);
-      toast.success(res.message || 'OTP dispatched to customer mobile SMS');
+      toast.success(res.message || 'OTP sent to the customer email.');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not send delivery OTP.');
     } finally {
@@ -128,14 +134,32 @@ export const RiderOrderDetail: React.FC = () => {
       const res = await riderService.verifyDeliveryOtp(order.id, otpInput.trim());
       if (res.verified) {
         setOtpVerified(true);
-        toast.success('Customer OTP Verified Successfully!');
+        toast.success(res.message || 'Customer OTP verified. You can complete the delivery.');
       } else {
-        toast.error('Invalid OTP code. Please verify with customer.');
+        toast.error(res.message || 'Invalid OTP code. Please verify with customer.');
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not verify delivery OTP.');
     } finally {
       setOtpVerifying(false);
+    }
+  };
+
+  const handleRazorpayCollect = async () => {
+    if (!order) return;
+    setRazorpayLoading(true);
+    try {
+      const result = await paymentService.openCheckout(order);
+      if (result === 'paid') {
+        await loadOrder();
+        toast.success('Razorpay payment verified. You can now mark the order delivered.');
+      } else if (result === 'failed') {
+        toast.error('Razorpay payment failed. Ask the customer to retry, or collect cash.');
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || error.message || 'Could not open Razorpay checkout.');
+    } finally {
+      setRazorpayLoading(false);
     }
   };
 
@@ -150,11 +174,19 @@ export const RiderOrderDetail: React.FC = () => {
       toast.error(`Confirm collection of the exact payable amount: ₹${order.totalAmount}.`);
       return;
     }
+    if (order.paymentStatus !== 'PAID' && collectionMethod !== 'COD' && transactionId.trim().length < 4) {
+      toast.error('Enter the UPI / online / card transaction reference.');
+      return;
+    }
 
     setActionLoading(true);
     try {
       if (order.paymentStatus !== 'PAID') {
-        await riderService.collectCash(order.id, amountCollected);
+        await riderService.collectPayment(order.id, {
+          amount: amountCollected,
+          method: collectionMethod,
+          transactionId: collectionMethod === 'COD' ? undefined : transactionId.trim(),
+        });
       }
       const updated = await riderService.completeDelivery(order.id);
       setOrder(updated);
@@ -193,7 +225,10 @@ export const RiderOrderDetail: React.FC = () => {
 
   // Current workflow status checks
   const isAssigned = order.orderStatus === 'ASSIGNED';
-  const isAccepted = order.orderStatus === 'ACCEPTED';
+  const riderAcceptedAssignment = (order.statusHistory || []).some((entry) =>
+    /accepted delivery assignment/i.test(String(entry.comment || ''))
+  );
+  const isReadyToStartTrip = isAssigned && riderAcceptedAssignment;
   const isOutForDelivery = order.orderStatus === 'OUT_FOR_DELIVERY';
   const isArrived = order.orderStatus === 'ARRIVED';
   const isDelivered = order.orderStatus === 'DELIVERED';
@@ -230,6 +265,14 @@ export const RiderOrderDetail: React.FC = () => {
 
         <div className="space-y-2 text-xs">
           <p className="text-base font-bold text-gray-900">{order.customerName}</p>
+          {order.customerPhone && (
+            <p className="font-semibold text-gray-800">📞 {order.customerPhone}</p>
+          )}
+          {order.customerEmail ? (
+            <p className="font-semibold text-gray-800">✉️ {order.customerEmail}</p>
+          ) : (
+            <p className="text-gray-500">✉️ Email not on this booking</p>
+          )}
           <p className="text-gray-600 leading-relaxed">
             {order.deliveryAddress.addressLine1}, {order.deliveryAddress.area},{' '}
             {order.deliveryAddress.city} - {order.deliveryAddress.pincode}
@@ -258,8 +301,8 @@ export const RiderOrderDetail: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Buttons: Navigate & Call Customer */}
-        <div className="grid grid-cols-2 gap-3 pt-2">
+        {/* Action Buttons: Navigate, Call, Email */}
+        <div className={`grid gap-3 pt-2 ${order.customerEmail ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
           <a
             href={mapsUrl}
             target="_blank"
@@ -275,13 +318,21 @@ export const RiderOrderDetail: React.FC = () => {
           >
             <Phone className="w-4 h-4 text-emerald-600" /> Call Customer
           </a>
+          {order.customerEmail && (
+            <a
+              href={`mailto:${order.customerEmail}`}
+              className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-slate-50 text-slate-800 border border-slate-200 font-bold text-xs hover:bg-slate-100 transition-colors"
+            >
+              <Mail className="w-4 h-4 text-slate-600" /> Email Customer
+            </a>
+          )}
         </div>
       </div>
 
       {/* STEP-BY-STEP PROGRESSION PANEL */}
 
       {/* Step 2: Accept Assignment */}
-      {isAssigned && (
+      {isAssigned && !riderAcceptedAssignment && (
         <div className="bg-white rounded-2xl p-6 border-2 border-primary shadow-sm text-center space-y-3">
           <div className="w-12 h-12 rounded-xl bg-blue-100 text-primary flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-6 h-6" />
@@ -302,15 +353,15 @@ export const RiderOrderDetail: React.FC = () => {
         </div>
       )}
 
-      {/* Step 5: Start Delivery */}
-      {isAccepted && (
+      {/* Step 3: Start Delivery */}
+      {isReadyToStartTrip && (
         <div className="bg-white rounded-2xl p-6 border-2 border-warm shadow-sm text-center space-y-3">
           <div className="w-12 h-12 rounded-xl bg-amber-100 text-warm-dark flex items-center justify-center mx-auto">
             <Truck className="w-6 h-6" />
           </div>
           <h3 className="font-bold text-base text-gray-900">Step 3: Start Delivery Transit</h3>
           <p className="text-xs text-gray-500 max-w-sm mx-auto">
-            Mark order as out for delivery. The customer will be notified via SMS and can track your route.
+            Cylinder is loaded. Start the trip now. The customer will be notified that you are out for delivery.
           </p>
           <Button
             variant="accent"
@@ -372,20 +423,23 @@ export const RiderOrderDetail: React.FC = () => {
           {!otpVerified ? (
             <div className="space-y-4">
               <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-800 leading-relaxed">
-                Ask the customer for the 6-digit passcode sent to their mobile SMS or visible on their portal. You cannot mark delivery complete without this OTP.
+                Send the 6-digit OTP to the customer email, then enter the code they share with you. You cannot mark delivery complete without this OTP.
               </div>
 
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">Customer didn't receive code?</span>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={otpSending}
-                  className="text-xs font-bold text-primary hover:underline"
-                >
-                  {otpSending ? 'Sending SMS...' : 'Resend OTP to Customer Phone'}
-                </button>
-              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full font-bold"
+                onClick={handleSendOtp}
+                isLoading={otpSending}
+                leftIcon={<Mail className="w-4 h-4" />}
+              >
+                {otpSending
+                  ? 'Sending OTP email...'
+                  : order.customerEmail
+                    ? `Send OTP to ${order.customerEmail}`
+                    : 'Send OTP to customer'}
+              </Button>
 
               <div className="flex gap-2">
                 <Input
@@ -426,35 +480,87 @@ export const RiderOrderDetail: React.FC = () => {
             </h3>
           </div>
 
-          {/* COD Payment Section */}
           {order.paymentStatus !== 'PAID' ? (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-3">
-              <span className="text-xs font-bold text-warm-dark uppercase tracking-wider block">
-                Cash payment collection required
-              </span>
-
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-700">Amount Due from Customer:</span>
+                <span className="text-xs text-gray-700">Amount due from customer</span>
                 <span className="text-xl font-black text-gray-900">₹{order.totalAmount}</span>
               </div>
-
-              <div>
-                <Input
-                  label="Amount Collected (₹)"
-                  type="number"
-                  required
-                  value={amountCollected}
-                  onChange={(e) => setAmountCollected(Number(e.target.value))}
-                />
+              <p className="text-xs text-gray-600">
+                Choose how the customer is paying now. Preferred at booking: {order.paymentMethod.replace('_', ' ')}.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {(
+                  [
+                    { id: 'COD' as const, label: 'Cash', hint: 'Collect physical cash', icon: Banknote },
+                    { id: 'UPI_QR' as const, label: 'UPI', hint: 'GPay, PhonePe, Paytm', icon: QrCode },
+                    { id: 'ONLINE' as const, label: 'Online', hint: 'Net banking / UPI app', icon: Smartphone },
+                    { id: 'CARD' as const, label: 'Card', hint: 'Debit or credit card', icon: CreditCard },
+                  ] as const
+                ).map((option) => {
+                  const selected = collectionMethod === option.id;
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setCollectionMethod(option.id)}
+                      className={`rounded-xl border p-3 text-left transition-all ${
+                        selected
+                          ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className={`mb-2 h-5 w-5 ${selected ? 'text-emerald-700' : 'text-gray-500'}`} />
+                      <p className="text-sm font-bold text-gray-900">{option.label}</p>
+                      <p className="text-[11px] text-gray-500">{option.hint}</p>
+                    </button>
+                  );
+                })}
               </div>
 
+              <Input
+                label="Amount collected (₹)"
+                type="number"
+                required
+                value={amountCollected}
+                onChange={(e) => setAmountCollected(Number(e.target.value))}
+              />
+
+              {collectionMethod !== 'COD' && (
+                <>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    className="w-full"
+                    onClick={handleRazorpayCollect}
+                    isLoading={razorpayLoading}
+                    leftIcon={<CreditCard className="h-4 w-4" />}
+                  >
+                    Collect ₹{order.totalAmount} with Razorpay
+                  </Button>
+                  <Input
+                    label={
+                      collectionMethod === 'CARD'
+                        ? 'Card transaction / approval ID (if paid outside Razorpay)'
+                        : 'UPI / online transaction reference (if paid outside Razorpay)'
+                    }
+                    placeholder="Only needed if you did not use Razorpay checkout"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                  />
+                </>
+              )}
+
               <p className="text-xs text-amber-900">
-                Record the exact amount received in cash. UPI payments must be confirmed by the secure payment gateway.
+                {collectionMethod === 'COD'
+                  ? 'Count the cash and confirm it matches the amount due.'
+                  : 'Open Razorpay so the customer can pay by UPI, card, or net banking on this phone. Use the reference field only if they already paid in another app.'}
               </p>
             </div>
           ) : (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 font-semibold">
-              ✓ Order already paid online (₹{order.totalAmount}). No cash collection required.
+              ✓ Payment already received (₹{order.totalAmount} · {order.paymentMethod.replace('_', ' ')}). No further collection needed.
             </div>
           )}
 

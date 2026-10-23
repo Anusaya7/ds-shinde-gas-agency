@@ -32,14 +32,14 @@ export const applicationService = {
   },
 
   async submitRiderApplication(
-    details: { fullName: string; address: string; vehicleNumber: string; consent: true },
+    details: { fullName: string; address: string; vehicleNumber: string; phone: string; consent: true },
     documents: RiderApplicationDocuments
   ): Promise<RiderApplication> {
     const form = new FormData();
     Object.entries(details).forEach(([key, value]) => form.append(key, String(value)));
+    form.set('consent', 'true');
     Object.entries(documents).forEach(([key, file]) => form.append(key, file));
     const response = await api.post<{ data: RiderApplication }>('/rider/application', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 60000,
     });
     return response.data.data;

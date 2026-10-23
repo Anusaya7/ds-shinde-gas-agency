@@ -26,7 +26,7 @@ const failedPaymentSchema = z.object({
 router.post(
   '/create-razorpay-order',
   authenticateToken,
-  requireRole(Role.CUSTOMER),
+  requireRole(Role.CUSTOMER, Role.RIDER),
   validate(createOrderSchema),
   PaymentController.createRazorpayOrder
 );
@@ -34,7 +34,7 @@ router.post(
 router.post(
   '/verify',
   authenticateToken,
-  requireRole(Role.CUSTOMER),
+  requireRole(Role.CUSTOMER, Role.RIDER),
   validate(verifyPaymentSchema),
   PaymentController.verifyPayment
 );
@@ -42,7 +42,7 @@ router.post(
 router.post(
   '/failed',
   authenticateToken,
-  requireRole(Role.CUSTOMER),
+  requireRole(Role.CUSTOMER, Role.RIDER),
   validate(failedPaymentSchema),
   PaymentController.markPaymentFailed
 );

@@ -74,29 +74,40 @@ app.use(errorHandler);
 
 // 8. Start Server (Only when not in Vercel or Lambda serverless)
 if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.LAMBDA_TASK_ROOT) {
-  const server = app.listen(config.port, () => {
-    console.log(`====================================================`);
-    console.log(`  DS Shinde Gas Backend API`);
-    console.log(`  Mode: ${config.nodeEnv}`);
-    console.log(`  Port: ${config.port}`);
-    console.log(`  URL: http://localhost:${config.port}`);
-    console.log(`  Health Check: http://localhost:${config.port}/api/health`);
-    console.log(`====================================================`);
-  });
-
-  // Graceful shutdown
-  const gracefulShutdown = async (signal: string) => {
-    console.log(`Received ${signal}. Gracefully shutting down...`);
-    server.close(async () => {
-      console.log('HTTP server closed.');
-      await prisma.$disconnect();
-      console.log('Database connections closed.');
-      process.exit(0);
+  const startServer = (attempt = 1) => {
+    const server = app.listen(config.port, () => {
+      console.log(`====================================================`);
+      console.log(`  DS Shinde Gas Backend API`);
+      console.log(`  Mode: ${config.nodeEnv}`);
+      console.log(`  Port: ${config.port}`);
+      console.log(`  URL: http://localhost:${config.port}`);
+      console.log(`  Health Check: http://localhost:${config.port}/api/health`);
+      console.log(`====================================================`);
     });
+
+    server.on('error', (error: NodeJS.ErrnoException) => {
+      if (error.code === 'EADDRINUSE' && attempt < 8) {
+        setTimeout(() => startServer(attempt + 1), 400);
+        return;
+      }
+      throw error;
+    });
+
+    const gracefulShutdown = async (signal: string) => {
+      console.log(`Received ${signal}. Gracefully shutting down...`);
+      server.close(async () => {
+        console.log('HTTP server closed.');
+        await prisma.$disconnect();
+        console.log('Database connections closed.');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   };
 
-  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  startServer();
 }
 
 export default app;

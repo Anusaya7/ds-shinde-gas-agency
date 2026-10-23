@@ -17,11 +17,32 @@ export interface VerifyPaymentDTO {
   razorpaySignature: string;
 }
 
+function isRazorpayConfigured() {
+  const { keyId, keySecret } = config.razorpay;
+  return (
+    keyId.startsWith('rzp_') &&
+    !keyId.includes('xxxx') &&
+    !keyId.includes('placeholder') &&
+    keySecret.length >= 16 &&
+    !keySecret.includes('xxxx') &&
+    !keySecret.includes('placeholder')
+  );
+}
+
 export class PaymentService {
+  private static async assertCanManagePayment(order: { customerId: string; riderId: string | null }, userId: string) {
+    if (order.customerId === userId) return;
+
+    const rider = await prisma.rider.findUnique({ where: { userId } });
+    if (rider && order.riderId === rider.id) return;
+
+    throw new ForbiddenError('You cannot take payment for this order.');
+  }
+
   /**
    * Create a Razorpay order for an existing pending Order
    */
-  static async createRazorpayOrderForOrder(orderId: string, customerId?: string) {
+  static async createRazorpayOrderForOrder(orderId: string, userId?: string) {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { customer: true },
@@ -31,8 +52,8 @@ export class PaymentService {
       throw new NotFoundError('Order not found');
     }
 
-    if (customerId && order.customerId !== customerId) {
-      throw new ForbiddenError('You cannot create payment for another customer’s order.');
+    if (userId) {
+      await this.assertCanManagePayment(order, userId);
     }
 
     const payableStatuses: OrderStatus[] = [
@@ -49,7 +70,7 @@ export class PaymentService {
     if (order.paymentStatus === PaymentStatus.PAID) {
       throw new BadRequestError('This order is already marked as paid');
     }
-    if (config.razorpay.keyId.includes('placeholder') || config.razorpay.keySecret.includes('placeholder')) {
+    if (!isRazorpayConfigured()) {
       throw new BadRequestError('Online payments are not configured. Please contact the agency for payment options.');
     }
 
@@ -110,6 +131,7 @@ export class PaymentService {
       keyId: config.razorpay.keyId,
       customerName: order.deliveryName,
       customerPhone: order.deliveryPhone,
+      customerEmail: order.customer.email,
     };
   }
 
@@ -137,9 +159,7 @@ export class PaymentService {
     if (!order) {
       throw new NotFoundError('Order not found');
     }
-    if (order.customerId !== userId) {
-      throw new ForbiddenError('You cannot confirm payment for another customer’s order.');
-    }
+    await this.assertCanManagePayment(order, userId);
 
     const pendingPayment = await prisma.payment.findFirst({
       where: { orderId: order.id, razorpayOrderId, status: PaymentStatus.PENDING },
@@ -211,9 +231,7 @@ export class PaymentService {
   static async markPaymentFailed(orderId: string, razorpayOrderId: string, userId: string) {
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new NotFoundError('Order not found.');
-    if (order.customerId !== userId) {
-      throw new ForbiddenError('You cannot update payment for another customer’s order.');
-    }
+    await this.assertCanManagePayment(order, userId);
 
     const payment = await prisma.payment.findFirst({
       where: { orderId, razorpayOrderId, status: PaymentStatus.PENDING },
@@ -238,7 +256,7 @@ export class PaymentService {
       });
     });
     await NotificationService.createNotification({
-      userId,
+      userId: order.customerId,
       title: 'Payment not completed',
       message: `Payment for booking ${order.orderNumber} was not completed. You can retry through your dashboard.`,
       type: NotificationType.PAYMENT,
@@ -295,15 +313,17 @@ export class PaymentService {
   }
 
   /**
-   * Record COD cash collection by rider
+   * Record doorstep payment collected by rider (cash, UPI, online, or card)
    */
   static async recordCodPayment(params: {
     orderId: string;
     riderUserId: string;
     amount?: number;
     transactionId?: string;
+    method?: PaymentMethod;
   }) {
-    const { orderId, riderUserId, transactionId } = params;
+    const { orderId, riderUserId } = params;
+    const method = params.method || PaymentMethod.COD;
 
     const order = await prisma.order.findUnique({
       where: { id: orderId },
@@ -322,12 +342,24 @@ export class PaymentService {
       throw new BadRequestError('The collected amount must match the order total.');
     }
 
+    const transactionId = params.transactionId?.trim();
+    if (method !== PaymentMethod.COD && (!transactionId || transactionId.length < 4)) {
+      throw new BadRequestError('Enter the UPI / online / card transaction reference before marking paid.');
+    }
+
+    const methodLabel: Record<string, string> = {
+      [PaymentMethod.COD]: 'Cash',
+      [PaymentMethod.UPI_QR]: 'UPI',
+      [PaymentMethod.ONLINE]: 'Online UPI / Net banking',
+      [PaymentMethod.CARD]: 'Card',
+    };
+
     const payment = await prisma.$transaction(async (tx) => {
       const createdPayment = await tx.payment.create({
         data: {
           orderId: order.id,
           amount: collectedAmount,
-          method: PaymentMethod.COD,
+          method,
           status: PaymentStatus.PAID,
           collectedById: riderUserId,
           transactionId: transactionId || `COD-${Date.now()}`,
@@ -339,7 +371,7 @@ export class PaymentService {
         where: { id: order.id },
         data: {
           paymentStatus: PaymentStatus.PAID,
-          paymentMethod: PaymentMethod.COD,
+          paymentMethod: method,
         },
       });
 
@@ -347,7 +379,9 @@ export class PaymentService {
         data: {
           orderId: order.id,
           status: order.status,
-          note: `Cash on Delivery of ₹${collectedAmount} collected by rider`,
+          note: `${methodLabel[method] || method} payment of ₹${collectedAmount} collected by rider${
+            transactionId ? ` (ref: ${transactionId})` : ''
+          }`,
           changedById: riderUserId,
         },
       });
@@ -358,7 +392,7 @@ export class PaymentService {
     await NotificationService.createNotification({
       userId: order.customerId,
       title: 'Payment Received',
-      message: `COD payment of ₹${collectedAmount} for order ${order.orderNumber} collected.`,
+      message: `${methodLabel[method] || method} payment of ₹${collectedAmount} for order ${order.orderNumber} was received.`,
       type: NotificationType.PAYMENT,
       orderId: order.id,
     });

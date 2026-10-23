@@ -353,6 +353,10 @@ export class AdminController {
         throw new BadRequestError('Cannot assign inactive rider');
       }
 
+      if (order.status !== OrderStatus.ACCEPTED && order.status !== OrderStatus.RIDER_ASSIGNED) {
+        throw new BadRequestError('Approve this booking first, then assign a delivery rider.');
+      }
+
       const previousRiderId = order.riderId;
       const isReassignment = Boolean(previousRiderId && previousRiderId !== riderId);
       let previousRiderUserId: string | null = null;

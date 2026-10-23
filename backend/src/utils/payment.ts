@@ -3,13 +3,15 @@ import Razorpay from 'razorpay';
 import config from '../config/index.js';
 
 let razorpayInstance: Razorpay | null = null;
+let razorpayClientKey: string | null = null;
 
 export function getRazorpayClient(): Razorpay {
-  if (!razorpayInstance) {
+  if (!razorpayInstance || razorpayClientKey !== config.razorpay.keyId) {
     razorpayInstance = new Razorpay({
       key_id: config.razorpay.keyId,
       key_secret: config.razorpay.keySecret,
     });
+    razorpayClientKey = config.razorpay.keyId;
   }
   return razorpayInstance;
 }

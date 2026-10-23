@@ -4,17 +4,32 @@ import { applicationService } from '../../services/application.service';
 import { CustomerApplication, CustomerApprovalStatus } from '../../types';
 import { Spinner } from '../../components/ui/Spinner';
 
+type KycTab = 'PENDING' | 'APPROVED';
+
 const statusLabels: Record<CustomerApprovalStatus, string> = {
-  PENDING: 'Pending review',
+  PENDING: 'Pending',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
 };
 
+function deliveryText(application: CustomerApplication): string {
+  return [
+    application.delivery?.addressLine1,
+    application.delivery?.area,
+    application.delivery?.city,
+    application.delivery?.state,
+    application.delivery?.pincode,
+  ]
+    .filter(Boolean)
+    .join(', ') || '—';
+}
+
 export const AdminCustomerApplications: React.FC = () => {
   const [applications, setApplications] = useState<CustomerApplication[]>([]);
-  const [filter, setFilter] = useState<'ALL' | CustomerApprovalStatus>('PENDING');
+  const [tab, setTab] = useState<KycTab>('PENDING');
   const [search, setSearch] = useState('');
   const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({});
+  const [expandedId, setExpandedId] = useState('');
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState('');
   const [error, setError] = useState('');
@@ -24,36 +39,42 @@ export const AdminCustomerApplications: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const results = await applicationService.listCustomerApplications(
-        filter === 'ALL' ? undefined : filter
-      );
+      const results = await applicationService.listCustomerApplications();
       setApplications(results);
     } catch (requestError: any) {
       setError(requestError.response?.data?.message || 'Could not load customer KYC applications.');
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
+  const pendingCount = applications.filter((item) => item.approvalStatus === 'PENDING').length;
+  const approvedCount = applications.filter((item) => item.approvalStatus === 'APPROVED').length;
+
   const visibleApplications = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return applications;
-    return applications.filter((application) =>
-      [
+    return applications.filter((application) => {
+      if (application.approvalStatus !== tab) return false;
+      if (!term) return true;
+      return [
         application.customerName,
         application.customerPhone,
+        application.alternatePhone,
         application.customerEmail,
         application.fsiNumber,
         application.maskedAadhaar,
+        application.delivery?.city,
+        application.delivery?.pincode,
+        application.delivery?.addressLine1,
       ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term))
-    );
-  }, [applications, search]);
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+  }, [applications, search, tab]);
 
   const review = async (application: CustomerApplication, status: 'APPROVED' | 'REJECTED') => {
     const reason = rejectionReasons[application.customerId]?.trim();
@@ -66,10 +87,17 @@ export const AdminCustomerApplications: React.FC = () => {
     setMessage('');
     try {
       await applicationService.reviewCustomerApplication(application.customerId, status, reason);
+      setApplications((current) =>
+        current.map((item) =>
+          item.customerId === application.customerId
+            ? { ...item, approvalStatus: status, rejectionReason: status === 'REJECTED' ? reason : null, reviewedAt: new Date().toISOString() }
+            : item
+        )
+      );
+      if (status === 'APPROVED') setTab('APPROVED');
       setMessage(
         `${application.customerName}'s KYC was ${status.toLowerCase()}. The customer was notified.`
       );
-      await refresh();
     } catch (requestError: any) {
       setError(requestError.response?.data?.message || 'Could not review this KYC application.');
     } finally {
@@ -104,31 +132,14 @@ export const AdminCustomerApplications: React.FC = () => {
     }
   };
 
-  const deleteDocuments = async (application: CustomerApplication) => {
-    if (!window.confirm(`Permanently delete stored KYC files for ${application.customerName}?`)) {
-      return;
-    }
-    setActionId(application.customerId);
-    setError('');
-    try {
-      await applicationService.deleteCustomerDocuments(application.customerId);
-      setMessage('Customer KYC documents permanently deleted.');
-      await refresh();
-    } catch (requestError: any) {
-      setError(requestError.response?.data?.message || 'Could not delete this customer document.');
-    } finally {
-      setActionId('');
-    }
-  };
-
   return (
     <section className="space-y-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.17em] text-orange-600">Customer KYC review</p>
-          <h1 className="mt-2 text-2xl font-black text-[#10284A]">Customer applications</h1>
+          <p className="text-xs font-bold uppercase tracking-[0.17em] text-orange-600">Customer KYC</p>
+          <h1 className="mt-2 text-2xl font-black text-[#10284A]">KYC applications</h1>
           <p className="mt-1 text-sm text-slate-600">
-            Review Aadhaar, Udyam, and FSI details submitted during booking. Approve to unlock cylinder selection.
+            Pending records wait here. After you approve, they stay in the Approved KYC table.
           </p>
         </div>
         <button
@@ -152,166 +163,216 @@ export const AdminCustomerApplications: React.FC = () => {
         </p>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-        <label className="block">
-          <span className="sr-only">Search customer KYC applications</span>
-          <input
-            type="search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by name, phone, email, Aadhaar or FSI"
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm focus:border-[#10284A] focus:outline-none focus:ring-2 focus:ring-[#10284A]/15"
-          />
-        </label>
-        <label>
-          <span className="sr-only">Filter KYC by status</span>
-          <select
-            value={filter}
-            onChange={(event) => setFilter(event.target.value as 'ALL' | CustomerApprovalStatus)}
-            className="min-h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700"
-          >
-            <option value="PENDING">Pending review</option>
-            <option value="ALL">All statuses</option>
-            <option value="APPROVED">Approved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-        </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setTab('PENDING')}
+          className={`rounded-xl px-4 py-2 text-sm font-bold ${
+            tab === 'PENDING' ? 'bg-amber-500 text-white' : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          Pending KYC ({pendingCount})
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('APPROVED')}
+          className={`rounded-xl px-4 py-2 text-sm font-bold ${
+            tab === 'APPROVED' ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 border border-slate-200'
+          }`}
+        >
+          Approved KYC ({approvedCount})
+        </button>
+        <input
+          type="search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search name, phone, email, Aadhaar, city"
+          className="min-h-10 min-w-[220px] flex-1 rounded-xl border border-slate-300 bg-white px-3 text-sm focus:border-[#10284A] focus:outline-none focus:ring-2 focus:ring-[#10284A]/15"
+        />
       </div>
 
       {loading ? (
         <div className="py-14">
-          <Spinner label="Loading customer KYC applications..." />
+          <Spinner label="Loading KYC table..." />
         </div>
-      ) : visibleApplications.length === 0 ? (
-        <p className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
-          No customer KYC applications match this filter.
-        </p>
       ) : (
-        <ul className="space-y-4">
-          {visibleApplications.map((application) => (
-            <li key={application.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-1.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-extrabold text-[#10284A]">{application.customerName}</h2>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                        application.approvalStatus === 'APPROVED'
-                          ? 'bg-emerald-50 text-emerald-800'
-                          : application.approvalStatus === 'REJECTED'
-                            ? 'bg-red-50 text-red-800'
-                            : 'bg-amber-50 text-amber-800'
-                      }`}
-                    >
-                      {statusLabels[application.approvalStatus]}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-600">
-                    {application.customerPhone} · {application.customerEmail || 'Email not provided'}
-                  </p>
-                  <p className="text-sm text-slate-700">
-                    Aadhaar: <strong>{application.maskedAadhaar || 'Not provided'}</strong>
-                  </p>
-                  <p className="text-sm text-slate-700">
-                    FSI number: <strong>{application.fsiNumber || 'Not provided'}</strong>
-                  </p>
-                  <p className="text-sm text-slate-700">
-                    Documents:{' '}
-                    <strong>
-                      {[
-                        application.hasAadhaarDocument ? 'Aadhaar file uploaded' : null,
-                        application.hasUdyamDocument ? 'Udyam file uploaded' : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ') || 'No files uploaded'}
-                    </strong>
-                  </p>
-                  {application.reviewedAt ? (
-                    <p className="text-xs text-slate-500">
-                      Last reviewed {new Date(application.reviewedAt).toLocaleString('en-IN')}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-500">
-                      Submitted {new Date(application.createdAt).toLocaleString('en-IN')}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {application.rejectionReason ? (
-                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
-                  Rejection reason: {application.rejectionReason}
-                </p>
-              ) : null}
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => void openFile(application.customerId, 'aadhaar')}
-                  disabled={!!actionId || !application.hasAadhaarDocument}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50"
-                >
-                  <FileCheck2 className="h-4 w-4" /> Aadhaar file
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void openFile(application.customerId, 'udyam')}
-                  disabled={!!actionId || !application.hasUdyamDocument}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50"
-                >
-                  <FileCheck2 className="h-4 w-4" /> Udyam file
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void deleteDocuments(application)}
-                  disabled={!!actionId || (!application.hasAadhaarDocument && !application.hasUdyamDocument)}
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" /> Delete files
-                </button>
-              </div>
-
-              {application.approvalStatus === 'PENDING' ? (
-                <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => void review(application, 'APPROVED')}
-                    disabled={!!actionId}
-                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-                  >
-                    <Check className="h-4 w-4" /> Approve KYC
-                  </button>
-                  <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
-                    <label className="sr-only" htmlFor={`kyc-rejection-${application.customerId}`}>
-                      Rejection reason
-                    </label>
-                    <input
-                      id={`kyc-rejection-${application.customerId}`}
-                      value={rejectionReasons[application.customerId] || ''}
-                      onChange={(event) =>
-                        setRejectionReasons((current) => ({
-                          ...current,
-                          [application.customerId]: event.target.value,
-                        }))
-                      }
-                      maxLength={500}
-                      placeholder="Reason required to reject"
-                      className="min-h-10 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-sm focus:border-[#10284A] focus:outline-none"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => void review(application, 'REJECTED')}
-                      disabled={!!actionId}
-                      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-red-200 px-4 text-sm font-bold text-red-800 hover:bg-red-50 disabled:opacity-50"
-                    >
-                      <X className="h-4 w-4" /> Reject
-                    </button>
-                  </div>
-                </div>
-              ) : null}
-            </li>
-          ))}
-        </ul>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] border-collapse text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 bg-slate-50 uppercase tracking-wider text-slate-500">
+                  <th className="px-4 py-3">Customer</th>
+                  <th className="px-4 py-3">Phone</th>
+                  <th className="px-4 py-3">Address</th>
+                  <th className="px-4 py-3">Aadhaar</th>
+                  <th className="px-4 py-3">FSI / GST</th>
+                  <th className="px-4 py-3">Duration</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visibleApplications.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-12 text-center text-sm text-slate-500">
+                      {tab === 'PENDING' ? 'No pending KYC applications.' : 'No approved KYC records yet.'}
+                    </td>
+                  </tr>
+                ) : (
+                  visibleApplications.map((application) => {
+                    const open = expandedId === application.id;
+                    return (
+                      <React.Fragment key={application.id}>
+                        <tr className="align-top hover:bg-blue-50/40">
+                          <td className="px-4 py-3">
+                            <p className="font-bold text-[#10284A]">{application.customerName}</p>
+                            <p className="text-[11px] text-slate-500">{application.customerEmail || 'No email'}</p>
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {application.customerPhone || '—'}
+                            {application.alternatePhone ? (
+                              <span className="mt-0.5 block text-[11px] text-slate-500">{application.alternatePhone}</span>
+                            ) : null}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {deliveryText(application)}
+                          </td>
+                          <td className="px-4 py-3 font-semibold text-slate-800">
+                            {application.maskedAadhaar || '—'}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">{application.fsiNumber || '—'}</td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {application.bookingDurationDays ? `${application.bookingDurationDays} days` : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                                application.approvalStatus === 'APPROVED'
+                                  ? 'bg-emerald-50 text-emerald-800'
+                                  : 'bg-amber-50 text-amber-800'
+                              }`}
+                            >
+                              {statusLabels[application.approvalStatus]}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <div className="flex flex-wrap justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedId(open ? '' : application.id)}
+                                className="rounded-lg border border-slate-200 px-2.5 py-1.5 font-semibold text-slate-700 hover:bg-slate-50"
+                              >
+                                {open ? 'Hide' : 'Details'}
+                              </button>
+                              {application.approvalStatus === 'PENDING' ? (
+                                <button
+                                  type="button"
+                                  disabled={!!actionId}
+                                  onClick={() => void review(application, 'APPROVED')}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1.5 font-bold text-white disabled:opacity-50"
+                                >
+                                  <Check className="h-3.5 w-3.5" /> Approve
+                                </button>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                        {open ? (
+                          <tr className="bg-slate-50/80">
+                            <td colSpan={8} className="px-4 py-4">
+                              <div className="grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+                                <p><strong>Landmark:</strong> {application.delivery?.landmark || '—'}</p>
+                                <p>
+                                  <strong>Map:</strong>{' '}
+                                  {application.delivery?.mapLink ? (
+                                    <a className="text-[#10284A] underline" href={application.delivery.mapLink} target="_blank" rel="noreferrer">
+                                      Open location
+                                    </a>
+                                  ) : (
+                                    '—'
+                                  )}
+                                </p>
+                                <p>
+                                  <strong>Reminders:</strong> {application.remindersEnabled ? 'Requested' : 'Not requested'}
+                                </p>
+                                <p>
+                                  <strong>Documents:</strong>{' '}
+                                  {[
+                                    application.hasAadhaarDocument ? 'Aadhaar file' : null,
+                                    application.hasUdyamDocument ? 'Udyam file' : null,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(' · ') || 'No files uploaded'}
+                                </p>
+                                <p>
+                                  <strong>Submitted:</strong>{' '}
+                                  {new Date(application.createdAt).toLocaleString('en-IN')}
+                                </p>
+                                <p>
+                                  <strong>Reviewed:</strong>{' '}
+                                  {application.reviewedAt
+                                    ? new Date(application.reviewedAt).toLocaleString('en-IN')
+                                    : 'Not reviewed'}
+                                </p>
+                              </div>
+                              {application.rejectionReason ? (
+                                <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                                  Rejection reason: {application.rejectionReason}
+                                </p>
+                              ) : null}
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={!!actionId || !application.hasAadhaarDocument}
+                                  onClick={() => void openFile(application.customerId, 'aadhaar')}
+                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold disabled:opacity-50"
+                                >
+                                  <FileCheck2 className="h-3.5 w-3.5" /> Aadhaar file
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={!!actionId || !application.hasUdyamDocument}
+                                  onClick={() => void openFile(application.customerId, 'udyam')}
+                                  className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold disabled:opacity-50"
+                                >
+                                  <FileCheck2 className="h-3.5 w-3.5" /> Udyam file
+                                </button>
+                              </div>
+                              {application.approvalStatus === 'PENDING' ? (
+                                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                  <input
+                                    value={rejectionReasons[application.customerId] || ''}
+                                    onChange={(event) =>
+                                      setRejectionReasons((current) => ({
+                                        ...current,
+                                        [application.customerId]: event.target.value,
+                                      }))
+                                    }
+                                    maxLength={500}
+                                    placeholder="Reason required to reject"
+                                    className="min-h-10 min-w-0 flex-1 rounded-xl border border-slate-300 px-3 text-sm"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={!!actionId}
+                                    onClick={() => void review(application, 'REJECTED')}
+                                    className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-red-200 px-4 text-sm font-bold text-red-800"
+                                  >
+                                    <X className="h-4 w-4" /> Reject
+                                  </button>
+                                </div>
+                              ) : null}
+                            </td>
+                          </tr>
+                        ) : null}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </section>
   );

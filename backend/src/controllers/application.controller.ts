@@ -38,6 +38,44 @@ function isValidPdf(buffer: Buffer): boolean {
   return buffer.subarray(0, 5).toString('ascii') === '%PDF-';
 }
 
+function text(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function parseKycSnapshot(raw: string | null | undefined) {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function snapshotFromBody(body: Record<string, unknown>) {
+  const duration = Number.parseInt(String(body.bookingDurationDays || ''), 10);
+  return {
+    fullName: text(body.fullName),
+    phone: text(body.phone),
+    altPhone: text(body.altPhone),
+    addressLine1: text(body.addressLine1),
+    addressLine2: text(body.addressLine2),
+    area: text(body.area),
+    city: text(body.city),
+    state: text(body.state) || 'Maharashtra',
+    pincode: text(body.pinCode || body.pincode),
+    landmark: text(body.landmark),
+    mapLink: text(body.mapLink),
+    bookingDurationDays: Number.isInteger(duration) && duration >= 1 && duration <= 31 ? duration : null,
+    remindersEnabled: body.remindersEnabled === 'true' || body.remindersEnabled === true,
+  };
+}
+
+function hasAddress(snapshot: ReturnType<typeof snapshotFromBody>) {
+  return Boolean(snapshot.fullName && snapshot.phone && snapshot.addressLine1 && snapshot.area && snapshot.city && snapshot.pincode);
+}
+
 export class ApplicationController {
   static async saveCustomerDetails(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -77,7 +115,19 @@ export class ApplicationController {
         throw new BadRequestError('Aadhaar number must be exactly 12 digits.');
       }
 
-      const isSubmittingKyc = Boolean(encryptedAadhaar || aadhaarNumber || encryptedUdyam);
+      const snapshot = snapshotFromBody(req.body as Record<string, unknown>);
+      const existing = await prisma.customerProfile.findUnique({
+        where: { userId: req.user!.id },
+        select: { approvalStatus: true, aadhaarNumber: true },
+      });
+      const hasNewIdentityUpload = Boolean(encryptedAadhaar || encryptedUdyam);
+      const aadhaarChanged = Boolean(aadhaarNumber && aadhaarNumber !== existing?.aadhaarNumber);
+      const isSubmittingKyc = Boolean(
+        hasNewIdentityUpload || aadhaarChanged || req.body.kycSubmit === 'true'
+      );
+      const shouldReopenForReview =
+        isSubmittingKyc &&
+        (existing?.approvalStatus !== 'APPROVED' || hasNewIdentityUpload || aadhaarChanged);
 
       const profile = await prisma.customerProfile.upsert({
         where: { userId: req.user!.id },
@@ -94,15 +144,21 @@ export class ApplicationController {
             udyamMimeType: udyamFile!.mimetype,
             udyamConsentAt: new Date(),
           }),
-          ...(isSubmittingKyc && {
+          ...(hasAddress(snapshot) && { kycSnapshot: JSON.stringify(snapshot) }),
+          ...(snapshot.altPhone && { alternatePhone: snapshot.altPhone }),
+          ...(shouldReopenForReview && {
             approvalStatus: 'PENDING',
             rejectionReason: null,
+            reviewedAt: null,
+            reviewedById: null,
           }),
         },
         create: {
           userId: req.user!.id,
           fsiNumber: req.body.fsiNumber?.trim() || null,
           aadhaarNumber: aadhaarNumber || null,
+          alternatePhone: snapshot.altPhone || null,
+          kycSnapshot: hasAddress(snapshot) ? JSON.stringify(snapshot) : null,
           ...(encryptedAadhaar && {
             aadhaarDocument: encryptedAadhaar,
             aadhaarMimeType: aadhaarFile!.mimetype,
@@ -116,13 +172,60 @@ export class ApplicationController {
           approvalStatus: isSubmittingKyc ? 'PENDING' : 'APPROVED',
         },
         select: {
+          id: true,
           fsiNumber: true,
+          aadhaarNumber: true,
           udyamMimeType: true,
           aadhaarMimeType: true,
           approvalStatus: true,
           rejectionReason: true,
+          kycSnapshot: true,
+          alternatePhone: true,
         },
       });
+
+      if (hasAddress(snapshot)) {
+        const existingDefault = await prisma.savedAddress.findFirst({
+          where: { customerProfileId: profile.id, isDefault: true },
+        });
+        const addressData = {
+          fullName: snapshot.fullName,
+          phone: snapshot.phone,
+          addressLine1: snapshot.addressLine1,
+          addressLine2: snapshot.addressLine2 || null,
+          area: snapshot.area,
+          city: snapshot.city,
+          state: snapshot.state,
+          pinCode: snapshot.pincode,
+          landmark: snapshot.landmark || null,
+          mapLink: snapshot.mapLink || null,
+          isDefault: true,
+        };
+        if (existingDefault) {
+          await prisma.savedAddress.update({
+            where: { id: existingDefault.id },
+            data: addressData,
+          });
+        } else {
+          await prisma.savedAddress.updateMany({
+            where: { customerProfileId: profile.id },
+            data: { isDefault: false },
+          });
+          await prisma.savedAddress.create({
+            data: { customerProfileId: profile.id, ...addressData },
+          });
+        }
+      }
+
+      if (snapshot.fullName || snapshot.phone) {
+        await prisma.user.update({
+          where: { id: req.user!.id },
+          data: {
+            ...(snapshot.fullName && { name: snapshot.fullName }),
+            ...(snapshot.phone && /^\d{10}$/.test(snapshot.phone) && { phone: snapshot.phone }),
+          },
+        });
+      }
 
       await recordAuditLog(prisma, {
         userId: req.user!.id,
@@ -168,9 +271,17 @@ export class ApplicationController {
           aadhaarMimeType: true,
           udyamMimeType: true,
           reviewedAt: true,
+          kycSnapshot: true,
+          alternatePhone: true,
+          addresses: {
+            where: { isDefault: true },
+            take: 1,
+          },
         },
       });
 
+      const snapshot = parseKycSnapshot(profile?.kycSnapshot);
+      const defaultAddress = profile?.addresses?.[0];
       const maskedAadhaar = profile?.aadhaarNumber
         ? `XXXX-XXXX-${profile.aadhaarNumber.slice(-4)}`
         : null;
@@ -181,10 +292,27 @@ export class ApplicationController {
           approvalStatus: profile?.approvalStatus || 'APPROVED',
           rejectionReason: profile?.rejectionReason || null,
           fsiNumber: profile?.fsiNumber || null,
+          aadhaarNumber: profile?.aadhaarNumber || null,
           maskedAadhaar,
           hasAadhaarDocument: Boolean(profile?.aadhaarMimeType),
           hasUdyamDocument: Boolean(profile?.udyamMimeType),
           reviewedAt: profile?.reviewedAt || null,
+          alternatePhone: (snapshot?.altPhone as string) || profile?.alternatePhone || null,
+          bookingDurationDays: snapshot?.bookingDurationDays || null,
+          remindersEnabled: Boolean(snapshot?.remindersEnabled),
+          delivery: {
+            fullName: (snapshot?.fullName as string) || defaultAddress?.fullName || '',
+            phone: (snapshot?.phone as string) || defaultAddress?.phone || '',
+            altPhone: (snapshot?.altPhone as string) || profile?.alternatePhone || '',
+            addressLine1: (snapshot?.addressLine1 as string) || defaultAddress?.addressLine1 || '',
+            addressLine2: (snapshot?.addressLine2 as string) || defaultAddress?.addressLine2 || '',
+            area: (snapshot?.area as string) || defaultAddress?.area || '',
+            city: (snapshot?.city as string) || defaultAddress?.city || '',
+            state: (snapshot?.state as string) || defaultAddress?.state || 'Maharashtra',
+            pincode: (snapshot?.pincode as string) || defaultAddress?.pinCode || '',
+            landmark: (snapshot?.landmark as string) || defaultAddress?.landmark || '',
+            mapLink: (snapshot?.mapLink as string) || defaultAddress?.mapLink || '',
+          },
         },
         'Customer KYC status retrieved.'
       );
@@ -277,6 +405,12 @@ export class ApplicationController {
           reviewedAt: true,
           createdAt: true,
           updatedAt: true,
+          kycSnapshot: true,
+          alternatePhone: true,
+          addresses: {
+            orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+            take: 1,
+          },
           user: {
             select: {
               name: true,
@@ -290,21 +424,41 @@ export class ApplicationController {
         take: 100,
       });
 
-      const formatted = profiles.map((p) => ({
-        id: p.id,
-        customerId: p.userId,
-        customerName: p.user.name,
-        customerPhone: p.user.phone,
-        customerEmail: p.user.email,
-        fsiNumber: p.fsiNumber,
-        maskedAadhaar: p.aadhaarNumber ? `XXXX-XXXX-${p.aadhaarNumber.slice(-4)}` : null,
-        hasAadhaarDocument: Boolean(p.aadhaarMimeType),
-        hasUdyamDocument: Boolean(p.udyamMimeType),
-        approvalStatus: p.approvalStatus,
-        rejectionReason: p.rejectionReason,
-        reviewedAt: p.reviewedAt,
-        createdAt: p.createdAt,
-      }));
+      const formatted = profiles.map((p) => {
+        const snapshot = parseKycSnapshot(p.kycSnapshot);
+        const address = p.addresses[0];
+        return {
+          id: p.id,
+          customerId: p.userId,
+          customerName: (snapshot?.fullName as string) || p.user.name,
+          customerPhone: (snapshot?.phone as string) || p.user.phone,
+          customerEmail: p.user.email,
+          alternatePhone: (snapshot?.altPhone as string) || p.alternatePhone || null,
+          fsiNumber: p.fsiNumber,
+          maskedAadhaar: p.aadhaarNumber ? `XXXX-XXXX-${p.aadhaarNumber.slice(-4)}` : null,
+          hasAadhaarDocument: Boolean(p.aadhaarMimeType),
+          hasUdyamDocument: Boolean(p.udyamMimeType),
+          approvalStatus: p.approvalStatus,
+          rejectionReason: p.rejectionReason,
+          reviewedAt: p.reviewedAt,
+          createdAt: p.createdAt,
+          bookingDurationDays: snapshot?.bookingDurationDays || null,
+          remindersEnabled: Boolean(snapshot?.remindersEnabled),
+          delivery: {
+            fullName: (snapshot?.fullName as string) || address?.fullName || p.user.name,
+            phone: (snapshot?.phone as string) || address?.phone || p.user.phone,
+            altPhone: (snapshot?.altPhone as string) || p.alternatePhone || '',
+            addressLine1: (snapshot?.addressLine1 as string) || address?.addressLine1 || '',
+            addressLine2: (snapshot?.addressLine2 as string) || address?.addressLine2 || '',
+            area: (snapshot?.area as string) || address?.area || '',
+            city: (snapshot?.city as string) || address?.city || '',
+            state: (snapshot?.state as string) || address?.state || '',
+            pincode: (snapshot?.pincode as string) || address?.pinCode || '',
+            landmark: (snapshot?.landmark as string) || address?.landmark || '',
+            mapLink: (snapshot?.mapLink as string) || address?.mapLink || '',
+          },
+        };
+      });
 
       ApiResponse.success(res, formatted, 'Customer applications retrieved.');
     } catch (error) {
@@ -420,7 +574,33 @@ export class ApplicationController {
       if (!user.phone && !user.email) {
         throw new BadRequestError('Verify your phone number or email address before applying.');
       }
-      if (req.body.consent !== 'true') {
+      const submittedPhone = String(req.body.phone || '').replace(/\D/g, '');
+      if (submittedPhone.length !== 10) {
+        throw new BadRequestError('Enter a valid 10-digit mobile number.');
+      }
+      if (user.phone && user.phone !== submittedPhone) {
+        throw new BadRequestError('Your verified mobile number cannot be changed from this form.');
+      }
+      if (!user.phone) {
+        const phoneTaken = await prisma.user.findFirst({
+          where: { phone: submittedPhone, NOT: { id: user.id } },
+          select: { id: true },
+        });
+        if (phoneTaken) {
+          throw new ConflictError('This mobile number is already used by another account.');
+        }
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { phone: submittedPhone },
+        });
+        user.phone = submittedPhone;
+      }
+      const consented =
+        req.body.consent === true ||
+        req.body.consent === 'true' ||
+        req.body.consent === 'on' ||
+        req.body.consent === '1';
+      if (!consented) {
         throw new BadRequestError('Consent is required before storing rider application documents.');
       }
 
@@ -457,7 +637,7 @@ export class ApplicationController {
         where: { userId: user.id },
         update: {
           fullName: req.body.fullName.trim(),
-          phone: user.phone || '',
+          phone: user.phone || submittedPhone,
           email: user.email,
           address: req.body.address.trim(),
           vehicleNumber: req.body.vehicleNumber.trim().toUpperCase(),
@@ -479,7 +659,7 @@ export class ApplicationController {
           userId: user.id,
           consentAt: new Date(),
           fullName: req.body.fullName.trim(),
-          phone: user.phone || '',
+          phone: user.phone || submittedPhone,
           email: user.email,
           address: req.body.address.trim(),
           vehicleNumber: req.body.vehicleNumber.trim().toUpperCase(),

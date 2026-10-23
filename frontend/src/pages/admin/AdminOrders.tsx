@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { Order, Rider, OrderStatus } from '../../types';
+import { canAssignDeliveryRider, needsAdminReview } from '../../utils/order';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -64,7 +65,7 @@ export const AdminOrders: React.FC = () => {
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, orderStatus: 'ACCEPTED' } : o))
       );
-      toast.success('Order accepted into dispatch queue');
+      toast.success('Order approved. Assign a rider to start delivery.');
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not accept this order.');
     }
@@ -304,12 +305,12 @@ export const AdminOrders: React.FC = () => {
                           </button>
                         </Link>
 
-                        {order.orderStatus === 'PLACED' && (
+                        {needsAdminReview(order.orderStatus) && (
                           <>
                             <button
                               onClick={() => handleAccept(order.id)}
                               className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50"
-                              title="Accept Order"
+                              title="Approve Order"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </button>
@@ -323,7 +324,7 @@ export const AdminOrders: React.FC = () => {
                           </>
                         )}
 
-                        {(order.orderStatus === 'ACCEPTED' || order.orderStatus === 'PLACED') && (
+                        {canAssignDeliveryRider(order.orderStatus) && (
                           <button
                             onClick={() => handleOpenAssign(order)}
                             className="p-1.5 rounded-lg text-primary hover:bg-blue-50"

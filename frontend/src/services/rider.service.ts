@@ -56,18 +56,30 @@ export const riderService = {
   },
 
   async sendDeliveryOtp(orderId: string): Promise<{ success: boolean; message: string; otp?: string }> {
-    const res = await api.post<{ success: boolean; message: string; otp?: string }>(
+    const res = await api.post<{ success: boolean; message: string; data?: { message?: string } }>(
       `/rider/orders/${orderId}/send-otp`
     );
-    return res.data;
+    return {
+      success: Boolean(res.data?.success),
+      message: res.data?.data?.message || res.data?.message || 'OTP sent to the customer email.',
+    };
   },
 
-  async verifyDeliveryOtp(orderId: string, otp: string): Promise<{ success: boolean; verified: boolean }> {
-    const res = await api.post<{ success: boolean; verified: boolean }>(
-      `/rider/orders/${orderId}/verify-otp`,
-      { otp }
-    );
-    return res.data;
+  async verifyDeliveryOtp(
+    orderId: string,
+    otp: string
+  ): Promise<{ success: boolean; verified: boolean; message?: string }> {
+    const res = await api.post<{
+      success: boolean;
+      message?: string;
+      data?: { verified?: boolean; message?: string };
+    }>(`/rider/orders/${orderId}/verify-otp`, { otp: otp.replace(/\D/g, '') });
+    const payload = res.data?.data;
+    return {
+      success: Boolean(res.data?.success),
+      verified: Boolean(payload?.verified ?? (res.data as { verified?: boolean }).verified),
+      message: payload?.message || res.data?.message,
+    };
   },
 
   async completeDelivery(
@@ -78,7 +90,14 @@ export const riderService = {
   },
 
   async collectCash(orderId: string, amount: number): Promise<void> {
-    await api.put(`/rider/orders/${orderId}/collect-payment`, { amount });
+    await this.collectPayment(orderId, { amount, method: 'COD' });
+  },
+
+  async collectPayment(
+    orderId: string,
+    payload: { amount: number; method: 'COD' | 'UPI_QR' | 'ONLINE' | 'CARD'; transactionId?: string }
+  ): Promise<void> {
+    await api.put(`/rider/orders/${orderId}/collect-payment`, payload);
   },
 
   async getCompletedDeliveries(): Promise<Order[]> {

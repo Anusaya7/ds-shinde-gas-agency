@@ -52,6 +52,7 @@ model CustomerProfile {
   reviewedAt     DateTime?
   reviewedById   String?
   welcomeOfferUsedAt DateTime?
+  kycSnapshot    String?
   addresses      SavedAddress[]
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

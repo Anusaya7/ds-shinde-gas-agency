@@ -23,11 +23,12 @@ const documentFields: Array<{
 ];
 
 export const RiderApplicationPage: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const navigate = useNavigate();
   const [application, setApplication] = useState<RiderApplication | null>(null);
   const [loadingApplication, setLoadingApplication] = useState(true);
   const [fullName, setFullName] = useState(application?.fullName || user?.name || '');
+  const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(application?.address || '');
   const [vehicleNumber, setVehicleNumber] = useState(application?.vehicleNumber || '');
   const [documents, setDocuments] = useState<Partial<RiderApplicationDocuments>>({});
@@ -66,7 +67,12 @@ export const RiderApplicationPage: React.FC = () => {
     setFullName(application.fullName);
     setAddress(application.address);
     setVehicleNumber(application.vehicleNumber);
+    if (application.phone) setPhone(application.phone);
   }, [application]);
+
+  useEffect(() => {
+    if (user?.phone) setPhone(user.phone);
+  }, [user?.phone]);
 
   const completedApplication = application?.status === 'PENDING' || application?.status === 'APPROVED';
 
@@ -75,6 +81,11 @@ export const RiderApplicationPage: React.FC = () => {
     setError('');
     if (!user?.phone && !user?.email) {
       setError('Your verified mobile number or email is missing. Sign out and verify your account again.');
+      return;
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length !== 10) {
+      setError('Enter a valid 10-digit mobile number.');
       return;
     }
     const missingDocument = documentFields.find(({ key }) => !documents[key]);
@@ -89,10 +100,17 @@ export const RiderApplicationPage: React.FC = () => {
     setLoading(true);
     try {
       const submitted = await applicationService.submitRiderApplication(
-        { fullName: fullName.trim(), address: address.trim(), vehicleNumber: vehicleNumber.trim(), consent: true },
+        {
+          fullName: fullName.trim(),
+          address: address.trim(),
+          vehicleNumber: vehicleNumber.trim(),
+          phone: cleanPhone,
+          consent: true,
+        },
         documents as RiderApplicationDocuments
       );
       setApplication(submitted);
+      updateUser({ phone: submitted.phone || cleanPhone });
     } catch (err: any) {
       setError(err.response?.data?.message || 'We could not submit the application. Please try again.');
     } finally {
@@ -202,9 +220,29 @@ export const RiderApplicationPage: React.FC = () => {
               </div>
               <div>
                 <label htmlFor="rider-phone" className="mb-1.5 block text-sm font-semibold text-slate-800">
-                  Verified mobile <span className="text-slate-400">(read only)</span>
+                  Mobile number <span className="text-red-600">*</span>
+                  {user?.phone ? (
+                    <span className="ml-1 font-normal text-slate-400">(from your account)</span>
+                  ) : null}
                 </label>
-                <input id="rider-phone" readOnly value={user?.phone || ''} className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600" />
+                <input
+                  id="rider-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  required
+                  minLength={10}
+                  maxLength={10}
+                  readOnly={Boolean(user?.phone)}
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder="10-digit mobile number"
+                  className={`min-h-11 w-full rounded-xl border px-3 text-sm ${
+                    user?.phone
+                      ? 'border-slate-200 bg-slate-50 text-slate-600'
+                      : 'border-slate-300 text-slate-900 focus:border-[#10284A] focus:outline-none focus:ring-2 focus:ring-[#10284A]/15'
+                  }`}
+                />
               </div>
               <div>
                 <label htmlFor="rider-email" className="mb-1.5 block text-sm font-semibold text-slate-800">
@@ -294,12 +332,13 @@ export const RiderApplicationPage: React.FC = () => {
             <label className="flex items-start gap-2 text-sm leading-5 text-slate-700">
               <input
                 type="checkbox"
+                required
                 checked={documentConsent}
                 onChange={(event) => setDocumentConsent(event.target.checked)}
                 className="mt-1 h-4 w-4"
               />
               <span>
-                I consent to encrypted storage of these documents and restricted access by DS Shinde Gas administrators
+                I consent to encrypted storage of these documents and restricted access by DS Shinde Gas
                 administrators for rider application review.
               </span>
             </label>

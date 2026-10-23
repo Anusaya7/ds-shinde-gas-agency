@@ -58,14 +58,33 @@ export type PaymentMethod = 'ONLINE' | 'COD' | 'CARD' | 'UPI_QR';
 
 export type CustomerApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
+export interface KycDeliveryDetails {
+  fullName: string;
+  phone: string;
+  altPhone?: string;
+  addressLine1: string;
+  addressLine2?: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode: string;
+  landmark?: string;
+  mapLink?: string;
+}
+
 export interface CustomerKycStatus {
   approvalStatus: CustomerApprovalStatus;
   rejectionReason?: string | null;
   fsiNumber?: string | null;
+  aadhaarNumber?: string | null;
   maskedAadhaar?: string | null;
   hasAadhaarDocument: boolean;
   hasUdyamDocument: boolean;
   reviewedAt?: string | null;
+  alternatePhone?: string | null;
+  bookingDurationDays?: number | null;
+  remindersEnabled?: boolean;
+  delivery?: KycDeliveryDetails;
 }
 
 export interface CustomerApplication {
@@ -74,6 +93,7 @@ export interface CustomerApplication {
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
+  alternatePhone?: string | null;
   fsiNumber?: string | null;
   maskedAadhaar?: string | null;
   hasAadhaarDocument: boolean;
@@ -82,6 +102,9 @@ export interface CustomerApplication {
   rejectionReason?: string | null;
   reviewedAt?: string | null;
   createdAt: string;
+  bookingDurationDays?: number | null;
+  remindersEnabled?: boolean;
+  delivery?: KycDeliveryDetails;
 }
 
 export interface OrderItem {

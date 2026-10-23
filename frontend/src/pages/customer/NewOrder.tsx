@@ -59,6 +59,7 @@ export const NewOrder: React.FC = () => {
   const [aadhaarConsent, setAadhaarConsent] = useState(false);
   const [kycStatus, setKycStatus] = useState<CustomerKycStatus | null>(null);
   const [submittingKyc, setSubmittingKyc] = useState(false);
+  const [checkingKyc, setCheckingKyc] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [signupLocationMapLink, setSignupLocationMapLink] = useState('');
 
@@ -143,6 +144,25 @@ export const NewOrder: React.FC = () => {
         if (kyc) {
           setKycStatus(kyc);
           if (kyc.fsiNumber) setFsiNumber(kyc.fsiNumber);
+          if (kyc.aadhaarNumber) setAadhaarNumber(kyc.aadhaarNumber);
+          if (kyc.bookingDurationDays) setDurationDays(Number(kyc.bookingDurationDays));
+          if (kyc.remindersEnabled) setReminderConsent(true);
+          if (kyc.delivery?.fullName && (!addresses || addresses.length === 0)) {
+            setAddressForm({
+              fullName: kyc.delivery.fullName,
+              phone: kyc.delivery.phone,
+              altPhone: kyc.delivery.altPhone || '',
+              addressLine1: kyc.delivery.addressLine1,
+              addressLine2: kyc.delivery.addressLine2 || '',
+              area: kyc.delivery.area,
+              city: kyc.delivery.city,
+              state: kyc.delivery.state || 'Maharashtra',
+              pincode: kyc.delivery.pincode,
+              landmark: kyc.delivery.landmark || '',
+              mapLink: kyc.delivery.mapLink || '',
+              isDefault: true,
+            });
+          }
         } else {
           setKycStatus({ approvalStatus: 'APPROVED', hasAadhaarDocument: false, hasUdyamDocument: false });
         }
@@ -161,6 +181,28 @@ export const NewOrder: React.FC = () => {
         );
       })
       .finally(() => setLoading(false));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const refreshLatestKyc = () => {
+      customerService
+        .getKycStatus()
+        .then((kyc) => setKycStatus(kyc))
+        .catch(() => undefined);
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshLatestKyc();
+    };
+
+    window.addEventListener('focus', refreshLatestKyc);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('focus', refreshLatestKyc);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [user]);
 
   const captureDeliveryLocation = () => {
@@ -248,10 +290,33 @@ export const NewOrder: React.FC = () => {
         aadhaarNumber: cleanAadhaar || undefined,
         aadhaarDocument,
         aadhaarConsent: aadhaarDocument ? aadhaarConsent : undefined,
+        fullName: addressForm.fullName.trim(),
+        phone: addressForm.phone.trim(),
+        altPhone: addressForm.altPhone?.trim() || undefined,
+        addressLine1: addressForm.addressLine1.trim(),
+        addressLine2: addressForm.addressLine2?.trim() || undefined,
+        area: addressForm.area.trim(),
+        city: addressForm.city.trim(),
+        state: addressForm.state.trim(),
+        pincode: addressForm.pincode.trim(),
+        landmark: addressForm.landmark?.trim() || undefined,
+        mapLink: addressForm.mapLink?.trim() || undefined,
+        bookingDurationDays: durationDays,
+        remindersEnabled: reminderConsent,
       });
       toast.success('KYC details submitted for administrator review.');
-      const updated = await customerService.getKycStatus();
+      const [updated, addresses] = await Promise.all([
+        customerService.getKycStatus(),
+        customerService.getAddresses().catch(() => []),
+      ]);
       setKycStatus(updated);
+      if (updated.fsiNumber) setFsiNumber(updated.fsiNumber);
+      if (updated.aadhaarNumber) setAadhaarNumber(updated.aadhaarNumber);
+      if (addresses.length > 0) {
+        setSavedAddresses(addresses);
+        const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+        setSelectedAddressId(defaultAddr.id);
+      }
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Could not submit KYC details.');
     } finally {
@@ -410,16 +475,26 @@ export const NewOrder: React.FC = () => {
     return true;
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentStep === 1) {
       if (!validateStep1()) return;
-      if (kycStatus && kycStatus.approvalStatus !== 'APPROVED') {
-        toast.error(
-          kycStatus.approvalStatus === 'PENDING'
-            ? 'Your customer KYC is pending verification by DS Shinde Gas admin. Cylinder selection is locked until approved.'
-            : `Your customer KYC was not approved (${kycStatus.rejectionReason || 'Please resubmit your details'}).`
-        );
+      setCheckingKyc(true);
+      try {
+        const latestKyc = await customerService.getKycStatus();
+        setKycStatus(latestKyc);
+        if (latestKyc.approvalStatus !== 'APPROVED') {
+          toast.error(
+            latestKyc.approvalStatus === 'PENDING'
+              ? 'Your customer KYC is pending verification by DS Shinde Gas admin. Cylinder selection is locked until approved.'
+              : `Your customer KYC was not approved (${latestKyc.rejectionReason || 'Please resubmit your details'}).`
+          );
+          return;
+        }
+      } catch (error: any) {
+        toast.error(error.response?.data?.message || 'Could not confirm KYC approval. Please try again.');
         return;
+      } finally {
+        setCheckingKyc(false);
       }
     }
     if (currentStep === 2 && !validateStep2()) return;
@@ -887,8 +962,57 @@ export const NewOrder: React.FC = () => {
                 </div>
 
                 {kycStatus?.approvalStatus === 'PENDING' && (
-                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 leading-relaxed">
-                    Your KYC details have been submitted and are currently awaiting review by DS Shinde Gas agency administrators. You may update or add documents below.
+                  <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-900 leading-relaxed space-y-2">
+                    <p>
+                      Your KYC details have been submitted and are currently awaiting review by DS Shinde Gas agency administrators. You may update or add documents below.
+                    </p>
+                    <button
+                      type="button"
+                      className="text-xs font-bold text-[#10284A] underline underline-offset-2"
+                      onClick={async () => {
+                        try {
+                          const latest = await customerService.getKycStatus();
+                          setKycStatus(latest);
+                          if (latest.approvalStatus === 'APPROVED') {
+                            toast.success('Your KYC is approved. You can continue to cylinder selection.');
+                          } else {
+                            toast('Still waiting for admin approval.');
+                          }
+                        } catch {
+                          toast.error('Could not refresh KYC status.');
+                        }
+                      }}
+                    >
+                      Refresh approval status
+                    </button>
+                    <div className="rounded-lg bg-white/80 p-3 text-slate-800 space-y-1">
+                      <p><strong>Status:</strong> Pending admin review</p>
+                      <p><strong>Name:</strong> {addressForm.fullName || kycStatus.delivery?.fullName || user?.name || '—'}</p>
+                      <p><strong>Phone:</strong> {addressForm.phone || kycStatus.delivery?.phone || user?.phone || '—'}</p>
+                      {(addressForm.altPhone || kycStatus.delivery?.altPhone) && (
+                        <p><strong>Alternate phone:</strong> {addressForm.altPhone || kycStatus.delivery?.altPhone}</p>
+                      )}
+                      <p>
+                        <strong>Address:</strong>{' '}
+                        {[
+                          addressForm.addressLine1 || kycStatus.delivery?.addressLine1,
+                          addressForm.area || kycStatus.delivery?.area,
+                          addressForm.city || kycStatus.delivery?.city,
+                          addressForm.state || kycStatus.delivery?.state,
+                          addressForm.pincode || kycStatus.delivery?.pincode,
+                        ].filter(Boolean).join(', ') || 'Not saved yet'}
+                      </p>
+                      <p><strong>Aadhaar:</strong> {kycStatus.maskedAadhaar || aadhaarNumber || 'Not provided'}</p>
+                      <p><strong>FSI / GST:</strong> {kycStatus.fsiNumber || fsiNumber || 'Not provided'}</p>
+                      <p><strong>Booking duration:</strong> {kycStatus.bookingDurationDays || durationDays} days</p>
+                      <p>
+                        <strong>Documents:</strong>{' '}
+                        {[
+                          kycStatus.hasAadhaarDocument ? 'Aadhaar file on record' : null,
+                          kycStatus.hasUdyamDocument ? 'Udyam file on record' : null,
+                        ].filter(Boolean).join(' · ') || 'No files uploaded'}
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -976,19 +1100,17 @@ export const NewOrder: React.FC = () => {
                     </div>
                   </div>
 
-                  {(aadhaarNumber || aadhaarDocument || udyamDocument || fsiNumber) && (
-                    <div className="pt-2 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        disabled={submittingKyc}
-                        onClick={handleKycSubmit}
-                      >
-                        {submittingKyc ? 'Submitting KYC...' : 'Submit Verification Details'}
-                      </Button>
-                    </div>
-                  )}
+                  <div className="pt-2 flex justify-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      disabled={submittingKyc}
+                      onClick={handleKycSubmit}
+                    >
+                      {submittingKyc ? 'Submitting KYC...' : kycStatus?.approvalStatus === 'PENDING' ? 'Update submitted details' : 'Submit Verification Details'}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -1006,8 +1128,14 @@ export const NewOrder: React.FC = () => {
             </div>
 
             <div className="pt-4 border-t border-gray-100 flex justify-end">
-              <Button variant="primary" size="lg" onClick={handleNext} rightIcon={<ArrowRight className="w-4 h-4" />}>
-                Continue to cylinder selection
+              <Button
+                variant="primary"
+                size="lg"
+                onClick={handleNext}
+                disabled={checkingKyc}
+                rightIcon={<ArrowRight className="w-4 h-4" />}
+              >
+                {checkingKyc ? 'Checking KYC approval...' : 'Continue to cylinder selection'}
               </Button>
             </div>
           </div>
@@ -1180,7 +1308,7 @@ export const NewOrder: React.FC = () => {
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <h4 className="font-bold text-gray-900 text-sm">Online UPI / NetBanking</h4>
-                <p className="text-xs text-gray-500 mt-1">Pay after approval via Razorpay UPI or net banking options.</p>
+                <p className="text-xs text-gray-500 mt-1">Pay after approval in Razorpay checkout (UPI, net banking, or wallet).</p>
                 <span className="inline-block mt-3 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                   0% Additional Fees
                 </span>

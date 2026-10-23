@@ -28,6 +28,14 @@ function status(value: string): OrderStatus {
   return known[value] || 'PLACED';
 }
 
+export function needsAdminReview(orderStatus: OrderStatus): boolean {
+  return orderStatus === 'AWAITING_REVIEW' || orderStatus === 'PLACED';
+}
+
+export function canAssignDeliveryRider(orderStatus: OrderStatus): boolean {
+  return orderStatus === 'ACCEPTED' || orderStatus === 'ASSIGNED';
+}
+
 export function normalizeOrder(value: any): Order {
   const raw = value?.order || value || {};
   const address: Address =

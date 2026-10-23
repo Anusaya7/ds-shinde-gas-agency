@@ -28,8 +28,23 @@ const kycUpload = multer({
 const kycDetailsSchema = z.object({
   fsiNumber: z.string().trim().max(40).optional(),
   udyamConsent: z.literal('true').optional(),
-  aadhaarNumber: z.string().regex(/^[0-9]{12}$/, 'Aadhaar number must be 12 digits').optional(),
+  aadhaarNumber: z.string().trim().regex(/^$|^[0-9]{12}$/, 'Aadhaar number must be 12 digits').optional(),
   aadhaarConsent: z.literal('true').optional(),
+  kycSubmit: z.literal('true').optional(),
+  fullName: z.string().trim().max(120).optional(),
+  phone: z.string().trim().max(15).optional(),
+  altPhone: z.string().trim().max(15).optional(),
+  addressLine1: z.string().trim().max(200).optional(),
+  addressLine2: z.string().trim().max(200).optional(),
+  area: z.string().trim().max(120).optional(),
+  city: z.string().trim().max(80).optional(),
+  state: z.string().trim().max(80).optional(),
+  pinCode: z.string().trim().max(10).optional(),
+  pincode: z.string().trim().max(10).optional(),
+  landmark: z.string().trim().max(200).optional(),
+  mapLink: z.string().trim().max(500).optional(),
+  bookingDurationDays: z.string().trim().max(2).optional(),
+  remindersEnabled: z.string().optional(),
 });
 
 const handleUploadError: import('express').ErrorRequestHandler = (error, _req, _res, next) => {

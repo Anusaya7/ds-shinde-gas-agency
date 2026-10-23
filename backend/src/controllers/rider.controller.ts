@@ -126,6 +126,10 @@ export class RiderController {
           customer: {
             select: { name: true, phone: true, email: true },
           },
+          statusHistory: {
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, status: true, note: true, createdAt: true },
+          },
           deliveryOtp: {
             select: {
               isUsed: true,
@@ -239,7 +243,11 @@ export class RiderController {
         throw new BadRequestError('OTP is required for verification');
       }
 
-      const result = await DeliveryService.verifyDeliveryOtp(id, riderUserId, otp);
+      const result = await DeliveryService.verifyDeliveryOtp(
+        id,
+        riderUserId,
+        String(otp).replace(/\D/g, '')
+      );
       ApiResponse.success(res, result, result.message);
     } catch (error) {
       next(error);
@@ -268,13 +276,18 @@ export class RiderController {
     try {
       const riderUserId = req.user!.id;
       const { id } = req.params;
-      const { amount, transactionId } = req.body;
+      const { amount, transactionId, method } = req.body as {
+        amount?: number;
+        transactionId?: string;
+        method?: 'COD' | 'UPI_QR' | 'ONLINE' | 'CARD';
+      };
 
       const payment = await PaymentService.recordCodPayment({
         orderId: id,
         riderUserId,
         amount: amount ? Number(amount) : undefined,
         transactionId,
+        method,
       });
 
       ApiResponse.success(res, payment, 'Payment recorded successfully');

@@ -75,61 +75,17 @@ export const OrderDetail: React.FC = () => {
     if (!order || paying) return;
     setPaying(true);
     try {
-      const scriptLoaded = await paymentService.loadRazorpayScript();
-      if (!scriptLoaded || !window.Razorpay) {
-        throw new Error('Secure checkout could not be loaded. Please try again later.');
+      const result = await paymentService.openCheckout(order);
+      if (result === 'paid') {
+        setOrder((current) => (current ? { ...current, paymentStatus: 'PAID', paymentMethod: 'ONLINE' } : current));
+        toast.success('Payment verified. Your receipt is available to print.');
+      } else if (result === 'failed') {
+        setOrder((current) => (current ? { ...current, paymentStatus: 'FAILED' } : current));
+        toast.error('Payment failed. You can retry from this booking.');
       }
-      const gatewayOrder = await paymentService.createRazorpayOrder(order.id);
-      const checkout = new window.Razorpay({
-        key: gatewayOrder.keyId,
-        amount: gatewayOrder.amount,
-        currency: gatewayOrder.currency,
-        name: 'DS Shinde Gas',
-        description: `Cylinder booking ${order.orderNumber}`,
-        order_id: gatewayOrder.razorpayOrderId,
-        prefill: { name: order.customerName, contact: order.customerPhone },
-        theme: { color: '#10284A' },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          try {
-            await paymentService.verifyPayment({
-              orderId: order.id,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-            });
-            setOrder((current) => current ? { ...current, paymentStatus: 'PAID' } : current);
-            toast.success('Payment verified. Your receipt is available to print.');
-          } catch (error: any) {
-            toast.error(error.response?.data?.message || 'Payment confirmation is pending. Check the booking status before retrying.');
-          } finally {
-            setPaying(false);
-          }
-        },
-        modal: {
-          ondismiss: () => setPaying(false),
-        },
-      });
-      checkout.on('payment.failed', async (response: any) => {
-        try {
-          await paymentService.markPaymentFailed(
-            order.id,
-            response.error?.metadata?.order_id || gatewayOrder.razorpayOrderId
-          );
-          setOrder((current) => current ? { ...current, paymentStatus: 'FAILED' } : current);
-          toast.error('Payment failed. You can retry from this booking after checking its status.');
-        } catch (error: any) {
-          toast.error(error.response?.data?.message || 'Could not confirm the payment result. Check the booking status.');
-        } finally {
-          setPaying(false);
-        }
-      });
-      checkout.open();
     } catch (error: any) {
       toast.error(error.response?.data?.message || error.message || 'Could not start secure payment.');
+    } finally {
       setPaying(false);
     }
   };
@@ -392,14 +348,13 @@ export const OrderDetail: React.FC = () => {
       </div>
 
       {['ACCEPTED', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'ARRIVED', 'OTP_PENDING'].includes(order.orderStatus) &&
-        order.paymentMethod !== 'COD' &&
         order.paymentStatus !== 'PAID' && (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="font-bold text-amber-950">Booking approved — payment pending</h3>
+                <h3 className="font-bold text-amber-950">Pay securely with Razorpay</h3>
                 <p className="mt-1 text-sm text-amber-900">
-                  Pay ₹{order.totalAmount} using secure Razorpay checkout. Payment details are not stored by DS Shinde Gas.
+                  Pay ₹{order.totalAmount} by UPI, card, or net banking. Card details are not stored by DS Shinde Gas.
                 </p>
               </div>
               <Button variant="primary" onClick={handlePayment} isLoading={paying} leftIcon={<CreditCard className="h-4 w-4" />}>

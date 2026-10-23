@@ -207,10 +207,19 @@ export class DeliveryService {
   static async sendDeliveryOtp(orderId: string, riderUserId: string) {
     const { order } = await this.getRiderAndOrder(orderId, riderUserId);
 
-    if (order.status !== OrderStatus.OUT_FOR_DELIVERY && order.status !== OrderStatus.ARRIVED) {
+    const canSendOtp =
+      order.status === OrderStatus.OUT_FOR_DELIVERY ||
+      order.status === OrderStatus.ARRIVED ||
+      order.status === OrderStatus.OTP_PENDING;
+    if (!canSendOtp) {
       throw new BadRequestError(
-        `Delivery OTP can only be generated when order is OUT_FOR_DELIVERY or ARRIVED (Current: ${order.status})`
+        `Delivery OTP can only be generated when the rider is out for delivery or at the doorstep (Current: ${order.status})`
       );
+    }
+
+    const customerEmail = order.customer.email?.trim() || '';
+    if (!customerEmail && !order.deliveryPhone) {
+      throw new BadRequestError('This booking has no customer email or phone to send the OTP.');
     }
 
     const plainOtp = generateOtp(6);
@@ -244,16 +253,9 @@ export class DeliveryService {
 
     const message = `Your DS Shinde Gas delivery confirmation OTP for order ${order.orderNumber} is: ${plainOtp}. Share this ONLY with the delivery partner upon cylinder inspection.`;
 
-    // Send SMS to delivery phone
-    await sendSms({
-      phone: order.deliveryPhone,
-      message,
-    });
-
-    // Send Email to customer if exists
-    if (order.customer.email) {
-      await sendEmail({
-        to: order.customer.email,
+    if (customerEmail) {
+      const emailed = await sendEmail({
+        to: customerEmail,
         subject: `Delivery OTP for Order ${order.orderNumber}`,
         text: message,
         html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
@@ -261,17 +263,30 @@ export class DeliveryService {
           <p>Your delivery partner is at your doorstep. Please share this Delivery Confirmation OTP after inspecting your cylinder:</p>
           <h1 style="letter-spacing: 6px; color: #1e293b; background: #fef3c7; padding: 12px 24px; display: inline-block;">${plainOtp}</h1>
           <p>Order Number: <strong>${order.orderNumber}</strong></p>
+          <p>This code was sent to ${customerEmail}.</p>
           <p>Valid for ${config.otp.expiryMinutes} minutes.</p>
         </div>`,
+      });
+      if (!emailed) {
+        throw new BadRequestError(`Could not send the OTP email to ${customerEmail}. Try again.`);
+      }
+    } else if (order.deliveryPhone) {
+      await sendSms({
+        phone: order.deliveryPhone,
+        message,
       });
     }
 
     if (config.otp.devMode) {
-      console.log(`[DELIVERY OTP DEV MODE] Order: ${order.orderNumber} | OTP: ${plainOtp} | Customer: ${order.deliveryPhone}`);
+      console.log(
+        `[DELIVERY OTP DEV MODE] Order: ${order.orderNumber} | OTP: ${plainOtp} | Email: ${customerEmail || 'none'} | Phone: ${order.deliveryPhone}`
+      );
     }
 
     return {
-      message: `Delivery OTP dispatched to customer ${order.deliveryPhone}`,
+      message: customerEmail
+        ? `Delivery OTP sent to ${customerEmail}`
+        : `Delivery OTP sent to ${order.deliveryPhone}`,
     };
   }
 
@@ -301,7 +316,7 @@ export class DeliveryService {
       throw new BadRequestError('Delivery OTP has expired. Please request a new OTP.');
     }
 
-    const isValid = await verifyOtpHash(otp, deliveryOtp.otpHash);
+    const isValid = await verifyOtpHash(String(otp).replace(/\D/g, ''), deliveryOtp.otpHash);
     if (!isValid) {
       await prisma.deliveryOtp.update({
         where: { orderId: order.id },

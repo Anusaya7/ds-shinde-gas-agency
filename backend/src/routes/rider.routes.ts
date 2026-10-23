@@ -18,6 +18,14 @@ const applicationSchema = z.object({
   fullName: z.string().trim().min(2).max(100),
   address: z.string().trim().min(10).max(500),
   vehicleNumber: z.string().trim().min(5).max(20),
+  phone: z
+    .string()
+    .trim()
+    .transform((value) => value.replace(/\D/g, ''))
+    .refine((value) => value.length === 10, 'Enter a valid 10-digit mobile number.'),
+  consent: z
+    .union([z.literal('true'), z.literal(true), z.literal('on'), z.literal('1')])
+    .transform(() => 'true' as const),
 });
 
 const uploadRiderDocuments = multer({
@@ -95,8 +103,9 @@ const verifyOtpSchema = z.object({
 });
 
 const collectPaymentSchema = z.object({
-  amount: z.number().positive().optional(),
-  transactionId: z.string().optional(),
+  amount: z.coerce.number().positive().optional(),
+  transactionId: z.string().trim().min(4).max(80).optional(),
+  method: z.enum(['COD', 'UPI_QR', 'ONLINE', 'CARD']).optional(),
 });
 
 router.get('/orders', RiderController.getAssignedOrders);

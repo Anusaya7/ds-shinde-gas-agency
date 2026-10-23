@@ -1,10 +1,15 @@
 import api from './api';
 
 export interface RazorpayOrderResponse {
+  orderId: string;
+  orderNumber: string;
   razorpayOrderId: string;
   amount: number;
   currency: string;
   keyId: string;
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
 }
 
 export interface VerifyPaymentPayload {
@@ -13,6 +18,8 @@ export interface VerifyPaymentPayload {
   razorpayPaymentId: string;
   razorpaySignature: string;
 }
+
+export type RazorpayCheckoutResult = 'paid' | 'failed' | 'dismissed';
 
 declare global {
   interface Window {
@@ -49,6 +56,77 @@ export const paymentService = {
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
+    });
+  },
+
+  async openCheckout(order: {
+    id: string;
+    orderNumber: string;
+    customerName: string;
+    customerPhone: string;
+    customerEmail?: string;
+  }): Promise<RazorpayCheckoutResult> {
+    const scriptLoaded = await this.loadRazorpayScript();
+    if (!scriptLoaded || !window.Razorpay) {
+      throw new Error('Secure checkout could not be loaded. Please try again later.');
+    }
+
+    const gatewayOrder = await this.createRazorpayOrder(order.id);
+    const key = gatewayOrder.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+
+    return new Promise((resolve, reject) => {
+      const checkout = new window.Razorpay({
+        key,
+        amount: gatewayOrder.amount,
+        currency: gatewayOrder.currency || 'INR',
+        name: 'DS Shinde Gas',
+        description: `Cylinder booking ${order.orderNumber}`,
+        order_id: gatewayOrder.razorpayOrderId,
+        prefill: {
+          name: gatewayOrder.customerName || order.customerName,
+          contact: gatewayOrder.customerPhone || order.customerPhone,
+          email: gatewayOrder.customerEmail || order.customerEmail || '',
+        },
+        notes: {
+          orderId: order.id,
+          orderNumber: order.orderNumber,
+        },
+        theme: { color: '#10284A' },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            await this.verifyPayment({
+              orderId: order.id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            resolve('paid');
+          } catch (error) {
+            reject(error);
+          }
+        },
+        modal: {
+          ondismiss: () => resolve('dismissed'),
+        },
+      });
+
+      checkout.on('payment.failed', async (response: any) => {
+        try {
+          await this.markPaymentFailed(
+            order.id,
+            response.error?.metadata?.order_id || gatewayOrder.razorpayOrderId
+          );
+          resolve('failed');
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      checkout.open();
     });
   },
 };

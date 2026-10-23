@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { OrderStatus } from '../constants/enums.js';
+import { OrderStatus, PaymentMethod } from '../constants/enums.js';
 import prisma from '../config/database.js';
 import { DeliveryService } from '../services/delivery.service.js';
 import { PaymentService } from '../services/payment.service.js';
@@ -279,7 +279,7 @@ export class RiderController {
       const { amount, transactionId, method } = req.body as {
         amount?: number;
         transactionId?: string;
-        method?: 'COD' | 'UPI_QR' | 'ONLINE' | 'CARD';
+        method?: PaymentMethod;
       };
 
       const payment = await PaymentService.recordCodPayment({

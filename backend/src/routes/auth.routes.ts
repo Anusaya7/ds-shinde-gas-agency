@@ -19,21 +19,46 @@ const registerSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-const sendOtpSchema = z.object({
-  identifier: z.string().trim().min(3, 'Identifier (phone or email) is required').max(254)
-    .transform((identifier) => identifier.includes('@') ? identifier.toLowerCase() : identifier),
-  purpose: z.enum(['LOGIN', 'REGISTER', 'FORGOT_PASSWORD']),
-  role: z.enum(['CUSTOMER', 'RIDER']).optional(),
-});
+function requireCustomerEmail(
+  data: { identifier: string; role?: 'CUSTOMER' | 'RIDER' },
+  ctx: z.RefinementCtx
+) {
+  if ((data.role || 'CUSTOMER') !== 'CUSTOMER') return;
+  const parsed = z.string().email().safeParse(data.identifier);
+  if (!parsed.success) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['identifier'],
+      message: 'Customer sign-in requires a valid email address.',
+    });
+  }
+}
 
-const verifyOtpSchema = z.object({
-  identifier: z.string().trim().min(3, 'Identifier is required').max(254)
-    .transform((identifier) => identifier.includes('@') ? identifier.toLowerCase() : identifier),
-  otp: z.string().length(6, 'OTP must be 6 digits'),
-  purpose: z.enum(['LOGIN', 'REGISTER', 'FORGOT_PASSWORD']),
-  role: z.enum(['CUSTOMER', 'RIDER']).optional(),
-  name: z.string().trim().min(2).max(100).optional(),
-});
+const sendOtpSchema = z
+  .object({
+    identifier: z.string().trim().min(3, 'Identifier is required').max(254),
+    purpose: z.enum(['LOGIN', 'REGISTER', 'FORGOT_PASSWORD']),
+    role: z.enum(['CUSTOMER', 'RIDER']).optional(),
+  })
+  .superRefine(requireCustomerEmail)
+  .transform((data) => ({
+    ...data,
+    identifier: data.identifier.includes('@') ? data.identifier.toLowerCase() : data.identifier,
+  }));
+
+const verifyOtpSchema = z
+  .object({
+    identifier: z.string().trim().min(3, 'Identifier is required').max(254),
+    otp: z.string().length(6, 'OTP must be 6 digits'),
+    purpose: z.enum(['LOGIN', 'REGISTER', 'FORGOT_PASSWORD']),
+    role: z.enum(['CUSTOMER', 'RIDER']).optional(),
+    name: z.string().trim().min(2).max(100).optional(),
+  })
+  .superRefine(requireCustomerEmail)
+  .transform((data) => ({
+    ...data,
+    identifier: data.identifier.includes('@') ? data.identifier.toLowerCase() : data.identifier,
+  }));
 
 router.post('/login', authLimiter, validate(loginSchema), AuthController.login);
 router.post('/register', authLimiter, validate(registerSchema), AuthController.register);

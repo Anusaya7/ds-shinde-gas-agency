@@ -4,6 +4,7 @@
   "private": true,
   "description": "DS Shinde Gas — LPG Cylinder Booking and Order Management",
   "scripts": {
+    "dev": "node scripts/dev.cjs",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "build:backend": "npm --prefix backend run build",

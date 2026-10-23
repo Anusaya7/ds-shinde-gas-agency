@@ -61,8 +61,13 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
     const contact = identifier.trim();
     const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
     const validPhone = /^\d{10}$/.test(contact);
-    if (!validEmail && !validPhone) {
-      setError('Enter a valid 10-digit mobile number or email address.');
+    if (isRider) {
+      if (!validEmail && !validPhone) {
+        setError('Enter a valid 10-digit mobile number or email address.');
+        return;
+      }
+    } else if (!validEmail) {
+      setError('Enter a valid email address. The verification code is sent by email only.');
       return;
     }
 
@@ -135,8 +140,8 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
                 ? 'Verify your contact details, then submit your rider documents for admin review.'
                 : 'Sign in securely to view your rider application and delivery work.'
               : mode === 'REGISTER'
-                ? 'Create your account with a one-time verification code. No password needed.'
-                : 'Sign in securely with a one-time verification code. No password needed.'}
+                ? 'Create your account with a one-time code sent to your email. No password needed.'
+                : 'Sign in securely with a one-time verification code sent to your email. No password needed.'}
           </p>
         </div>
 
@@ -168,17 +173,17 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
 
           <div>
             <label htmlFor="login-identifier" className="mb-2 block text-sm font-semibold text-slate-800">
-              Mobile number or email
+              {isRider ? 'Mobile number or email' : 'Email address'}
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
-                {identifier.includes('@') ? <Mail className="h-4 w-4" /> : <Phone className="h-4 w-4" />}
+                {isRider && !identifier.includes('@') ? <Phone className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
               </span>
               <input
                 id="login-identifier"
-                type="text"
-                autoComplete="username"
-                inputMode="text"
+                type={isRider ? 'text' : 'email'}
+                autoComplete={isRider ? 'username' : 'email'}
+                inputMode={isRider ? 'text' : 'email'}
                 required
                 maxLength={254}
                 value={identifier}
@@ -188,7 +193,7 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
                   setOtp('');
                   setError('');
                 }}
-                placeholder="10-digit mobile or name@example.com"
+                placeholder={isRider ? '10-digit mobile or name@example.com' : 'name@example.com'}
                 className="min-h-12 w-full rounded-xl border border-slate-300 pl-10 pr-3 text-sm outline-none focus:border-[#10284A] focus:ring-2 focus:ring-[#10284A]/15"
               />
             </div>
@@ -273,8 +278,9 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
 
           <p className="flex items-start gap-2 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
-            We only use your contact details to secure your account and share updates about your
-            bookings.
+            {isRider
+              ? 'We only use your contact details to secure your account and share updates about your bookings.'
+              : 'We send the verification code to your email and use it to secure your account and share booking updates.'}
           </p>
 
           <div className="border-t border-slate-100 pt-4 text-center text-sm text-slate-600">

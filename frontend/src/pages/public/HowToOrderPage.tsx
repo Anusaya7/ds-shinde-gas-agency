@@ -11,16 +11,24 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
 
 export const HowToOrderPage: React.FC = () => {
   const { settings } = useSettings();
+  const { isAuthenticated } = useAuth();
+  const bookingPaused = settings.isOrderingEnabled === false;
+  const startHref = bookingPaused
+    ? `tel:${settings.primaryPhone}`
+    : isAuthenticated
+      ? '/dashboard/orders/new'
+      : '/login';
   const steps = [
     {
       step: '01',
       title: 'Sign In or Create Your Account',
       description:
-        'Sign in or create an account securely using a one-time code sent to your mobile number or email. No password is needed.',
+        'Sign in or create an account securely using a one-time code sent to your email. No password is needed.',
       icon: UserCheck,
       color: 'bg-blue-100 text-primary',
     },
@@ -158,11 +166,19 @@ export const HowToOrderPage: React.FC = () => {
 
         {/* Action Button */}
         <div className="text-center">
-          <Link to="/register">
-            <Button variant="accent" size="lg" className="font-bold shadow-lg" rightIcon={<ArrowRight className="w-5 h-5" />}>
-              Get Started with Your First Order
-            </Button>
-          </Link>
+          {bookingPaused ? (
+            <a href={`tel:${settings.primaryPhone}`}>
+              <Button variant="accent" size="lg" className="font-bold shadow-lg" rightIcon={<ArrowRight className="w-5 h-5" />}>
+                Call {settings.primaryPhone}
+              </Button>
+            </a>
+          ) : (
+            <Link to={startHref}>
+              <Button variant="accent" size="lg" className="font-bold shadow-lg" rightIcon={<ArrowRight className="w-5 h-5" />}>
+                Get Started with Your First Order
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </div>

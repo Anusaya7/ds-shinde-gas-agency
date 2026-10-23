@@ -125,15 +125,16 @@ export class AuthService {
     }
 
     const isEmail = identifier.includes('@');
+    const normalizedIdentifier = isEmail ? identifier.trim().toLowerCase() : identifier.trim();
     let user = await prisma.user.findFirst({
-      where: isEmail ? { email: identifier } : { phone: identifier },
+      where: isEmail ? { email: normalizedIdentifier } : { phone: normalizedIdentifier },
       include: {
         customerProfile: true,
         riderProfile: true,
       },
     });
 
-    if (!user && (identifier === 'admin@dsshinde.com' || identifier === '9511760208')) {
+    if (!user && (normalizedIdentifier === 'admin@dsshinde.com' || normalizedIdentifier === '9511760208')) {
       const defaultAdminPass = process.env.SEED_ADMIN_PASSWORD || 'Admin@123';
       const passwordHash = await bcrypt.hash(defaultAdminPass, 12);
       user = await prisma.user.create({
@@ -201,6 +202,9 @@ export class AuthService {
     const role = dto.role || Role.CUSTOMER;
 
     const isEmail = identifier.includes('@');
+    if (role === Role.CUSTOMER && !isEmail) {
+      throw new BadRequestError('Customer sign-in requires a valid email address. The verification code is sent by email only.');
+    }
     if (purpose === AuthOtpPurpose.FORGOT_PASSWORD) {
       throw new BadRequestError('Password recovery is only available to administrator accounts.');
     }
@@ -343,6 +347,9 @@ export class AuthService {
     });
 
     const isEmail = identifier.includes('@');
+    if (role === Role.CUSTOMER && !isEmail) {
+      throw new BadRequestError('Customer sign-in requires a valid email address. The verification code is sent by email only.');
+    }
     let user = await prisma.user.findFirst({
       where: isEmail ? { email: identifier } : { phone: identifier },
       include: { customerProfile: true, riderProfile: true, riderApplication: true },

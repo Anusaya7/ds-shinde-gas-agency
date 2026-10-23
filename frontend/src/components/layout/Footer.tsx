@@ -6,7 +6,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 export const Footer: React.FC = () => {
   const { settings } = useSettings();
 
-  const agencyName = 'DS Shinde Gas';
+  const agencyName = settings.agencyName || 'DS Shinde Gas';
   const primaryPhone = settings.primaryPhone || '9511760208';
   const secondaryPhone = settings.secondaryPhone || '9975300929';
   const email = settings.email || 'support@dsshindegas.com';

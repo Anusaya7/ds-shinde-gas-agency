@@ -1053,7 +1053,7 @@ export class AdminController {
       const map = new Map(settingsList.map((s) => [s.key, s.value]));
 
       const structured = {
-        agencyName: 'DS Shinde Gas',
+        agencyName: map.get('agency_name') || 'DS Shinde Gas',
         primaryPhone: map.get('contact_phone_1') || '9511760208',
         secondaryPhone: map.get('contact_phone_2') || '9975300929',
         email: map.get('agency_email') || 'contact@dsshinde.com',
@@ -1064,10 +1064,10 @@ export class AdminController {
           .filter(Boolean),
         deliveryCharges: Number(map.get('delivery_charge_default') || 50),
         taxPercentage: Number(map.get('tax_percentage') || 0),
-        onlinePaymentFee: Number(map.get('online_payment_fee') || 3),
+        onlinePaymentFee: Number(map.get('online_payment_fee') || map.get('online_payment_fee_percent') || 0),
         welcomeOfferEnabled: map.get('welcome_offer_enabled') === 'true',
         welcomeOfferAmount: Number(map.get('welcome_offer_amount') || 0),
-        isOrderingEnabled: true,
+        isOrderingEnabled: map.get('is_ordering_enabled') !== 'false',
         businessHours: map.get('support_hours') || '8:00 AM - 8:00 PM (Monday to Saturday)',
         heroHeadline: map.get('hero_headline') || 'Your Trusted LPG Gas Partner',
         heroSubheadline: map.get('hero_subheadline') || 'Reliable LPG Cylinder Solutions for Home and Business',
@@ -1201,6 +1201,9 @@ export class AdminController {
         updates.push({ key: 'welcome_offer_amount', value: String(amount) });
       }
       if (b.businessHours !== undefined) updates.push({ key: 'support_hours', value: String(b.businessHours) });
+      if (b.isOrderingEnabled !== undefined) {
+        updates.push({ key: 'is_ordering_enabled', value: String(Boolean(b.isOrderingEnabled)) });
+      }
 
       // CMS & Website Fields
       if (b.heroHeadline !== undefined) updates.push({ key: 'hero_headline', value: String(b.heroHeadline) });

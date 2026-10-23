@@ -69,12 +69,23 @@ export class OrderService {
     const settings = await prisma.agencySetting.findMany({
       where: {
         key: {
-          in: ['delivery_charge_default', 'tax_percentage', 'welcome_offer_enabled', 'welcome_offer_amount'],
+          in: [
+            'delivery_charge_default',
+            'tax_percentage',
+            'welcome_offer_enabled',
+            'welcome_offer_amount',
+            'online_payment_fee',
+            'online_payment_fee_percent',
+            'is_ordering_enabled',
+          ],
         },
       },
     });
 
     const settingMap = new Map(settings.map((s) => [s.key, s.value]));
+    if (settingMap.get('is_ordering_enabled') === 'false') {
+      throw new BadRequestError('Online booking is temporarily paused. Please contact the agency.');
+    }
     const defaultDeliveryFee = parseFloat(settingMap.get('delivery_charge_default') || '50.00');
     const taxRatePercent = parseFloat(settingMap.get('tax_percentage') || '0');
     const welcomeOfferEnabled = settingMap.get('welcome_offer_enabled') === 'true';
@@ -130,9 +141,14 @@ export class OrderService {
     // 4. Apply the configured tax rate only to commercial cylinder orders.
     const taxes = hasCommercialItem ? (subtotal * taxRatePercent) / 100 : 0;
 
-    // 5. Apply 3% MDR (Merchant Discount Rate) for card payments per user requirement
     const paymentMethod = dto.paymentMethod || 'COD';
-    const paymentFee = paymentMethod === 'CARD' ? Math.round((subtotal + totalDeliveryCharge + taxes) * 0.03 * 100) / 100 : 0;
+    const paymentFeePercent = parseFloat(
+      settingMap.get('online_payment_fee') || settingMap.get('online_payment_fee_percent') || '0'
+    );
+    const paymentFee =
+      paymentMethod === 'CARD' && Number.isFinite(paymentFeePercent) && paymentFeePercent > 0
+        ? Math.round((subtotal + totalDeliveryCharge + taxes) * (paymentFeePercent / 100) * 100) / 100
+        : 0;
     const baseTotal = subtotal + totalDeliveryCharge + taxes + paymentFee;
 
     const orderNumber = generateOrderNumber();

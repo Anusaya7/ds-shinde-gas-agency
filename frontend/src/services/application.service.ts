@@ -1,4 +1,5 @@
 import api from './api';
+import { CustomerApplication, CustomerApprovalStatus } from '../types';
 
 export type RiderApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -92,19 +93,19 @@ export const applicationService = {
     return response.data as Blob;
   },
 
-  async listCustomerApplications(status?: string): Promise<any[]> {
-    const response = await api.get<{ data: any[] }>('/admin/customer-applications', {
+  async listCustomerApplications(status?: CustomerApprovalStatus): Promise<CustomerApplication[]> {
+    const response = await api.get<{ data: CustomerApplication[] }>('/admin/customer-applications', {
       params: status ? { status } : undefined,
     });
-    return response.data.data;
+    return response.data.data || [];
   },
 
   async reviewCustomerApplication(
     customerId: string,
     status: 'APPROVED' | 'REJECTED',
     reason?: string
-  ): Promise<any> {
-    const response = await api.patch<{ data: any }>(
+  ): Promise<CustomerApplication> {
+    const response = await api.patch<{ data: CustomerApplication }>(
       `/admin/customer-applications/${customerId}/review`,
       { status, ...(reason ? { reason } : {}) }
     );

@@ -10,6 +10,7 @@ import {
   OrderStatus,
 } from '../types';
 import { normalizeOrder } from '../utils/order';
+import { normalizeProduct } from './product.service';
 
 export const fallbackSettings: AgencySettings = {
   agencyName: 'DS Shinde Gas',
@@ -20,7 +21,7 @@ export const fallbackSettings: AgencySettings = {
   deliveryAreas: ['Karad', 'Malkapur', 'Ogalewadi', 'Saidapur', 'Vidyanagar', 'Wathar'],
   deliveryCharges: 50,
   taxPercentage: 0,
-  onlinePaymentFee: 3,
+  onlinePaymentFee: 0,
   welcomeOfferEnabled: false,
   welcomeOfferAmount: 0,
   isOrderingEnabled: true,
@@ -138,8 +139,8 @@ export const adminService = {
   },
 
   async getProducts(): Promise<Product[]> {
-    const res = await api.get<{ success: boolean; data: Product[] }>('/admin/products');
-    return res.data.data;
+    const res = await api.get<{ success: boolean; data: any[] }>('/admin/products');
+    return (res.data.data || []).map(normalizeProduct);
   },
 
   async addProduct(data: Omit<Product, 'id'>): Promise<Product> {
@@ -157,12 +158,47 @@ export const adminService = {
   },
 
   async getReports(params?: { startDate?: string; endDate?: string }): Promise<ReportItem[]> {
-    try {
-      const res = await api.get<{ success: boolean; data: ReportItem[] }>('/admin/reports/orders', { params });
-      return res.data.data || [];
-    } catch {
-      return [];
+    const query = {
+      startDate: params?.startDate,
+      endDate: params?.endDate ? `${params.endDate}T23:59:59.999` : undefined,
+    };
+    const res = await api.get<{
+      success: boolean;
+      data: ReportItem[] | { orders?: unknown[] };
+    }>('/admin/reports/orders', { params: query });
+    const payload = res.data.data;
+    if (Array.isArray(payload) && payload[0] && 'ordersCount' in payload[0]) {
+      return payload as ReportItem[];
     }
+
+    const rawOrders = Array.isArray(payload) ? payload : payload?.orders || [];
+    const orders = rawOrders.map((order) => normalizeOrder(order));
+
+    const byDate = new Map<string, ReportItem>();
+    for (const order of orders) {
+      const date = String(order.createdAt || '').slice(0, 10);
+      if (!date) continue;
+      const current = byDate.get(date) || {
+        date,
+        ordersCount: 0,
+        deliveredCount: 0,
+        totalRevenue: 0,
+        cylinderBreakdown: {},
+        paymentBreakdown: {},
+      };
+      current.ordersCount += 1;
+      if (order.orderStatus === 'DELIVERED') current.deliveredCount += 1;
+      current.totalRevenue += Number(order.totalAmount || 0);
+      const method = String(order.paymentMethod || 'UNKNOWN');
+      current.paymentBreakdown[method] = (current.paymentBreakdown[method] || 0) + 1;
+      for (const item of order.items || []) {
+        const size = item.size || item.productName || 'Cylinder';
+        current.cylinderBreakdown[size] = (current.cylinderBreakdown[size] || 0) + Number(item.quantity || 0);
+      }
+      byDate.set(date, current);
+    }
+
+    return [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
   },
 
   async getSettings(): Promise<AgencySettings> {

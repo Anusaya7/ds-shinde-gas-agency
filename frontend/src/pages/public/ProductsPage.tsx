@@ -6,6 +6,7 @@ import { Product } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import toast from 'react-hot-toast';
 
 const cylinderSizes = ['12', '15', '17', '19.2', '21', '33', '50', '425'];
@@ -31,6 +32,13 @@ export const ProductsPage: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<'ALL' | 'DOMESTIC' | 'COMMERCIAL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const { isAuthenticated } = useAuth();
+  const { settings } = useSettings();
+  const bookingPaused = settings.isOrderingEnabled === false;
+  const bookingHref = bookingPaused
+    ? `tel:${settings.primaryPhone}`
+    : isAuthenticated
+      ? '/dashboard/orders/new'
+      : '/login';
 
   useEffect(() => {
     productService.getProducts(false).then((data) => {
@@ -66,6 +74,11 @@ export const ProductsPage: React.FC = () => {
             See the Gaspoint cylinder range, then check the live catalog below for current
             availability and prices.
           </p>
+          {bookingPaused ? (
+            <p className="mt-4 inline-flex rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+              Online booking is paused. Call {settings.primaryPhone} to place an order.
+            </p>
+          ) : null}
         </div>
 
         <section
@@ -229,8 +242,19 @@ export const ProductsPage: React.FC = () => {
                       <span className="text-xs font-bold text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
                         Out of Stock
                       </span>
+                    ) : bookingPaused ? (
+                      <a href={`tel:${settings.primaryPhone}`}>
+                        <Button
+                          variant="accent"
+                          size="sm"
+                          leftIcon={<ShoppingCart className="w-4 h-4" />}
+                          className="font-bold shadow"
+                        >
+                          Call {settings.primaryPhone}
+                        </Button>
+                      </a>
                     ) : (
-                      <Link to={isAuthenticated ? '/dashboard/orders/new' : '/login'}>
+                      <Link to={bookingHref}>
                         <Button
                           variant="accent"
                           size="sm"

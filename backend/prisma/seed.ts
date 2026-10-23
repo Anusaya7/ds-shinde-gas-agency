@@ -1,6 +1,10 @@
+import dotenv from 'dotenv';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { Role } from '../src/constants/enums';
 import bcrypt from 'bcryptjs';
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const prisma = new PrismaClient();
 

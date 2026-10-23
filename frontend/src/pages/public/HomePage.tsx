@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   Clock3,
   Flame,
-  Headphones,
   MapPin,
   Phone,
   ShieldCheck,
@@ -16,6 +15,7 @@ import { CylinderGallery } from '../../components/layout/CylinderGallery';
 import { productService } from '../../services/product.service';
 import { Product } from '../../types';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const benefits = [
   {
@@ -39,6 +39,12 @@ export const HomePage: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [catalogUnavailable, setCatalogUnavailable] = useState(false);
   const { settings } = useSettings();
+  const { isAuthenticated } = useAuth();
+  const primaryCtaLink =
+    isAuthenticated || !(settings.heroPrimaryCtaLink || '').includes('/dashboard')
+      ? settings.heroPrimaryCtaLink || '/dashboard/orders/new'
+      : '/login';
+  const secondaryCtaLink = settings.heroSecondaryCtaLink || '/#cylinder-gallery';
 
   useEffect(() => {
     productService
@@ -56,40 +62,61 @@ export const HomePage: React.FC = () => {
           <div className="relative z-10">
             <span className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-white px-3.5 py-2 text-xs font-bold text-[#10284A] shadow-sm sm:text-sm">
               <Flame className="h-4 w-4 text-[#F47721]" />
-              A reliable local LPG delivery partner
+              {settings.agencyName || 'DS Shinde Gas'}
             </span>
             <h1 className="mt-6 max-w-2xl text-4xl font-black leading-[1.08] tracking-tight text-[#10284A] sm:text-5xl lg:text-[62px]">
-              Cooking at home?
-              <span className="mt-2 block text-[#F47721]">We’ll bring the gas.</span>
+              {settings.heroHeadline || 'Your Trusted LPG Gas Partner'}
+              {settings.heroSubheadline ? (
+                <span className="mt-2 block text-[#F47721]">{settings.heroSubheadline}</span>
+              ) : null}
             </h1>
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
-              Book an LPG cylinder in a few easy steps. Pick the right size, tell us where to
-              deliver, and follow your booking from your customer dashboard.
+              {settings.heroDescription ||
+                'Book an LPG cylinder in a few easy steps. Pick the right size, tell us where to deliver, and follow your booking from your customer dashboard.'}
             </p>
             {settings.welcomeOfferEnabled && settings.welcomeOfferAmount > 0 && (
               <p className="mt-4 inline-flex rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm font-bold text-[#10284A]">
                 New customer welcome offer: ₹{settings.welcomeOfferAmount} off your first booking.
               </p>
             )}
+            {!settings.isOrderingEnabled && (
+              <p className="mt-4 inline-flex rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800">
+                Online booking is paused. Call {settings.primaryPhone} to place an order.
+              </p>
+            )}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link to="/login">
-                <Button
-                  variant="accent"
-                  size="lg"
-                  className="min-h-12 w-full bg-[#F47721] px-6 font-bold text-white hover:bg-[#DD6414] sm:w-auto"
-                  leftIcon={<Flame className="h-5 w-5" />}
-                  rightIcon={<ArrowRight className="h-4 w-4" />}
-                >
-                  Customer Booking
-                </Button>
-              </Link>
-              <Link to="/rider/login">
+              {settings.isOrderingEnabled ? (
+                <Link to={primaryCtaLink}>
+                  <Button
+                    variant="accent"
+                    size="lg"
+                    className="min-h-12 w-full bg-[#F47721] px-6 font-bold text-white hover:bg-[#DD6414] sm:w-auto"
+                    leftIcon={<Flame className="h-5 w-5" />}
+                    rightIcon={<ArrowRight className="h-4 w-4" />}
+                  >
+                    {settings.heroPrimaryCtaText || 'Customer Booking'}
+                  </Button>
+                </Link>
+              ) : (
+                <a href={`tel:${settings.primaryPhone}`}>
+                  <Button
+                    variant="accent"
+                    size="lg"
+                    className="min-h-12 w-full bg-[#F47721] px-6 font-bold text-white hover:bg-[#DD6414] sm:w-auto"
+                    leftIcon={<Phone className="h-5 w-5" />}
+                    rightIcon={<ArrowRight className="h-4 w-4" />}
+                  >
+                    Call {settings.primaryPhone}
+                  </Button>
+                </a>
+              )}
+              <Link to={secondaryCtaLink}>
                 <Button
                   variant="outline"
                   size="lg"
                   className="min-h-12 w-full border-[#10284A] px-6 font-bold text-[#10284A] hover:bg-blue-50 sm:w-auto"
                 >
-                  Rider Booking
+                  {settings.heroSecondaryCtaText || 'Explore Cylinder Sizes'}
                 </Button>
               </Link>
             </div>
@@ -115,12 +142,17 @@ export const HomePage: React.FC = () => {
                   </span>
                   <ShieldCheck className="h-6 w-6 text-emerald-300" />
                 </div>
-                <h2 className="mt-6 text-2xl font-black leading-tight sm:text-3xl">
-                  The right cylinder size, made clear.
+                <img
+                  src={settings.heroImageUrl || '/assets/cylinders/cylinder-size-range.jpeg'}
+                  alt={`${settings.agencyName || 'DS Shinde Gas'} cylinder size guide`}
+                  className="mt-6 mb-5 h-40 w-full rounded-2xl object-cover sm:h-48"
+                />
+                <h2 className="text-2xl font-black leading-tight sm:text-3xl">
+                  {settings.cylinderSectionTitle || 'The right cylinder size, made clear.'}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-blue-100">
-                  Explore the capacities shown in the Gaspoint reference image. Ask our team to
-                  confirm availability and today’s price before booking.
+                  {settings.cylinderSectionSubtitle ||
+                    'Explore the capacities shown in the Gaspoint reference image. Confirm availability and today’s price before booking.'}
                 </p>
                 <div className="mt-6 grid grid-cols-4 gap-2">
                   {['12', '15', '17', '19.2', '21', '33', '50', '425'].map((size) => (
@@ -133,10 +165,10 @@ export const HomePage: React.FC = () => {
                   ))}
                 </div>
                 <Link
-                  to="/#cylinder-gallery"
+                  to={secondaryCtaLink}
                   className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#F47721] px-4 text-sm font-bold text-white transition hover:bg-[#DD6414]"
                 >
-                  View the size guide <ArrowRight className="h-4 w-4" />
+                  {settings.heroSecondaryCtaText || 'View the size guide'} <ArrowRight className="h-4 w-4" />
                 </Link>
               </div>
             </div>
@@ -172,12 +204,12 @@ export const HomePage: React.FC = () => {
               From booking to doorstep
             </h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
-              No passwords to remember for customer or rider accounts. Sign in securely with a
-              verification code, then see important updates in your dashboard.
+              No passwords to remember. Customers sign in with a verification code sent to email,
+              then see important updates in the dashboard.
             </p>
             <div className="mt-7 space-y-4">
               {[
-                ['01', 'Sign in with a one-time code', 'Verify your mobile number or email.'],
+                ['01', 'Sign in with a one-time code', 'Verify your email address.'],
                 ['02', 'Choose your cylinder and address', 'Review the cylinder price and delivery details.'],
                 ['03', 'Follow your order', 'Check payment and delivery status in your dashboard.'],
               ].map(([number, title, text]) => (

@@ -1,13 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BarChart3,
   Download,
   Calendar,
-  Filter,
-  TrendingUp,
   CreditCard,
   Flame,
-  Award,
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { ReportItem } from '../../types';
@@ -27,29 +23,39 @@ export const Reports: React.FC = () => {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setLoadError('');
     adminService
       .getReports({ startDate, endDate })
-      .then((data) => setReports(data))
+      .then((data) => {
+        if (!cancelled) setReports(Array.isArray(data) ? data : []);
+      })
       .catch((error: any) => {
+        if (cancelled) return;
         setReports([]);
         const message = error.response?.data?.message || 'Could not load report data.';
         setLoadError(message);
         toast.error(message);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [startDate, endDate]);
 
-  const totalOrders = reports.reduce((acc, r) => acc + r.ordersCount, 0);
-  const totalDelivered = reports.reduce((acc, r) => acc + r.deliveredCount, 0);
-  const totalRevenue = reports.reduce((acc, r) => acc + r.totalRevenue, 0);
+  const rows = Array.isArray(reports) ? reports : [];
+  const totalOrders = rows.reduce((acc, r) => acc + (Number(r.ordersCount) || 0), 0);
+  const totalDelivered = rows.reduce((acc, r) => acc + (Number(r.deliveredCount) || 0), 0);
+  const totalRevenue = rows.reduce((acc, r) => acc + (Number(r.totalRevenue) || 0), 0);
 
   // Aggregate breakdown
   const aggregateCylinders: Record<string, number> = {};
   const aggregatePayments: Record<string, number> = {};
 
-  reports.forEach((r) => {
+  rows.forEach((r) => {
     Object.entries(r.cylinderBreakdown || {}).forEach(([k, v]) => {
       aggregateCylinders[k] = (aggregateCylinders[k] || 0) + v;
     });
@@ -64,10 +70,10 @@ export const Reports: React.FC = () => {
       return;
     }
     const headers = ['Date', 'Total Orders', 'Delivered Orders', 'Revenue (INR)'];
-    const rows = reports.map((r) => [r.date, r.ordersCount, r.deliveredCount, r.totalRevenue]);
+    const csvRows = rows.map((r) => [r.date, r.ordersCount, r.deliveredCount, r.totalRevenue]);
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+      [headers.join(','), ...csvRows.map((e) => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -78,16 +84,21 @@ export const Reports: React.FC = () => {
     toast.success('CSV Export downloaded successfully');
   };
 
-  if (loadError) {
+  if (loading) {
     return (
-      <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
-        {loadError} Refresh the page to try again.
+      <div className="py-20 flex justify-center">
+        <Spinner size="lg" label="Loading revenue and operations reports..." />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {loadError && (
+        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          {loadError} Adjust the date range or refresh the page to try again.
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">Revenue & Operations Reports</h1>
@@ -156,7 +167,10 @@ export const Reports: React.FC = () => {
             <Flame className="w-4 h-4 text-accent" /> Refill Volume by Cylinder Weight
           </h3>
           <div className="space-y-3">
-            {Object.entries(aggregateCylinders).map(([size, count]) => (
+            {Object.keys(aggregateCylinders).length === 0 ? (
+              <p className="text-sm text-gray-500">No cylinder bookings in this interval.</p>
+            ) : (
+              Object.entries(aggregateCylinders).map(([size, count]) => (
               <div key={size} className="space-y-1">
                 <div className="flex justify-between text-xs font-semibold text-gray-700">
                   <span>{size} Cylinder</span>
@@ -171,7 +185,8 @@ export const Reports: React.FC = () => {
                   />
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -181,7 +196,10 @@ export const Reports: React.FC = () => {
             <CreditCard className="w-4 h-4 text-primary" /> Payment Method Reconciliations
           </h3>
           <div className="space-y-3">
-            {Object.entries(aggregatePayments).map(([method, count]) => (
+            {Object.keys(aggregatePayments).length === 0 ? (
+              <p className="text-sm text-gray-500">No payments recorded in this interval.</p>
+            ) : (
+              Object.entries(aggregatePayments).map(([method, count]) => (
               <div key={method} className="space-y-1">
                 <div className="flex justify-between text-xs font-semibold text-gray-700">
                   <span>{method}</span>
@@ -196,7 +214,8 @@ export const Reports: React.FC = () => {
                   />
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -217,7 +236,14 @@ export const Reports: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {reports.map((r, idx) => (
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-5 py-8 text-center text-sm text-gray-500">
+                    No orders in this date range yet. New bookings will appear here automatically.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r, idx) => (
                 <tr key={idx} className="hover:bg-gray-50/50">
                   <td className="px-5 py-3 font-semibold text-gray-900">{r.date}</td>
                   <td className="px-5 py-3 text-gray-800">{r.ordersCount} orders</td>
@@ -225,10 +251,11 @@ export const Reports: React.FC = () => {
                     {r.deliveredCount} drops
                   </td>
                   <td className="px-5 py-3 font-black text-gray-900">
-                    ₹{r.totalRevenue.toLocaleString('en-IN')}
+                    ₹{Number(r.totalRevenue || 0).toLocaleString('en-IN')}
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

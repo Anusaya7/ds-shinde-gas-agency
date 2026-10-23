@@ -365,8 +365,12 @@ export const NewOrder: React.FC = () => {
         )
       : 0;
   const hasCommercialItem = selectedItems.some((item) => item.type === 'COMMERCIAL');
-  const taxes = hasCommercialItem ? Math.round((subtotal * settings.taxPercentage) / 100) : 0;
-  const paymentFee = paymentMethod === 'CARD' ? Math.round((subtotal + deliveryCharges + taxes) * (settings.onlinePaymentFee || 3) / 100 * 100) / 100 : 0;
+  const taxes = hasCommercialItem ? Math.round((subtotal * (settings.taxPercentage || 0)) / 100) : 0;
+  const paymentFeePercent = Number(settings.onlinePaymentFee || 0);
+  const paymentFee =
+    paymentMethod === 'CARD' && paymentFeePercent > 0
+      ? Math.round((subtotal + deliveryCharges + taxes) * (paymentFeePercent / 100) * 100) / 100
+      : 0;
   const totalAmount = subtotal + deliveryCharges + taxes + paymentFee;
 
   // Step Validation
@@ -431,6 +435,10 @@ export const NewOrder: React.FC = () => {
   // Submit Order
   const handleConfirmOrder = async () => {
     if (submitting) return;
+    if (settings.isOrderingEnabled === false) {
+      toast.error('Online booking is temporarily paused. Please contact the agency.');
+      return;
+    }
     if (udyamDocument && !udyamConsent) {
       toast.error('Consent is required before uploading the optional Udyam certificate.');
       return;
@@ -515,6 +523,21 @@ export const NewOrder: React.FC = () => {
         <Button className="mt-4" variant="primary" onClick={() => window.location.reload()}>
           Retry
         </Button>
+      </div>
+    );
+  }
+
+  if (settings.isOrderingEnabled === false) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm">
+        <AlertCircle className="mx-auto h-10 w-10 text-amber-600" />
+        <h1 className="mt-3 text-lg font-bold text-gray-900">Online booking is paused</h1>
+        <p className="mt-2 text-sm text-amber-900">
+          New bookings are not being accepted online right now. Call the agency to place an order.
+        </p>
+        <a href={`tel:${settings.primaryPhone}`} className="mt-4 inline-block">
+          <Button variant="primary">Call {settings.primaryPhone}</Button>
+        </a>
       </div>
     );
   }
@@ -622,7 +645,7 @@ export const NewOrder: React.FC = () => {
       {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
-          Book with DS Shinde Gas
+          Book with {settings.agencyName || 'DS Shinde Gas'}
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-1">
           Complete the quick steps below to schedule genuine cylinder delivery at your doorstep
@@ -1217,9 +1240,11 @@ export const NewOrder: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Pay through secure Razorpay checkout after approval. Card details are not stored by DS Shinde Gas.
                 </p>
+                {paymentFeePercent > 0 ? (
                 <span className="inline-block mt-3 text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded">
-                  {settings.onlinePaymentFee || 3}% MDR surcharge applies
+                  {paymentFeePercent}% MDR surcharge applies
                 </span>
+                ) : null}
               </div>
             </div>
 

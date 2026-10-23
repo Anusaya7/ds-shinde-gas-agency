@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layers, Plus, Edit2, Flame, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit2, Flame } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { Product } from '../../types';
 import { Button } from '../../components/ui/Button';
@@ -21,7 +21,7 @@ export const ProductManagement: React.FC = () => {
     description: '',
     price: 920,
     inStock: true,
-    stockQuantity: 100,
+    deliveryCharge: 50,
     type: 'DOMESTIC',
     isActive: true,
   });
@@ -51,7 +51,7 @@ export const ProductManagement: React.FC = () => {
       description: '',
       price: 900,
       inStock: true,
-      stockQuantity: 100,
+      deliveryCharge: 50,
       type: 'DOMESTIC',
       isActive: true,
     });
@@ -66,7 +66,7 @@ export const ProductManagement: React.FC = () => {
       description: prod.description,
       price: prod.price,
       inStock: prod.inStock,
-      stockQuantity: prod.stockQuantity || 100,
+      deliveryCharge: prod.deliveryCharge || 0,
       type: prod.type,
       isActive: prod.isActive,
     });
@@ -81,17 +81,29 @@ export const ProductManagement: React.FC = () => {
     }
     setSaving(true);
     try {
+      const sizeKg = parseFloat(String(formData.size).replace(/[^\d.]/g, ''));
+      if (!Number.isFinite(sizeKg) || sizeKg <= 0) {
+        toast.error('Enter a valid cylinder size in kg.');
+        setSaving(false);
+        return;
+      }
+      const payload = {
+        name: formData.name,
+        sizeKg,
+        description: formData.description,
+        price: Number(formData.price),
+        deliveryCharge: Number(formData.deliveryCharge || 0),
+        isCommercial: formData.type === 'COMMERCIAL',
+        isActive: formData.isActive,
+      };
       if (editingProduct) {
-        const updated = await adminService.updateProduct(editingProduct.id, formData);
-        setProducts((prev) =>
-          prev.map((p) => (p.id === editingProduct.id ? { ...p, ...formData } : p))
-        );
+        await adminService.updateProduct(editingProduct.id, payload as any);
         toast.success('Product updated');
       } else {
-        const created = await adminService.addProduct(formData);
-        setProducts((prev) => [...prev, created]);
+        await adminService.addProduct(payload as any);
         toast.success('New cylinder catalog item added');
       }
+      loadProducts();
       setIsModalOpen(false);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Could not save this cylinder product.');
@@ -119,7 +131,7 @@ export const ProductManagement: React.FC = () => {
         <div>
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">Cylinder Products & Pricing</h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-            Configure cylinder capacities, domestic/commercial tariffs, and inventory limits
+            Configure cylinder capacities, refill prices, and delivery charges used at booking
           </p>
         </div>
         <Button variant="primary" size="sm" onClick={openAddModal} leftIcon={<Plus className="w-4 h-4" />}>
@@ -141,7 +153,7 @@ export const ProductManagement: React.FC = () => {
                   <th className="px-5 py-3.5">Weight / Size</th>
                   <th className="px-5 py-3.5">Category</th>
                   <th className="px-5 py-3.5">Refill Rate (₹)</th>
-                  <th className="px-5 py-3.5">Stock Count</th>
+                  <th className="px-5 py-3.5">Delivery Charge (₹)</th>
                   <th className="px-5 py-3.5">Availability</th>
                   <th className="px-5 py-3.5 text-right">Actions</th>
                 </tr>
@@ -182,7 +194,7 @@ export const ProductManagement: React.FC = () => {
                     <td className="px-5 py-3.5 font-black text-gray-900 text-sm">₹{prod.price}</td>
 
                     <td className="px-5 py-3.5 font-semibold text-gray-700">
-                      {prod.stockQuantity || 100} units
+                      ₹{Number(prod.deliveryCharge || 0).toLocaleString('en-IN')}
                     </td>
 
                     <td className="px-5 py-3.5">
@@ -268,12 +280,12 @@ export const ProductManagement: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
             />
             <Input
-              label="Stock Inventory Count"
+              label="Delivery Charge (₹)"
               type="number"
               min={0}
-              value={formData.stockQuantity || 100}
+              value={formData.deliveryCharge || 0}
               onChange={(e) =>
-                setFormData({ ...formData, stockQuantity: Number(e.target.value) })
+                setFormData({ ...formData, deliveryCharge: Number(e.target.value) })
               }
             />
           </div>

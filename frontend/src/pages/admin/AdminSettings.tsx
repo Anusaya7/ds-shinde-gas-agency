@@ -94,7 +94,7 @@ export const AdminSettings: React.FC = () => {
           to="/admin/cms"
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200 text-xs font-bold transition-colors"
         >
-          <Globe className="w-4 h-4" /> Manage Website CMS <ArrowRight className="w-3.5 h-3.5" />
+          <Globe className="w-4 h-4" /> Edit website <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
 

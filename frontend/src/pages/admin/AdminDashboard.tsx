@@ -3,16 +3,12 @@ import { Link } from 'react-router-dom';
 import {
   Package,
   Clock,
-  CheckCircle,
   Truck,
-  PackageCheck,
-  XCircle,
-  CreditCard,
   IndianRupee,
-  Users,
-  Bike,
   ArrowRight,
-  TrendingUp,
+  FileCheck2,
+  Mail,
+  Layers,
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { DashboardStats, Order } from '../../types';
@@ -45,28 +41,46 @@ export const AdminDashboard: React.FC = () => {
   if (loading) {
     return (
       <div className="py-20 flex justify-center">
-        <Spinner size="lg" label="Loading agency telemetry and stats..." />
+        <Spinner size="lg" label="Loading home..." />
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Top Welcome Title */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Agency Operations Overview</h1>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Real-time cylinder dispatch metrics, active riders, and revenue settlement
-          </p>
+          <h1 className="text-2xl font-black tracking-tight text-gray-900">Home</h1>
+          <p className="mt-0.5 text-sm text-gray-500">See bookings that need action, then open the right page.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link to="/admin/orders">
-            <Button variant="primary" size="sm" leftIcon={<Package className="w-4 h-4" />}>
-              Open Dispatch Queue
-            </Button>
-          </Link>
-        </div>
+        <Link to="/admin/orders">
+          <Button variant="primary" size="sm" leftIcon={<Package className="w-4 h-4" />}>
+            Open orders
+          </Button>
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Link to="/admin/orders" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-[#10284A]">
+          <Package className="h-5 w-5 text-[#10284A]" />
+          <p className="mt-3 text-sm font-bold text-[#10284A]">Orders</p>
+          <p className="mt-1 text-xs text-slate-500">Accept, assign, and track deliveries</p>
+        </Link>
+        <Link to="/admin/customer-applications" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-[#10284A]">
+          <FileCheck2 className="h-5 w-5 text-[#10284A]" />
+          <p className="mt-3 text-sm font-bold text-[#10284A]">Customer KYC</p>
+          <p className="mt-1 text-xs text-slate-500">Approve Aadhaar and business papers</p>
+        </Link>
+        <Link to="/admin/enquiries" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-[#10284A]">
+          <Mail className="h-5 w-5 text-[#10284A]" />
+          <p className="mt-3 text-sm font-bold text-[#10284A]">Messages</p>
+          <p className="mt-1 text-xs text-slate-500">Read contact form enquiries</p>
+        </Link>
+        <Link to="/admin/products" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm hover:border-[#10284A]">
+          <Layers className="h-5 w-5 text-[#10284A]" />
+          <p className="mt-3 text-sm font-bold text-[#10284A]">Prices</p>
+          <p className="mt-1 text-xs text-slate-500">Change cylinder rates and delivery fees</p>
+        </Link>
       </div>
 
       {/* Grid of Key Stats */}
@@ -75,28 +89,24 @@ export const AdminDashboard: React.FC = () => {
           label="Total Bookings"
           value={stats?.totalOrders ?? 0}
           icon={<Package className="w-6 h-6" />}
-          change="+12.4%"
-          isPositive={true}
           color="blue"
         />
         <StatsCard
-          label="New / Awaiting Review"
+          label="Waiting for review"
           value={(stats?.newOrders ?? 0) + (stats?.awaitingReview ?? 0)}
           icon={<Clock className="w-6 h-6" />}
           color="red"
         />
         <StatsCard
-          label="Out For Delivery"
+          label="Out for delivery"
           value={stats?.outForDelivery ?? 0}
           icon={<Truck className="w-6 h-6" />}
           color="amber"
         />
         <StatsCard
-          label="Total Revenue Collected"
+          label="Money collected"
           value={`₹${(stats?.totalCollected ?? 0).toLocaleString('en-IN')}`}
           icon={<IndianRupee className="w-6 h-6" />}
-          change="+8.2%"
-          isPositive={true}
           color="emerald"
         />
       </div>
@@ -104,19 +114,19 @@ export const AdminDashboard: React.FC = () => {
       {/* Secondary Status Counts Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase">Accepted Orders</span>
+          <span className="text-[11px] font-bold uppercase text-gray-400">Accepted</span>
           <p className="text-xl font-bold text-blue-600 mt-1">{stats?.accepted ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase">Delivered Orders</span>
+          <span className="text-[11px] font-bold uppercase text-gray-400">Delivered</span>
           <p className="text-xl font-bold text-emerald-600 mt-1">{stats?.delivered ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase">Pending Payments</span>
+          <span className="text-[11px] font-bold uppercase text-gray-400">Payments due</span>
           <p className="text-xl font-bold text-amber-600 mt-1">{stats?.pendingPayments ?? 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
-          <span className="text-[11px] font-bold text-gray-400 uppercase">Active Fleet Riders</span>
+          <span className="text-[11px] font-bold uppercase text-gray-400">Riders ready</span>
           <p className="text-xl font-bold text-purple-600 mt-1">{stats?.activeRidersCount ?? 0}</p>
         </div>
       </div>
@@ -125,8 +135,8 @@ export const AdminDashboard: React.FC = () => {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Latest Booking Inflows</h2>
-            <p className="text-xs text-gray-500">Orders requiring dispatch action or verification</p>
+            <h2 className="text-base font-bold text-gray-900">Latest orders</h2>
+            <p className="text-xs text-gray-500">Newest bookings from customers</p>
           </div>
           <Link
             to="/admin/orders"
@@ -150,6 +160,13 @@ export const AdminDashboard: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {recentOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-10 text-center text-sm text-gray-500">
+                    No bookings yet. New customer orders will appear here.
+                  </td>
+                </tr>
+              ) : null}
               {recentOrders.map((order) => (
                 <tr key={order.id} className="hover:bg-blue-50/40 transition-colors">
                   <td className="px-5 py-3.5 font-bold text-gray-900 whitespace-nowrap">
@@ -175,7 +192,7 @@ export const AdminDashboard: React.FC = () => {
                   <td className="px-5 py-3.5 text-right whitespace-nowrap">
                     <Link to={`/admin/orders/${order.id}`}>
                       <Button variant="secondary" size="sm">
-                        Inspect & Assign
+                        Open
                       </Button>
                     </Link>
                   </td>

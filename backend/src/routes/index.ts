@@ -57,7 +57,7 @@ apiRouter.get('/settings/public', async (req, res, next) => {
     const map = new Map(settingsList.map((s) => [s.key, s.value]));
 
     const structured = {
-      agencyName: 'DS Shinde Gas',
+      agencyName: map.get('agency_name') || 'DS Shinde Gas',
       primaryPhone: map.get('contact_phone_1') || '9511760208',
       secondaryPhone: map.get('contact_phone_2') || '9975300929',
       email: map.get('agency_email') || 'support@dsshindegas.com',
@@ -69,6 +69,8 @@ apiRouter.get('/settings/public', async (req, res, next) => {
       businessHours: map.get('support_hours') || '8:00 AM - 8:00 PM (Monday to Saturday)',
       deliveryCharges: Number(map.get('delivery_charge_default') || 50),
       taxPercentage: Number(map.get('tax_percentage') || 0),
+      onlinePaymentFee: Number(map.get('online_payment_fee') || map.get('online_payment_fee_percent') || 0),
+      isOrderingEnabled: map.get('is_ordering_enabled') !== 'false',
       welcomeOfferEnabled: map.get('welcome_offer_enabled') === 'true',
       welcomeOfferAmount: Number(map.get('welcome_offer_amount') || 0),
       heroHeadline: map.get('hero_headline') || 'Your Trusted LPG Gas Partner',

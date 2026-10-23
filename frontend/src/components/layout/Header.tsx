@@ -30,15 +30,22 @@ export const Header: React.FC = () => {
 
   return (
     <>
+      {settings.announcementBanner ? (
+        <div className="bg-[#F47721] text-white">
+          <p className="mx-auto max-w-7xl px-4 py-2 text-center text-xs font-semibold sm:text-sm">
+            {settings.announcementBanner}
+          </p>
+        </div>
+      ) : null}
       <div className="bg-[#10284A] text-white">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-2 px-4 py-2 text-xs sm:justify-between">
           <span className="hidden text-slate-200 sm:block">
-            Trusted local LPG delivery, with safety at every step.
+            {settings.agencyName || 'DS Shinde Gas'} — trusted local LPG delivery.
           </span>
           <a
             className="inline-flex items-center gap-2 font-semibold hover:text-orange-300"
             href={`tel:${settings.primaryPhone}`}
-            aria-label={`Call DS Shinde Gas at ${settings.primaryPhone}`}
+            aria-label={`Call ${settings.agencyName || 'DS Shinde Gas'} at ${settings.primaryPhone}`}
           >
             <Phone className="h-3.5 w-3.5 text-orange-400" />
             Need help? {settings.primaryPhone}
@@ -58,7 +65,7 @@ export const Header: React.FC = () => {
             </span>
             <span className="leading-tight">
               <span className="block text-[15px] font-extrabold tracking-tight text-[#10284A] sm:text-lg">
-                DS Shinde Gas
+                {settings.agencyName || 'DS Shinde Gas'}
               </span>
               <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[0.17em] text-slate-500">
                 LPG, delivered with care
@@ -107,12 +114,21 @@ export const Header: React.FC = () => {
               </>
             ) : (
               <>
-                <Link
-                  to="/login"
-                  className="rounded-xl bg-[#F47721] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#DD6414] focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
-                >
-                  Customer Booking
-                </Link>
+                {settings.isOrderingEnabled === false ? (
+                  <a
+                    href={`tel:${settings.primaryPhone}`}
+                    className="rounded-xl bg-[#F47721] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#DD6414] focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
+                  >
+                    Call {settings.primaryPhone}
+                  </a>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="rounded-xl bg-[#F47721] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-[#DD6414] focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2"
+                  >
+                    {settings.headerCtaText || 'Customer Booking'}
+                  </Link>
+                )}
                 <Link
                   to="/rider/login"
                   className="inline-flex items-center gap-2 rounded-xl bg-[#10284A] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1C3D65] focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
@@ -182,13 +198,23 @@ export const Header: React.FC = () => {
                 </button>
               ) : (
                 <>
-                  <Link
-                    to="/login"
-                    onClick={closeMenu}
-                    className="rounded-xl bg-[#F47721] px-4 py-3 text-center text-sm font-bold text-white"
-                  >
-                    Customer Booking
-                  </Link>
+                  {settings.isOrderingEnabled === false ? (
+                    <a
+                      href={`tel:${settings.primaryPhone}`}
+                      onClick={closeMenu}
+                      className="rounded-xl bg-[#F47721] px-4 py-3 text-center text-sm font-bold text-white"
+                    >
+                      Call {settings.primaryPhone}
+                    </a>
+                  ) : (
+                    <Link
+                      to="/login"
+                      onClick={closeMenu}
+                      className="rounded-xl bg-[#F47721] px-4 py-3 text-center text-sm font-bold text-white"
+                    >
+                      {settings.headerCtaText || 'Customer Booking'}
+                    </Link>
+                  )}
                   <Link
                     to="/rider/login"
                     onClick={closeMenu}

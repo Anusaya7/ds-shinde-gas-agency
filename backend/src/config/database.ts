@@ -11,6 +11,9 @@ export const prisma =
   global.__prisma ||
   new PrismaClient({
     log: config.isDev ? ['query', 'info', 'warn', 'error'] : ['error'],
+    datasources: {
+      db: { url: config.database.url },
+    },
   });
 
 if (config.isDev) {

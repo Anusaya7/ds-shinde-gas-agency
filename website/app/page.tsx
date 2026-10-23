@@ -242,7 +242,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-4xl px-4">
           <SectionTitle kicker="Book Now" title="Book Your LPG Cylinder" />
           <p className="mt-3 text-center text-sm text-gray-600">
-            Sign in with your mobile number or email and book from your customer dashboard. Cylinder
+            Sign in with your email and book from your customer dashboard. Cylinder
             prices and availability are confirmed with your booking.
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2">

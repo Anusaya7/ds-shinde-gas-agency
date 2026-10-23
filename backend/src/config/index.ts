@@ -56,7 +56,15 @@ export const config = {
     secure: process.env.SMTP_SECURE === 'true',
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.SMTP_FROM || 'DS Shinde Gas <noreply@dsshinde.com>',
+    from: process.env.SMTP_FROM || 'DS Shinde Gas Agency <noreply@dsshindegas.com>',
+  },
+
+  resend: {
+    apiKey: process.env.RESEND_API_KEY || '',
+    from:
+      process.env.RESEND_FROM ||
+      process.env.SMTP_FROM ||
+      'DS Shinde Gas Agency <noreply@dsshindegas.com>',
   },
 
   sms: {

@@ -357,10 +357,18 @@ export const AdminOrderDetail: React.FC = () => {
                 Delivery Handover OTP
               </span>
               <span className="text-xl font-mono font-black text-gray-900 block mt-0.5">
-                {order.deliveryOtp || 'Not generated'}
+                {order.deliveryOtp ||
+                  (order.otpGenerated || order.isOtpVerified
+                    ? 'Sent to customer email'
+                    : 'Not generated')}
               </span>
               <span className="text-[10px] text-gray-500">
-                Status: {order.isOtpVerified ? 'Verified by Rider' : 'Pending Handover'}
+                Status:{' '}
+                {order.isOtpVerified
+                  ? 'Verified by Rider'
+                  : order.deliveryOtp || order.otpGenerated
+                    ? 'Generated — waiting for rider'
+                    : 'Pending Handover'}
               </span>
             </div>
           </div>

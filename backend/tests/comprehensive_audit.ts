@@ -872,7 +872,7 @@ async function runAudit() {
         id: 'RDR-OTP-01',
         module: 'Rider',
         scenario: 'Generate and dispatch Delivery OTP with Bcrypt Hash storage',
-        expected: 'HTTP 200, DeliveryOtp row created with bcrypt hash, plain OTP never saved to DB',
+        expected: 'HTTP 200, DeliveryOtp row created with bcrypt hash; display code saved for customer/admin only',
         actual: `HTTP 200, hashPrefix=${dbOtp.otpHash.substring(0, 7)}, maxAttempts=${dbOtp.maxAttempts}, isUsed=${dbOtp.isUsed}`,
         evidence: `Message: ${sendDeliveryOtpRes.data?.message}`,
         status: 'PASS',

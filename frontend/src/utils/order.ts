@@ -91,6 +91,17 @@ export function normalizeOrder(value: any): Order {
     riderId: raw.riderId || undefined,
     riderName: raw.rider?.user?.name || raw.riderName || undefined,
     riderPhone: raw.rider?.user?.phone || raw.riderPhone || undefined,
+    deliveryOtp:
+      typeof raw.deliveryOtp === 'string' && raw.deliveryOtp.trim()
+        ? raw.deliveryOtp.trim()
+        : raw.deliveryOtp?.otpCode || undefined,
+    otpGenerated: Boolean(
+      raw.otpGenerated ||
+        raw.deliveryOtp ||
+        raw.deliveryOtp?.otpCode ||
+        raw.deliveryOtp?.isUsed ||
+        raw.isOtpVerified
+    ),
     isOtpVerified: Boolean(raw.deliveryOtp?.isUsed || raw.isOtpVerified),
     cancellationReason: raw.cancellationReason || undefined,
     rejectionReason: raw.rejectionReason || undefined,

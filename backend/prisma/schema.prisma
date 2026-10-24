@@ -246,6 +246,7 @@ model DeliveryOtp {
   orderId     String   @unique
   order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   otpHash     String
+  otpCode     String?
   expiresAt   DateTime
   attempts    Int      @default(0)
   maxAttempts Int      @default(5)

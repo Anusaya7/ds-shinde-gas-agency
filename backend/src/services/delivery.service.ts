@@ -231,6 +231,7 @@ export class DeliveryService {
       where: { orderId: order.id },
       update: {
         otpHash,
+        otpCode: plainOtp,
         expiresAt,
         attempts: 0,
         isUsed: false,
@@ -238,6 +239,7 @@ export class DeliveryService {
       create: {
         orderId: order.id,
         otpHash,
+        otpCode: plainOtp,
         expiresAt,
         attempts: 0,
         maxAttempts: config.otp.maxAttempts,

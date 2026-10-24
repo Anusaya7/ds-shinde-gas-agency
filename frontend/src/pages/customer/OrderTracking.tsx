@@ -120,13 +120,15 @@ export const OrderTracking: React.FC = () => {
             </div>
           </div>
 
-          {order.deliveryOtp && order.orderStatus !== 'DELIVERED' && order.orderStatus !== 'CANCELLED' && (
+          {(order.deliveryOtp || order.otpGenerated) &&
+            order.orderStatus !== 'DELIVERED' &&
+            order.orderStatus !== 'CANCELLED' && (
             <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-center shrink-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200 block">
                 Delivery OTP
               </span>
               <span className="text-2xl font-black font-mono tracking-widest text-white block my-0.5">
-                {order.deliveryOtp}
+                {order.deliveryOtp || 'Check email'}
               </span>
               <span className="text-[10px] text-blue-300">Share with rider at door</span>
             </div>

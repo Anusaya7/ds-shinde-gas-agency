@@ -148,6 +148,7 @@ export interface Order {
   riderName?: string;
   riderPhone?: string;
   deliveryOtp?: string;
+  otpGenerated?: boolean;
   isOtpVerified?: boolean;
   cancellationReason?: string;
   rejectionReason?: string;

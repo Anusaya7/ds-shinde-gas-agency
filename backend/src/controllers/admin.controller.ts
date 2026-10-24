@@ -175,7 +175,13 @@ export class AdminController {
               changedBy: { select: { id: true, name: true, role: true } },
             },
           },
-          deliveryOtp: true,
+          deliveryOtp: {
+            select: {
+              otpCode: true,
+              isUsed: true,
+              expiresAt: true,
+            },
+          },
         },
       });
 
@@ -183,7 +189,16 @@ export class AdminController {
         throw new NotFoundError('Order not found');
       }
 
-      ApiResponse.success(res, order, 'Order details retrieved');
+      ApiResponse.success(
+        res,
+        {
+          ...order,
+          deliveryOtp: order.deliveryOtp?.otpCode || null,
+          isOtpVerified: Boolean(order.deliveryOtp?.isUsed),
+          otpGenerated: Boolean(order.deliveryOtp),
+        },
+        'Order details retrieved'
+      );
     } catch (error) {
       next(error);
     }

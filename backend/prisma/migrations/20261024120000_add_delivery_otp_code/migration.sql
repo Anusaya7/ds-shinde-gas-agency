@@ -1,0 +1,1 @@
+ALTER TABLE "DeliveryOtp" ADD COLUMN IF NOT EXISTS "otpCode" TEXT;

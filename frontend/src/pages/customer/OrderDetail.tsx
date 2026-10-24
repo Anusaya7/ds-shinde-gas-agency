@@ -182,7 +182,9 @@ export const OrderDetail: React.FC = () => {
       </div>
 
       {/* Delivery OTP Notice (if pending delivery) */}
-      {order.deliveryOtp && order.orderStatus !== 'DELIVERED' && order.orderStatus !== 'CANCELLED' && (
+      {(order.deliveryOtp || order.otpGenerated) &&
+        order.orderStatus !== 'DELIVERED' &&
+        order.orderStatus !== 'CANCELLED' && (
         <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-900 to-primary text-white flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-accent flex items-center justify-center font-bold">
@@ -193,12 +195,14 @@ export const OrderDetail: React.FC = () => {
                 Doorstep Delivery Passcode (OTP)
               </span>
               <span className="text-2xl font-black tracking-widest font-mono text-white">
-                {order.deliveryOtp}
+                {order.deliveryOtp || 'Check your email'}
               </span>
             </div>
           </div>
           <p className="text-xs text-blue-200 max-w-xs text-center sm:text-right">
-            Provide this code to the delivery rider only after verifying cylinder safety seal and digital weight check.
+            {order.deliveryOtp
+              ? 'Provide this code to the delivery rider only after verifying cylinder safety seal and digital weight check.'
+              : 'The handover OTP was emailed to you. Open that mail and share the 6-digit code with the rider.'}
           </p>
         </div>
       )}

@@ -333,6 +333,13 @@ export class OrderService {
             },
           },
         },
+        deliveryOtp: {
+          select: {
+            otpCode: true,
+            isUsed: true,
+            expiresAt: true,
+          },
+        },
       },
     });
 
@@ -340,7 +347,12 @@ export class OrderService {
       throw new NotFoundError('Order not found');
     }
 
-    return order;
+    return {
+      ...order,
+      deliveryOtp: order.deliveryOtp?.otpCode || null,
+      isOtpVerified: Boolean(order.deliveryOtp?.isUsed),
+      otpGenerated: Boolean(order.deliveryOtp),
+    };
   }
 
   static async updateReminderPreference(orderId: string, customerId: string, enabled: boolean) {
@@ -413,6 +425,13 @@ export class OrderService {
             },
           },
         },
+        deliveryOtp: {
+          select: {
+            otpCode: true,
+            isUsed: true,
+            expiresAt: true,
+          },
+        },
       },
     });
 
@@ -451,6 +470,9 @@ export class OrderService {
         : null,
       history: order.statusHistory,
       steps: timelineSteps,
+      deliveryOtp: order.deliveryOtp?.otpCode || null,
+      isOtpVerified: Boolean(order.deliveryOtp?.isUsed),
+      otpGenerated: Boolean(order.deliveryOtp),
     };
   }
 

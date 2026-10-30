@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Flame } from 'lucide-react';
+import { Plus, Edit2, Flame, Trash2 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
 import { Product } from '../../types';
 import { Button } from '../../components/ui/Button';
@@ -125,6 +125,17 @@ export const ProductManagement: React.FC = () => {
     }
   };
 
+  const handleDeleteProduct = async (prod: Product) => {
+    if (!window.confirm(`Delete or disable "${prod.name}" from the catalog?`)) return;
+    try {
+      await adminService.deleteProduct(prod.id);
+      toast.success('Catalog item removed or disabled');
+      loadProducts();
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not delete this cylinder product.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -215,13 +226,20 @@ export const ProductManagement: React.FC = () => {
                       </button>
                     </td>
 
-                    <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                    <td className="px-5 py-3.5 text-right whitespace-nowrap space-x-1">
                       <button
                         onClick={() => openEditModal(prod)}
                         className="p-1.5 rounded-lg text-gray-500 hover:text-primary hover:bg-gray-100 transition-colors"
                         title="Edit Price & Details"
                       >
                         <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProduct(prod)}
+                        className="p-1.5 rounded-lg text-gray-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title="Delete / disable cylinder"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </td>
                   </tr>

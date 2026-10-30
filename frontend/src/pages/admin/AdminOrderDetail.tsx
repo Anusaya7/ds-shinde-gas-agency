@@ -135,6 +135,37 @@ export const AdminOrderDetail: React.FC = () => {
     }
   };
 
+  const handleDeleteItem = async (itemId: string | undefined, productName: string) => {
+    if (!order || !itemId) {
+      toast.error('This item cannot be removed.');
+      return;
+    }
+    if (!window.confirm(`Remove "${productName}" from this order and recalculate the total?`)) return;
+    setActionLoading(true);
+    try {
+      await adminService.deleteOrderItem(order.id, itemId);
+      await loadOrder();
+      toast.success('Item removed from order');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not remove this item.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePaymentReminder = async () => {
+    if (!order) return;
+    setActionLoading(true);
+    try {
+      await adminService.sendPaymentReminder(order.id);
+      toast.success('Payment reminder sent to customer');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not send payment reminder.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="py-20 flex justify-center">
@@ -214,6 +245,20 @@ export const AdminOrderDetail: React.FC = () => {
               leftIcon={<Bike className="w-4 h-4" />}
             >
               {order.riderId ? 'Re-assign Rider' : 'Assign Rider'}
+            </Button>
+          )}
+
+          {order.paymentStatus !== 'PAID' &&
+            order.orderStatus !== 'DELIVERED' &&
+            order.orderStatus !== 'CANCELLED' &&
+            order.orderStatus !== 'REJECTED' && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handlePaymentReminder}
+              isLoading={actionLoading}
+            >
+              Payment Reminder
             </Button>
           )}
 
@@ -383,15 +428,30 @@ export const AdminOrderDetail: React.FC = () => {
           </h3>
 
           <div className="divide-y divide-gray-100 text-xs">
-            {order.items.map((item, idx) => (
-              <div key={idx} className="py-2.5 flex justify-between items-center">
+            {order.items.map((item) => (
+              <div key={item.id} className="py-2.5 flex justify-between items-center gap-3">
                 <div>
                   <p className="font-bold text-gray-900">{item.productName}</p>
                   <p className="text-gray-500">
                     Size: {item.size} • Rate: ₹{item.unitPrice} × {item.quantity}
                   </p>
                 </div>
-                <span className="font-bold text-gray-900">₹{item.subtotal}</span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="font-bold text-gray-900">₹{item.subtotal}</span>
+                  {order.orderStatus !== 'DELIVERED' &&
+                    order.orderStatus !== 'CANCELLED' &&
+                    order.orderStatus !== 'REJECTED' &&
+                    order.items.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteItem(item.id, item.productName)}
+                      className="text-[11px] font-bold text-red-600 hover:underline"
+                      disabled={actionLoading}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

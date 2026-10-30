@@ -210,6 +210,79 @@ export const AdminSettings: React.FC = () => {
           </div>
         </Card>
 
+        <Card title="Bank Account & UPI Details">
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500">
+              Update agency settlement details shown for offline / UPI collection reference.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Account holder name"
+                value={settings.bankAccountName || ''}
+                onChange={(e) => setSettings({ ...settings, bankAccountName: e.target.value })}
+              />
+              <Input
+                label="Bank name"
+                value={settings.bankName || ''}
+                onChange={(e) => setSettings({ ...settings, bankName: e.target.value })}
+              />
+              <Input
+                label="Account number"
+                value={settings.bankAccountNumber || ''}
+                onChange={(e) => setSettings({ ...settings, bankAccountNumber: e.target.value })}
+              />
+              <Input
+                label="IFSC code"
+                value={settings.bankIfsc || ''}
+                onChange={(e) => setSettings({ ...settings, bankIfsc: e.target.value })}
+              />
+              <Input
+                label="Branch"
+                value={settings.bankBranch || ''}
+                onChange={(e) => setSettings({ ...settings, bankBranch: e.target.value })}
+              />
+              <Input
+                label="UPI ID / VPA"
+                value={settings.upiId || ''}
+                onChange={(e) => setSettings({ ...settings, upiId: e.target.value })}
+                placeholder="agency@upi"
+              />
+              <Input
+                label="UPI display name"
+                value={settings.upiDisplayName || ''}
+                onChange={(e) => setSettings({ ...settings, upiDisplayName: e.target.value })}
+              />
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Payment & Delivery Reminders">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Pending payment reminder (hours)"
+              type="number"
+              min={1}
+              max={720}
+              value={settings.paymentReminderHours ?? 24}
+              onChange={(e) =>
+                setSettings({ ...settings, paymentReminderHours: Number(e.target.value) })
+              }
+              helperText="Auto-remind unpaid customers after this many hours (hourly scheduler)."
+            />
+            <Input
+              label="Stuck delivery alert (minutes)"
+              type="number"
+              min={5}
+              max={1440}
+              value={settings.deliveryStuckAlertMinutes ?? 10}
+              onChange={(e) =>
+                setSettings({ ...settings, deliveryStuckAlertMinutes: Number(e.target.value) })
+              }
+              helperText="Alert admins when an assigned delivery has no status update for this long."
+            />
+          </div>
+        </Card>
+
         {/* Delivery Coverage Areas */}
         <Card title="Active Coverage Zones">
           <div className="space-y-4">

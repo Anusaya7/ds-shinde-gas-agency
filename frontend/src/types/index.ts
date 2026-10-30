@@ -225,6 +225,15 @@ export interface AgencySettings {
   announcementBanner?: string;
   headerCtaText?: string;
   headerCtaLink?: string;
+  bankAccountName?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  bankIfsc?: string;
+  bankBranch?: string;
+  upiId?: string;
+  upiDisplayName?: string;
+  paymentReminderHours?: number;
+  deliveryStuckAlertMinutes?: number;
 }
 
 export interface ContactEnquiry {

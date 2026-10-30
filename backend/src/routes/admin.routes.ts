@@ -63,6 +63,8 @@ router.put('/orders/:id/accept', AdminController.acceptOrder);
 router.put('/orders/:id/reject', validate(rejectOrderSchema), AdminController.rejectOrder);
 router.put('/orders/:id/assign-rider', validate(assignRiderSchema), AdminController.assignRider);
 router.put('/orders/:id/cancel', validate(cancelOrderSchema), AdminController.cancelOrder);
+router.delete('/orders/:id/items/:itemId', AdminController.deleteOrderItem);
+router.post('/orders/:id/payment-reminder', AdminController.sendPaymentReminder);
 
 // Riders
 router.get('/riders', AdminController.listRiders);
@@ -104,6 +106,7 @@ router.delete('/customers/:customerId/documents', ApplicationController.deleteCu
 router.get('/products', AdminController.listProducts);
 router.post('/products', validate(productSchema), AdminController.createProduct);
 router.put('/products/:id', validate(productSchema.partial()), AdminController.updateProduct);
+router.delete('/products/:id', AdminController.deleteProduct);
 
 // Reports
 router.get('/reports/orders', AdminController.getOrdersReport);

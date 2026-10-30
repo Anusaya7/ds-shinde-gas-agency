@@ -39,6 +39,15 @@ export const fallbackSettings: AgencySettings = {
   announcementBanner: '',
   headerCtaText: 'Order Cylinder',
   headerCtaLink: '/dashboard/orders/new',
+  bankAccountName: '',
+  bankName: '',
+  bankAccountNumber: '',
+  bankIfsc: '',
+  bankBranch: '',
+  upiId: '',
+  upiDisplayName: '',
+  paymentReminderHours: 24,
+  deliveryStuckAlertMinutes: 10,
 };
 
 export const adminService = {
@@ -100,6 +109,17 @@ export const adminService = {
   async cancelOrder(id: string, reason: string): Promise<Order> {
     const res = await api.put<{ success: boolean; data: Order }>(`/admin/orders/${id}/cancel`, { reason });
     return normalizeOrder(res.data.data);
+  },
+
+  async deleteOrderItem(orderId: string, itemId: string): Promise<Order> {
+    const res = await api.delete<{ success: boolean; data: Order }>(
+      `/admin/orders/${orderId}/items/${itemId}`
+    );
+    return normalizeOrder(res.data.data);
+  },
+
+  async sendPaymentReminder(orderId: string): Promise<void> {
+    await api.post(`/admin/orders/${orderId}/payment-reminder`);
   },
 
   async getRiders(): Promise<Rider[]> {

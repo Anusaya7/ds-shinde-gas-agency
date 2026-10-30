@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Package,
   Search,
-  Filter,
   Eye,
   CheckCircle,
   XCircle,
   Bike,
   RefreshCw,
-  Calendar,
+  Ban,
+  Bell,
 } from 'lucide-react';
 import { adminService } from '../../services/admin.service';
-import { Order, Rider, OrderStatus } from '../../types';
+import { Order, Rider } from '../../types';
 import { canAssignDeliveryRider, needsAdminReview } from '../../utils/order';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Spinner } from '../../components/ui/Spinner';
 import toast from 'react-hot-toast';
+
+type BucketFilter = 'PENDING' | 'COMPLETED' | 'ALL';
+
+const COMPLETED_STATUSES = new Set(['DELIVERED', 'CANCELLED', 'REJECTED']);
 
 export const AdminOrders: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -28,15 +31,18 @@ export const AdminOrders: React.FC = () => {
 
   // Filters
   const [search, setSearch] = useState('');
+  const [bucketFilter, setBucketFilter] = useState<BucketFilter>('PENDING');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [paymentFilter, setPaymentFilter] = useState<string>('ALL');
 
   // Quick Action Modals
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [selectedRiderId, setSelectedRiderId] = useState('');
   const [rejectReason, setRejectReason] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchOrders = () => {
@@ -135,14 +141,60 @@ export const AdminOrders: React.FC = () => {
     }
   };
 
+  const handleOpenCancel = (order: Order) => {
+    setSelectedOrder(order);
+    setCancelReason('');
+    setCancelModalOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!selectedOrder || !cancelReason.trim()) {
+      toast.error('Please specify cancellation reason');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      await adminService.cancelOrder(selectedOrder.id, cancelReason.trim());
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === selectedOrder.id
+            ? { ...o, orderStatus: 'CANCELLED', cancellationReason: cancelReason.trim() }
+            : o
+        )
+      );
+      toast.success('Order cancelled');
+      setCancelModalOpen(false);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not cancel this order.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handlePaymentReminder = async (order: Order) => {
+    try {
+      await adminService.sendPaymentReminder(order.id);
+      toast.success(`Payment reminder sent for #${order.orderNumber}`);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Could not send payment reminder.');
+    }
+  };
+
+  const pendingCount = orders.filter((o) => !COMPLETED_STATUSES.has(o.orderStatus)).length;
+  const completedCount = orders.filter((o) => COMPLETED_STATUSES.has(o.orderStatus)).length;
+
   const filteredOrders = orders.filter((o) => {
     const matchesSearch =
       o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
       o.customerName.toLowerCase().includes(search.toLowerCase()) ||
       o.customerPhone.includes(search);
+    const matchesBucket =
+      bucketFilter === 'ALL' ||
+      (bucketFilter === 'PENDING' && !COMPLETED_STATUSES.has(o.orderStatus)) ||
+      (bucketFilter === 'COMPLETED' && COMPLETED_STATUSES.has(o.orderStatus));
     const matchesStatus = statusFilter === 'ALL' || o.orderStatus === statusFilter;
     const matchesPayment = paymentFilter === 'ALL' || o.paymentMethod === paymentFilter;
-    return matchesSearch && matchesStatus && matchesPayment;
+    return matchesSearch && matchesBucket && matchesStatus && matchesPayment;
   });
 
   return (
@@ -161,6 +213,29 @@ export const AdminOrders: React.FC = () => {
         >
           <RefreshCw className="w-4 h-4" /> Refresh Orders
         </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {(
+          [
+            { id: 'PENDING' as const, label: `Pending orders (${pendingCount})` },
+            { id: 'COMPLETED' as const, label: `Completed orders (${completedCount})` },
+            { id: 'ALL' as const, label: `All (${orders.length})` },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setBucketFilter(tab.id)}
+            className={`rounded-xl px-4 py-2 text-xs font-bold border transition-colors ${
+              bucketFilter === tab.id
+                ? 'bg-primary text-white border-primary'
+                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Filter and Search Bar */}
@@ -286,10 +361,27 @@ export const AdminOrders: React.FC = () => {
                         {order.riderName ? (
                           <div>
                             <span className="font-semibold text-gray-800 block text-xs">
-                              {order.riderName}
+                              Live: {order.riderName}
                             </span>
                             <span className="text-[11px] text-gray-400">{order.riderPhone}</span>
+                            {canAssignDeliveryRider(order.orderStatus) && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAssign(order)}
+                                className="mt-1 text-[11px] font-bold text-primary hover:underline"
+                              >
+                                Re-assign
+                              </button>
+                            )}
                           </div>
+                        ) : canAssignDeliveryRider(order.orderStatus) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAssign(order)}
+                            className="text-xs font-bold text-primary hover:underline"
+                          >
+                            Assign rider
+                          </button>
                         ) : (
                           <span className="text-gray-400 italic">Unassigned</span>
                         )}
@@ -331,6 +423,27 @@ export const AdminOrders: React.FC = () => {
                             title="Assign Delivery Rider"
                           >
                             <Bike className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {order.paymentStatus !== 'PAID' &&
+                          !COMPLETED_STATUSES.has(order.orderStatus) && (
+                          <button
+                            onClick={() => handlePaymentReminder(order)}
+                            className="p-1.5 rounded-lg text-amber-700 hover:bg-amber-50"
+                            title="Send payment reminder"
+                          >
+                            <Bell className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {!COMPLETED_STATUSES.has(order.orderStatus) && (
+                          <button
+                            onClick={() => handleOpenCancel(order)}
+                            className="p-1.5 rounded-lg text-red-600 hover:bg-red-50"
+                            title="Cancel customer order"
+                          >
+                            <Ban className="w-4 h-4" />
                           </button>
                         )}
                       </td>
@@ -417,6 +530,32 @@ export const AdminOrders: React.FC = () => {
               isLoading={actionLoading}
             >
               Confirm Rejection
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={cancelModalOpen}
+        onClose={() => setCancelModalOpen(false)}
+        title="Cancel Customer Order"
+        description={`Cancel order #${selectedOrder?.orderNumber} for the customer`}
+      >
+        <div className="space-y-4">
+          <textarea
+            rows={3}
+            required
+            value={cancelReason}
+            onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="e.g. Customer requested cancellation, stock unavailable..."
+            className="w-full rounded-xl border border-gray-300 p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+          />
+          <div className="pt-2 flex justify-end gap-2 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setCancelModalOpen(false)}>
+              Keep Order
+            </Button>
+            <Button variant="danger" onClick={handleConfirmCancel} isLoading={actionLoading}>
+              Cancel Order
             </Button>
           </div>
         </div>

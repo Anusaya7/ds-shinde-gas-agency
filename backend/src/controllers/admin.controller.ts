@@ -474,6 +474,13 @@ export class AdminController {
       if (!existing) {
         throw new NotFoundError('Order not found');
       }
+      if (
+        existing.status === OrderStatus.DELIVERED ||
+        existing.status === OrderStatus.CANCELLED ||
+        existing.status === OrderStatus.REJECTED
+      ) {
+        throw new BadRequestError(`Cannot cancel an order that is already ${existing.status}.`);
+      }
 
       const updated = await prisma.$transaction(async (tx) => {
         const ord = await tx.order.update({
@@ -500,6 +507,15 @@ export class AdminController {
           },
         });
 
+        await recordAuditLog(tx, {
+          userId: adminId,
+          action: 'ORDER_CANCELLED',
+          entity: 'Order',
+          entityId: id,
+          details: `Admin cancelled ${existing.orderNumber}. Reason: ${reason}`,
+          ipAddress: req.ip,
+        });
+
         return ord;
       });
 
@@ -512,6 +528,125 @@ export class AdminController {
       });
 
       ApiResponse.success(res, updated, 'Order cancelled');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Remove one line item from an open order and recalculate totals
+   */
+  static async deleteOrderItem(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id, itemId } = req.params;
+      const adminId = req.user!.id;
+
+      const order = await prisma.order.findUnique({
+        where: { id },
+        include: { items: true },
+      });
+      if (!order) throw new NotFoundError('Order not found');
+      if (
+        [OrderStatus.DELIVERED, OrderStatus.CANCELLED, OrderStatus.REJECTED].includes(
+          order.status as OrderStatus
+        )
+      ) {
+        throw new BadRequestError('Items cannot be removed from a closed order.');
+      }
+      if (order.items.length <= 1) {
+        throw new BadRequestError('Cannot remove the last item. Cancel the order instead.');
+      }
+
+      const item = order.items.find((row) => row.id === itemId);
+      if (!item) throw new NotFoundError('Order item not found');
+
+      const remaining = order.items.filter((row) => row.id !== itemId);
+      const subtotal = remaining.reduce((sum, row) => sum + Number(row.totalPrice), 0);
+      const deliveryCharges = Number(order.deliveryCharges);
+      const taxes = Number(order.taxes);
+      const paymentFee = Number(order.paymentFee);
+      const welcomeOfferDiscount = Number(order.welcomeOfferDiscount || 0);
+      const totalAmount = Math.max(0, subtotal + deliveryCharges + taxes + paymentFee - welcomeOfferDiscount);
+
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.orderItem.delete({ where: { id: itemId } });
+        const ord = await tx.order.update({
+          where: { id },
+          data: {
+            subtotal,
+            totalAmount,
+          },
+          include: {
+            items: true,
+            customer: { select: { id: true, name: true, phone: true, email: true } },
+            rider: { include: { user: { select: { id: true, name: true, phone: true } } } },
+          },
+        });
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: id,
+            status: order.status,
+            note: `Admin removed item "${item.productName}" (x${item.quantity}). New total ₹${totalAmount}.`,
+            changedById: adminId,
+          },
+        });
+        await recordAuditLog(tx, {
+          userId: adminId,
+          action: 'ORDER_ITEM_DELETED',
+          entity: 'Order',
+          entityId: id,
+          details: `Removed ${item.productName} from ${order.orderNumber}.`,
+          ipAddress: req.ip,
+        });
+        return ord;
+      });
+
+      ApiResponse.success(res, updated, 'Order item removed and totals updated');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Send pending-payment reminder to the customer
+   */
+  static async sendPaymentReminder(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await prisma.order.findUnique({
+        where: { id },
+        include: { customer: { select: { id: true, email: true, name: true } } },
+      });
+      if (!order) throw new NotFoundError('Order not found');
+      if (order.paymentStatus === PaymentStatus.PAID) {
+        throw new BadRequestError('This order is already marked as paid.');
+      }
+      if (
+        [OrderStatus.CANCELLED, OrderStatus.REJECTED, OrderStatus.DELIVERED].includes(
+          order.status as OrderStatus
+        )
+      ) {
+        throw new BadRequestError('Payment reminders are not sent for closed orders.');
+      }
+
+      await NotificationService.createNotification({
+        userId: order.customerId,
+        title: 'Pending payment reminder',
+        message: `Your booking ${order.orderNumber} still has ₹${order.totalAmount} pending. Open My Orders and pay online, or pay the rider at doorstep.`,
+        type: NotificationType.PAYMENT,
+        orderId: order.id,
+      });
+
+      await recordAuditLog(prisma, {
+        userId: req.user!.id,
+        action: 'PAYMENT_REMINDER_SENT',
+        entity: 'Order',
+        entityId: order.id,
+        details: `Payment reminder sent for ${order.orderNumber}.`,
+        ipAddress: req.ip,
+      });
+
+      ApiResponse.success(res, { orderId: order.id }, 'Payment reminder sent to customer');
     } catch (error) {
       next(error);
     }
@@ -854,6 +989,36 @@ export class AdminController {
   }
 
   /**
+   * Soft-delete (disable) or hard-delete unused catalog product
+   */
+  static async deleteProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const product = await prisma.product.findUnique({ where: { id } });
+      if (!product) throw new NotFoundError('Product not found');
+
+      const usedCount = await prisma.orderItem.count({ where: { productId: id } });
+      if (usedCount > 0) {
+        const disabled = await prisma.product.update({
+          where: { id },
+          data: { isActive: false },
+        });
+        ApiResponse.success(
+          res,
+          disabled,
+          'Product is used on past orders, so it was disabled instead of deleted.'
+        );
+        return;
+      }
+
+      await prisma.product.delete({ where: { id } });
+      ApiResponse.success(res, { id }, 'Product deleted');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Reports: Orders report with date filter
    */
   static async getOrdersReport(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -1101,6 +1266,15 @@ export class AdminController {
         announcementBanner: map.get('announcement_banner') || '',
         headerCtaText: map.get('header_cta_text') || 'Order Cylinder',
         headerCtaLink: map.get('header_cta_link') || '/dashboard/orders/new',
+        bankAccountName: map.get('bank_account_name') || '',
+        bankName: map.get('bank_name') || '',
+        bankAccountNumber: map.get('bank_account_number') || '',
+        bankIfsc: map.get('bank_ifsc') || '',
+        bankBranch: map.get('bank_branch') || '',
+        upiId: map.get('upi_id') || '',
+        upiDisplayName: map.get('upi_display_name') || '',
+        paymentReminderHours: Number(map.get('payment_reminder_hours') || 24),
+        deliveryStuckAlertMinutes: Number(map.get('delivery_stuck_alert_minutes') || 10),
         rawSettings: settingsList,
       };
 
@@ -1238,6 +1412,27 @@ export class AdminController {
       if (b.announcementBanner !== undefined) updates.push({ key: 'announcement_banner', value: String(b.announcementBanner) });
       if (b.headerCtaText !== undefined) updates.push({ key: 'header_cta_text', value: String(b.headerCtaText) });
       if (b.headerCtaLink !== undefined) updates.push({ key: 'header_cta_link', value: String(b.headerCtaLink) });
+      if (b.bankAccountName !== undefined) updates.push({ key: 'bank_account_name', value: String(b.bankAccountName) });
+      if (b.bankName !== undefined) updates.push({ key: 'bank_name', value: String(b.bankName) });
+      if (b.bankAccountNumber !== undefined) updates.push({ key: 'bank_account_number', value: String(b.bankAccountNumber) });
+      if (b.bankIfsc !== undefined) updates.push({ key: 'bank_ifsc', value: String(b.bankIfsc) });
+      if (b.bankBranch !== undefined) updates.push({ key: 'bank_branch', value: String(b.bankBranch) });
+      if (b.upiId !== undefined) updates.push({ key: 'upi_id', value: String(b.upiId) });
+      if (b.upiDisplayName !== undefined) updates.push({ key: 'upi_display_name', value: String(b.upiDisplayName) });
+      if (b.paymentReminderHours !== undefined) {
+        const hours = Number(b.paymentReminderHours);
+        if (!Number.isFinite(hours) || hours < 1 || hours > 720) {
+          throw new BadRequestError('Payment reminder hours must be between 1 and 720.');
+        }
+        updates.push({ key: 'payment_reminder_hours', value: String(hours) });
+      }
+      if (b.deliveryStuckAlertMinutes !== undefined) {
+        const minutes = Number(b.deliveryStuckAlertMinutes);
+        if (!Number.isFinite(minutes) || minutes < 5 || minutes > 1440) {
+          throw new BadRequestError('Delivery stuck alert minutes must be between 5 and 1440.');
+        }
+        updates.push({ key: 'delivery_stuck_alert_minutes', value: String(minutes) });
+      }
 
       await prisma.$transaction(async (tx) => {
         for (const item of updates) {

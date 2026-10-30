@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ArrowRight, Bike, Flame, Mail, MapPin, Phone, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Bike, Flame, Mail, MapPin, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { authService } from '../../services/auth.service';
 import { User } from '../../types';
@@ -58,16 +58,18 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
   };
 
   const handleSendOtp = async () => {
-    const contact = identifier.trim();
+    const contact = identifier.trim().toLowerCase();
     const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
-    const validPhone = /^\d{10}$/.test(contact);
-    if (isRider) {
-      if (!validEmail && !validPhone) {
-        setError('Enter a valid 10-digit mobile number or email address.');
-        return;
-      }
-    } else if (!validEmail) {
-      setError('Enter a valid email address. The verification code is sent by email only.');
+    if (!validEmail) {
+      setError(
+        isRider
+          ? 'Enter a valid email address. Rider login sends the verification code by email (SMS is optional only when configured).'
+          : 'Enter a valid email address. The verification code is sent by email only.'
+      );
+      return;
+    }
+    if (mode === 'REGISTER' && name.trim().length < 2) {
+      setError('Enter your full name before requesting the code.');
       return;
     }
 
@@ -77,7 +79,14 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
       await authService.sendOtp(contact, role, mode);
       setOtpSent(true);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Could not send a verification code. Please try again.');
+      const msg = err.response?.data?.message || 'Could not send a verification code. Please try again.';
+      if (isRider && /no account found/i.test(msg)) {
+        setError('No rider account for this email. Tap “Apply now” below to create one.');
+      } else if (isRider && /already exists/i.test(msg)) {
+        setError('This email already has a rider account. Tap “Sign in” below.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -93,8 +102,9 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
     setLoading(true);
     setError('');
     try {
+      const contact = identifier.trim().toLowerCase();
       const user = await login({
-        identifier: identifier.trim(),
+        identifier: contact,
         otp,
         type: 'OTP',
         role,
@@ -107,7 +117,7 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
       }
       navigate(
         isRider
-          ? '/rider/application'
+          ? '/rider'
           : (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/dashboard',
         { replace: true }
       );
@@ -137,8 +147,8 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
           <p className="mt-2 text-sm leading-6 text-blue-100">
             {isRider
               ? mode === 'REGISTER'
-                ? 'Verify your contact details, then submit your rider documents for admin review.'
-                : 'Sign in securely to view your rider application and delivery work.'
+                ? 'Create your rider account with a code sent to your email, then upload RC, bike photos, and your selfie for admin review.'
+                : 'Sign in with your email. We send a one-time code to your inbox — then open your application or delivery tasks.'
               : mode === 'REGISTER'
                 ? 'Create your account with a one-time code sent to your email. No password needed.'
                 : 'Sign in securely with a one-time verification code sent to your email. No password needed.'}
@@ -173,17 +183,17 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
 
           <div>
             <label htmlFor="login-identifier" className="mb-2 block text-sm font-semibold text-slate-800">
-              {isRider ? 'Mobile number or email' : 'Email address'}
+              Email address <span className="text-red-600">*</span>
             </label>
             <div className="relative">
               <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
-                {isRider && !identifier.includes('@') ? <Phone className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
+                <Mail className="h-4 w-4" />
               </span>
               <input
                 id="login-identifier"
-                type={isRider ? 'text' : 'email'}
-                autoComplete={isRider ? 'username' : 'email'}
-                inputMode={isRider ? 'text' : 'email'}
+                type="email"
+                autoComplete="email"
+                inputMode="email"
                 required
                 maxLength={254}
                 value={identifier}
@@ -193,10 +203,15 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
                   setOtp('');
                   setError('');
                 }}
-                placeholder={isRider ? '10-digit mobile or name@example.com' : 'name@example.com'}
+                placeholder="name@example.com"
                 className="min-h-12 w-full rounded-xl border border-slate-300 pl-10 pr-3 text-sm outline-none focus:border-[#10284A] focus:ring-2 focus:ring-[#10284A]/15"
               />
             </div>
+            {isRider && (
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Use email for login. Add your 10-digit mobile number on the application form after sign-in.
+              </p>
+            )}
           </div>
 
           {!isRider && (
@@ -279,7 +294,7 @@ export const OtpLoginPage: React.FC<OtpLoginPageProps> = ({ role, initialMode = 
           <p className="flex items-start gap-2 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
             {isRider
-              ? 'We only use your contact details to secure your account and share updates about your bookings.'
+              ? 'We email your login code. After sign-in, complete KYC (RC, bike photos, selfie) so admin can approve delivery access.'
               : 'We send the verification code to your email and use it to secure your account and share booking updates.'}
           </p>
 

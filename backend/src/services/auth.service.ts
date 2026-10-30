@@ -198,12 +198,19 @@ export class AuthService {
    * Generate and dispatch an OTP for Login, Register, or Forgot Password
    */
   static async sendAuthOtp(dto: SendOtpDTO) {
-    const { identifier, purpose } = dto;
+    const purpose = dto.purpose;
     const role = dto.role || Role.CUSTOMER;
+    const rawIdentifier = String(dto.identifier || '').trim();
+    const isEmail = rawIdentifier.includes('@');
+    const identifier = isEmail ? rawIdentifier.toLowerCase() : rawIdentifier.replace(/\D/g, '');
 
-    const isEmail = identifier.includes('@');
     if (role === Role.CUSTOMER && !isEmail) {
       throw new BadRequestError('Customer sign-in requires a valid email address. The verification code is sent by email only.');
+    }
+    if (role === Role.RIDER && !isEmail) {
+      throw new BadRequestError(
+        'Rider login uses email. Enter your email address — the verification code is sent by email. Add your mobile number on the application form after sign-in.'
+      );
     }
     if (purpose === AuthOtpPurpose.FORGOT_PASSWORD) {
       throw new BadRequestError('Password recovery is only available to administrator accounts.');
@@ -250,27 +257,39 @@ export class AuthService {
 
     const message = `Your DS Shinde Gas verification code is: ${plainOtp}. Valid for ${config.otp.expiryMinutes} minutes. Never share this with anyone.`;
 
-    // Dispatch OTP
+    // Dispatch OTP — email is the reliable channel; SMS needs MSG91 credentials
     let delivered: boolean;
     try {
-      delivered = isEmail
-        ? await sendEmail({
-        to: identifier,
-        subject: `DS Shinde Gas - Verification Code (${purpose})`,
-        text: message,
-        html: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      if (isEmail) {
+        delivered = await sendEmail({
+          to: identifier,
+          subject: `DS Shinde Gas - Verification Code (${purpose})`,
+          text: message,
+          html: `<div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
           <h2 style="color: #ea580c;">DS Shinde Gas</h2>
           <p>Your one-time verification code is:</p>
           <h1 style="letter-spacing: 5px; color: #1e293b; background: #f1f5f9; padding: 10px 20px; display: inline-block;">${plainOtp}</h1>
           <p>This code will expire in ${config.otp.expiryMinutes} minutes.</p>
           <p>If you did not request this, please ignore this email.</p>
         </div>`,
-      })
-        : await sendSms({
-        phone: identifier,
-        message,
-      });
+        });
+      } else {
+        delivered = await sendSms({
+          phone: identifier,
+          message,
+        });
+        if (!delivered && role === Role.RIDER) {
+          await prisma.authOtp.update({
+            where: { id: otpRecord.id },
+            data: { isUsed: true },
+          });
+          throw new BadRequestError(
+            'SMS login is not available right now. Use your email address on the rider login page — the verification code is sent by email.'
+          );
+        }
+      }
     } catch (error) {
+      if (error instanceof BadRequestError) throw error;
       await prisma.authOtp.update({
         where: { id: otpRecord.id },
         data: { isUsed: true },
@@ -282,7 +301,12 @@ export class AuthService {
         where: { id: otpRecord.id },
         data: { isUsed: true },
       });
-      throw new AppError('OTP delivery is not configured. Please contact the agency.', 503);
+      throw new AppError(
+        isEmail
+          ? 'Could not send the verification email. Check the address or contact the agency.'
+          : 'OTP SMS is not configured. Use email login instead, or contact the agency.',
+        503
+      );
     }
 
     // Dev mode logging
@@ -299,8 +323,11 @@ export class AuthService {
    * Verify Auth OTP and login/register
    */
   static async verifyAuthOtp(dto: VerifyOtpDTO) {
-    const { identifier, otp, purpose, name } = dto;
+    const { otp, purpose, name } = dto;
     const role = dto.role || Role.CUSTOMER;
+    const rawIdentifier = String(dto.identifier || '').trim();
+    const isEmailLookup = rawIdentifier.includes('@');
+    const identifier = isEmailLookup ? rawIdentifier.toLowerCase() : rawIdentifier.replace(/\D/g, '');
 
     const otpRecord = await prisma.authOtp.findFirst({
       where: {
@@ -349,6 +376,11 @@ export class AuthService {
     const isEmail = identifier.includes('@');
     if (role === Role.CUSTOMER && !isEmail) {
       throw new BadRequestError('Customer sign-in requires a valid email address. The verification code is sent by email only.');
+    }
+    if (role === Role.RIDER && !isEmail) {
+      throw new BadRequestError(
+        'Rider login uses email. Enter the same email that received the verification code.'
+      );
     }
     let user = await prisma.user.findFirst({
       where: isEmail ? { email: identifier } : { phone: identifier },

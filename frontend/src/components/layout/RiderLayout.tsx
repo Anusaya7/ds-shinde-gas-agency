@@ -31,7 +31,7 @@ export const RiderLayout: React.FC = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate('/rider/login');
   };
 
   if (loadingApplication) {

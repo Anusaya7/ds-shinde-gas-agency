@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, Search, ChevronRight, Clock, Truck, Flame, Filter } from 'lucide-react';
 import { orderService } from '../../services/order.service';
-import { Order, OrderStatus } from '../../types';
+import { Order } from '../../types';
+import { canPayOnline, isWaitingForPaymentUnlock } from '../../utils/order';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
@@ -132,9 +133,21 @@ export const MyOrders: React.FC = () => {
                   <span className="block text-[11px] text-gray-400 capitalize">
                     {order.paymentMethod} • {order.paymentStatus}
                   </span>
+                  {isWaitingForPaymentUnlock(order) && (
+                    <span className="mt-1 block text-[11px] font-semibold text-blue-700">
+                      Pay after admin approval
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {canPayOnline(order) && (
+                    <Link to={`/dashboard/orders/${order.id}`}>
+                      <Button variant="accent" size="sm">
+                        Pay ₹{order.totalAmount}
+                      </Button>
+                    </Link>
+                  )}
                   {order.orderStatus !== 'DELIVERED' && order.orderStatus !== 'CANCELLED' && (
                     <Link to={`/dashboard/orders/${order.id}/track`}>
                       <Button variant="outline" size="sm" leftIcon={<Truck className="w-3.5 h-3.5" />}>

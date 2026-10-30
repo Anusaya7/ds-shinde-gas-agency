@@ -36,6 +36,25 @@ export function canAssignDeliveryRider(orderStatus: OrderStatus): boolean {
   return orderStatus === 'ACCEPTED' || orderStatus === 'ASSIGNED';
 }
 
+/** Online Razorpay pay unlocks only after agency approval (not while awaiting review). */
+export function canPayOnline(order: {
+  orderStatus: OrderStatus;
+  paymentStatus: string;
+}): boolean {
+  if (order.paymentStatus === 'PAID') return false;
+  return ['ACCEPTED', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'ARRIVED', 'OTP_PENDING'].includes(
+    order.orderStatus
+  );
+}
+
+export function isWaitingForPaymentUnlock(order: {
+  orderStatus: OrderStatus;
+  paymentStatus: string;
+}): boolean {
+  if (order.paymentStatus === 'PAID') return false;
+  return needsAdminReview(order.orderStatus);
+}
+
 export function normalizeOrder(value: any): Order {
   const raw = value?.order || value || {};
   const address: Address =

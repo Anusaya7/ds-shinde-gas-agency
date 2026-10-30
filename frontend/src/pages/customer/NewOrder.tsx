@@ -525,6 +525,18 @@ export const NewOrder: React.FC = () => {
     setSubmitting(true);
 
     try {
+      const latestKyc = await customerService.getKycStatus();
+      setKycStatus(latestKyc);
+      if (latestKyc.approvalStatus !== 'APPROVED') {
+        toast.error(
+          latestKyc.approvalStatus === 'PENDING'
+            ? 'KYC is still pending admin approval. Booking is locked until approved.'
+            : `KYC was not approved (${latestKyc.rejectionReason || 'Please resubmit your details'}).`
+        );
+        setCurrentStep(1);
+        return;
+      }
+
       if (udyamDocument || fsiNumber.trim() || aadhaarNumber.trim() || aadhaarDocument) {
         await customerService.saveBusinessDetails({
           ...(fsiNumber.trim() && { fsiNumber: fsiNumber.trim() }),
@@ -639,7 +651,14 @@ export const NewOrder: React.FC = () => {
               Order #{completedOrder.orderNumber}
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Your booking is recorded. Payment will be available after agency approval.
+              Order submitted without taking payment. Preferred mode: {completedOrder.paymentMethod.replace('_', ' ')}.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-left text-sm text-blue-950">
+            <p className="font-bold">No payment taken yet</p>
+            <p className="mt-1 text-xs sm:text-sm">
+              This booking only records your payment preference. Money is collected after DS Shinde Gas admin approves the order — then you can pay online from the order page, or pay the rider at doorstep (COD / UPI).
             </p>
           </div>
 
@@ -657,7 +676,9 @@ export const NewOrder: React.FC = () => {
                 {(completedOrder.bookingDurationDays || durationDays) === 1 ? 'day' : 'days'}</strong>
             </span>
             {completedOrder.paymentStatus !== 'PAID' && (
-              <span className="mt-2 block text-xs">You can pay securely from My Orders after the agency approves this booking.</span>
+              <span className="mt-2 block text-xs">
+                After approval, open this order and tap <strong>Pay ₹{completedOrder.totalAmount}</strong> for Razorpay UPI / card.
+              </span>
             )}
           </div>
 
@@ -1292,7 +1313,8 @@ export const NewOrder: React.FC = () => {
         <Card title="Step 3: Choose Payment Preference & Billing Summary">
           <div className="space-y-6">
             <p className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-              This records your preferred payment method. Payment is collected only after agency approval.
+              Choose how you prefer to pay. Submitting the order does <strong>not</strong> charge you now.
+              Online / card payment unlocks on the order page after agency approval; COD / UPI can also be paid to the rider at delivery.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Online Payment */}

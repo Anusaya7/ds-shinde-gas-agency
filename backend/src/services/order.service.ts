@@ -39,14 +39,20 @@ export class OrderService {
       throw new BadRequestError('Order must contain at least one item');
     }
 
-    // 0. Verify customer KYC approval status
+    // 0. Verify customer KYC is approved before booking
     const customerProfile = await prisma.customerProfile.findUnique({
       where: { userId: customerId },
       select: { approvalStatus: true, rejectionReason: true },
     });
-    if (customerProfile?.approvalStatus === 'REJECTED') {
+    const kycStatus = customerProfile?.approvalStatus || 'PENDING';
+    if (kycStatus === 'REJECTED') {
       throw new BadRequestError(
-        `Your account KYC was rejected (${customerProfile.rejectionReason || 'Contact agency'}). Please update your verification documents.`
+        `Your account KYC was rejected (${customerProfile?.rejectionReason || 'Contact agency'}). Please update your verification documents.`
+      );
+    }
+    if (kycStatus !== 'APPROVED') {
+      throw new BadRequestError(
+        'Your customer KYC must be approved by DS Shinde Gas admin before you can book a cylinder. You can log in, but booking stays locked until approval.'
       );
     }
 

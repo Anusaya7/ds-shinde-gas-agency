@@ -16,6 +16,7 @@ import {
 import { orderService } from '../../services/order.service';
 import { paymentService } from '../../services/payment.service';
 import { Order } from '../../types';
+import { canPayOnline, isWaitingForPaymentUnlock } from '../../utils/order';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -77,10 +78,18 @@ export const OrderDetail: React.FC = () => {
     try {
       const result = await paymentService.openCheckout(order);
       if (result === 'paid') {
-        setOrder((current) => (current ? { ...current, paymentStatus: 'PAID', paymentMethod: 'ONLINE' } : current));
+        try {
+          setOrder(await orderService.getOrderById(order.id));
+        } catch {
+          setOrder((current) => (current ? { ...current, paymentStatus: 'PAID', paymentMethod: 'ONLINE' } : current));
+        }
         toast.success('Payment verified. Your receipt is available to print.');
       } else if (result === 'failed') {
-        setOrder((current) => (current ? { ...current, paymentStatus: 'FAILED' } : current));
+        try {
+          setOrder(await orderService.getOrderById(order.id));
+        } catch {
+          setOrder((current) => (current ? { ...current, paymentStatus: 'FAILED' } : current));
+        }
         toast.error('Payment failed. You can retry from this booking.');
       }
     } catch (error: any) {
@@ -351,22 +360,31 @@ export const OrderDetail: React.FC = () => {
         </div>
       </div>
 
-      {['ACCEPTED', 'ASSIGNED', 'OUT_FOR_DELIVERY', 'ARRIVED', 'OTP_PENDING'].includes(order.orderStatus) &&
-        order.paymentStatus !== 'PAID' && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="font-bold text-amber-950">Pay securely with Razorpay</h3>
-                <p className="mt-1 text-sm text-amber-900">
-                  Pay ₹{order.totalAmount} by UPI, card, or net banking. Card details are not stored by DS Shinde Gas.
-                </p>
-              </div>
-              <Button variant="primary" onClick={handlePayment} isLoading={paying} leftIcon={<CreditCard className="h-4 w-4" />}>
-                Pay ₹{order.totalAmount}
-              </Button>
+      {isWaitingForPaymentUnlock(order) && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5">
+          <h3 className="font-bold text-blue-950">Payment not taken yet</h3>
+          <p className="mt-1 text-sm text-blue-900">
+            Preferred mode: <strong>{order.paymentMethod.replace('_', ' ')}</strong>. Online payment unlocks here after
+            the agency approves this booking. You can also pay the rider at doorstep (cash / UPI).
+          </p>
+        </div>
+      )}
+
+      {canPayOnline(order) && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-bold text-amber-950">Pay now with Razorpay</h3>
+              <p className="mt-1 text-sm text-amber-900">
+                Booking approved. Pay ₹{order.totalAmount} by UPI, card, or net banking — or choose COD / UPI with the rider later.
+              </p>
             </div>
+            <Button variant="primary" onClick={handlePayment} isLoading={paying} leftIcon={<CreditCard className="h-4 w-4" />}>
+              Pay ₹{order.totalAmount}
+            </Button>
           </div>
-        )}
+        </div>
+      )}
 
       {/* Cancel Order Modal */}
       <Modal

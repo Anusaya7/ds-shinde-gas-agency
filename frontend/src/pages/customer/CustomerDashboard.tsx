@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { orderService } from '../../services/order.service';
-import { Order } from '../../types';
+import { customerService } from '../../services/customer.service';
+import { CustomerKycStatus, Order } from '../../types';
+import { canPayOnline, isWaitingForPaymentUnlock } from '../../utils/order';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
@@ -24,13 +26,17 @@ import toast from 'react-hot-toast';
 export const CustomerDashboard: React.FC = () => {
   const { user } = useAuth();
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
+  const [kycStatus, setKycStatus] = useState<CustomerKycStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    orderService
-      .getOrders({ limit: 5 })
-      .then((res) => {
-        setRecentOrders(res.orders);
+    Promise.all([
+      orderService.getOrders({ limit: 5 }),
+      customerService.getKycStatus().catch(() => null),
+    ])
+      .then(([ordersRes, kyc]) => {
+        setRecentOrders(ordersRes.orders);
+        setKycStatus(kyc);
       })
       .catch((error: any) => {
         setRecentOrders([]);
@@ -42,6 +48,7 @@ export const CustomerDashboard: React.FC = () => {
   const activeOrder = recentOrders.find(
     (o) => o.orderStatus !== 'DELIVERED' && o.orderStatus !== 'CANCELLED' && o.orderStatus !== 'REJECTED'
   );
+  const kycApproved = kycStatus?.approvalStatus === 'APPROVED';
 
   return (
     <div className="space-y-8">
@@ -66,10 +73,36 @@ export const CustomerDashboard: React.FC = () => {
             className="font-bold shadow-xl hover:scale-105"
             leftIcon={<Flame className="w-5 h-5" />}
           >
-            Book New Cylinder
+            {kycApproved ? 'Book New Cylinder' : 'Complete KYC to Book'}
           </Button>
         </Link>
       </div>
+
+      {kycStatus && !kycApproved && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-700 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-bold text-amber-950">
+                {kycStatus.approvalStatus === 'PENDING'
+                  ? 'KYC pending admin approval'
+                  : 'KYC required before booking'}
+              </h3>
+              <p className="mt-1 text-sm text-amber-900">
+                You can stay logged in, but cylinder booking stays locked until DS Shinde Gas admin approves your KYC.
+                {kycStatus.approvalStatus === 'REJECTED' && kycStatus.rejectionReason
+                  ? ` Reason: ${kycStatus.rejectionReason}`
+                  : ''}
+              </p>
+            </div>
+          </div>
+          <Link to="/dashboard/orders/new">
+            <Button variant="primary" size="sm">
+              {kycStatus.approvalStatus === 'REJECTED' ? 'Resubmit KYC' : 'View KYC status'}
+            </Button>
+          </Link>
+        </div>
+      )}
 
       {/* Active Order Highlight Card (if any) */}
       {activeOrder && (
@@ -92,6 +125,13 @@ export const CustomerDashboard: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <Badge status={activeOrder.orderStatus} />
+              {canPayOnline(activeOrder) && (
+                <Link to={`/dashboard/orders/${activeOrder.id}`}>
+                  <Button variant="accent" size="sm">
+                    Pay ₹{activeOrder.totalAmount}
+                  </Button>
+                </Link>
+              )}
               <Link to={`/dashboard/orders/${activeOrder.id}/track`}>
                 <Button variant="primary" size="sm">
                   View Status
@@ -99,6 +139,12 @@ export const CustomerDashboard: React.FC = () => {
               </Link>
             </div>
           </div>
+
+          {isWaitingForPaymentUnlock(activeOrder) && (
+            <p className="pt-3 text-xs text-amber-900 font-semibold">
+              Payment not taken yet. Online Pay unlocks after agency approval.
+            </p>
+          )}
 
           <div className="pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-gray-700">
             <div>
